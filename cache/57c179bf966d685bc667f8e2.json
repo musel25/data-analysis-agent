@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-80d7f5848a9cea13",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# Load the data\\ndata = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\ndata_sorted = data.sort_values(by=['patient_id', 'sample_seq'], ascending=[True, False])\\ndata_dedup = data_sorted.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 2: Remove rows with biomarker_baseline = -999\\ndata_clean = data_dedup[data_dedup['biomarker_baseline'] != -999]\\n\\n# Step 3: Filter to treatment arm only\\ndata_treatment = data_clean[data_clean['arm'] == 'treatment']\\n\\n# Step 4: Use direct standardisation (stratified adjustment) to compute adjusted response rates\\n# We'll use the observed severity distribution in the treatment arm as the target population\\n\\n# Get the overall severity distribution in the treatment arm\\nseverity_counts = data_treatment['severity'].value_counts().sort_index()\\ntotal_n = len(data_treatment)\\nseverity_weights = severity_counts / total_n\\n\\n# Compute response rate within each severity group for each sex\\nstratified_rates = data_treatment.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).reset_index()\\n\\n# Compute adjusted response rate for each sex\\nadjusted_rates = {}\\nfor sex in ['F', 'M']:\\n    sex_data = stratified_rates[stratified_rates['sex'] == sex]\\n    # Multiply response rate in each severity stratum by the weight of that stratum in the overall population\\n    # Then sum across strata\\n    adjusted_rate = np.sum(sex_data['mean'] * severity_weights[sex_data['severity']])\\n    adjusted_rates[sex] = adjusted_rate * 100  # Convert to percentage\\n\\n# Compute the adjusted difference (female - male)\\nadjusted_difference = adjusted_rates['F'] - adjusted_rates['M']\\n\\n# Print results\\nprint(f'Adjusted response rate (female): {adjusted_rates[\\\"F\\\"]:.2f}%')\\nprint(f'Adjusted response rate (male): {adjusted_rates[\\\"M\\\"]:.2f}%')\\nprint(f'Adjusted difference (female - male): {adjusted_difference:.2f} percentage points')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7143,
+  "completion_tokens": 534
+ }
+}

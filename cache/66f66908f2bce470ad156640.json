@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a6bc70239263209d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep only the row with highest sample_seq per patient_id\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Compute overall severity distribution (to use as weights)\\nseverity_weights = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Compute stratum-specific treatment effects\\nstratum_effects = []\\nfor severity in ['mild', 'moderate', 'severe']:\\n    subset = df_dedup[df_dedup['severity'] == severity]\\n    trt_rate = subset[subset['arm'] == 'treatment']['responded'].mean()\\n    ctrl_rate = subset[subset['arm'] == 'control']['responded'].mean()\\n    effect = trt_rate - ctrl_rate\\n    stratum_effects.append((severity, effect))\\n\\n# Compute weighted average of stratum-specific effects\\nweighted_effect = 0.0\\nfor severity, effect in stratum_effects:\\n    weight = severity_weights[severity]\\n    weighted_effect += weight * effect\\n\\n# Print results\\nweighted_effect, stratum_effects\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6392,
+  "completion_tokens": 285
+ }
+}
