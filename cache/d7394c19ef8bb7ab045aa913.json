@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-850554aa24c7f8d8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Verify premises\\nassert 'new' in df['customer_segment'].unique(), \\\"'new' customer segment is not present in data\\\"\\nassert 'paid_search' in df['channel'].unique(), \\\"'paid_search' channel is not present in data\\\"\\nassert df['converted'].isin([0, 1]).all(), \\\"'converted' column contains values other than 0 and 1\\\"\\n\\n# Count QA orders (revenue = '999999.99')\\nqa_mask = df['revenue'] == '999999.99'\\nnum_qa_orders = qa_mask.sum()\\nprint(f\\\"Number of QA orders (revenue = '999999.99'): {num_qa_orders}\\\")\\n\\n# Count refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\nnum_refunded = refunded_mask.sum()\\nprint(f\\\"Number of refunded orders: {num_refunded}\\\")\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders and refunded orders\\ndf_clean = df[~qa_mask & ~refunded_mask].copy()\\n\\n# Filter for new customers reached by paid search\\nfiltered = df_clean[\\n    (df_clean['customer_segment'] == 'new') & \\n    (df_clean['channel'] == 'paid_search')\\n]\\n\\n# Compute conversion fraction\\nif len(filtered) == 0:\\n    conversion_fraction = 0.0\\nelse:\\n    conversion_fraction = filtered['converted'].mean()\\n\\nprint(f\\\"Number of new customers reached by paid search: {len(filtered)}\\\")\\nprint(f\\\"Conversion fraction: {conversion_fraction}\\\")\\n\\n# Print final value\\nconversion_fraction\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5751,
+  "completion_tokens": 454
+ }
+}

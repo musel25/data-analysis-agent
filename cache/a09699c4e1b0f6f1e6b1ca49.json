@@ -1,0 +1,11 @@
+{
+ "message": {
+  "content": "<tool_call>\n{\"name\": \"run_python\", \"arguments\": {\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter for completed orders\\completed_df = df[df['status'] == 'completed']\\n\\n# Check for internal test orders (revenue = 999999.99)\\ntest_orders_count = (completed_df['revenue_numeric'] == 999999.99).sum()\\n\\n# If no test orders, total revenue is just sum of completed orders\\nif test_orders_count == 0:\\n    total_revenue = completed_df['revenue_numeric'].sum()\\n    print(f'No internal test orders found. Total revenue from completed orders: {total_revenue}')\\nelse:\\n    # Remove test orders\\n    clean_completed = completed_df[completed_df['revenue_numeric'] != 999999.99]\\n    total_revenue = clean_completed['revenue_numeric'].sum()\\n    print(f'Removed {test_orders_count} internal test orders. Total revenue from completed orders: {total_revenue}')\"}}\n</tool_call>",
+  "role": "assistant",
+  "tool_calls": []
+ },
+ "usage": {
+  "prompt_tokens": 4930,
+  "completion_tokens": 299
+ }
+}

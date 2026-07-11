@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9c277693f2db0628",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter out QA orders (revenue = 999999.99)\\ndf_filtered = df[df['revenue_clean'] != 999999.99]\\n\\n# Now filter for completed orders from LOYAL customers\\ndf_loyal_completed = df_filtered[(df_filtered['customer_segment'] == 'loyal') & (df_filtered['status'] == 'completed')]\\n\\n# Compute mean revenue\\ntotal_revenue = df_loyal_completed['revenue_clean'].sum()\\nnum_orders = len(df_loyal_completed)\\nmean_revenue = total_revenue / num_orders\\n\\n# Print final result\\nprint(f\\\"Mean revenue of a completed order from LOYAL customers: {mean_revenue:.2f} USD\\\")\\n\\n# Return the value for submission\\nmean_revenue\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6910,
+  "completion_tokens": 273
+ }
+}

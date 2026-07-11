@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import os
 import json
 import threading
 import time
@@ -53,6 +54,64 @@ def already_done() -> set[tuple[str, str, int]]:
     return done
 
 
+def dedupe_results() -> int:
+    """Keep exactly one row per (config, task, attempt).
+
+    I once had two eval loops running at the same time (a `pkill` that didn't take), both appending
+    to this file. `already_done()` is read at startup, so neither saw the other's rows, and 222
+    duplicate cells landed in the results — some of them *identical*, because the second process
+    hit the first one's response cache. Duplicated cells silently over-weight whichever tasks got
+    double-run, which is exactly the kind of quiet corruption a benchmark must not have.
+
+    So: dedupe on every load, and refuse to start if another run is already going.
+    """
+    if not RESULTS.exists():
+        return 0
+    seen, kept = set(), []
+    for line in RESULTS.read_text().splitlines():
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        key = (r.get("config"), r.get("task_id"), r.get("attempt"))
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(line)
+    dropped = len(RESULTS.read_text().splitlines()) - len(kept)
+    if dropped:
+        RESULTS.write_text("\n".join(kept) + "\n")
+    return dropped
+
+
+LOCK = RESULTS.with_suffix(".lock")
+
+
+def assert_single_instance() -> None:
+    """Refuse to start if another run_eval is alive. Two writers corrupt the results.
+
+    A lockfile holding the pid, not a `pgrep` — because `pgrep -f evals.run_eval` also matches the
+    `uv run` wrapper in this process's OWN ancestry, so it refuses to let you start at all. (Yes, I
+    wrote the pgrep version first and it locked me out of my own benchmark.)
+    """
+    if LOCK.exists():
+        try:
+            pid = int(LOCK.read_text().strip())
+            os.kill(pid, 0)                     # signal 0 = "is this pid alive?"
+        except (ValueError, ProcessLookupError):
+            pass                                # stale lock from a killed run — take it
+        except PermissionError:
+            pass                                # alive but not ours; assume stale
+        else:
+            raise SystemExit(
+                f"Another evals.run_eval is already running (pid {pid}). Two writers corrupt "
+                f"results.jsonl — I have made that mistake and it cost me 222 duplicated cells. "
+                f"Kill it, or wait. (Stale lock? rm {LOCK})")
+    LOCK.write_text(str(os.getpid()))
+    import atexit
+    atexit.register(lambda: LOCK.unlink(missing_ok=True))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="full", choices=list(CONFIGS) + ["all"])
@@ -64,9 +123,12 @@ def main():
     args = ap.parse_args()
 
     # The benchmark must be trustworthy before it is run. These are not decoration.
+    assert_single_instance()
     test_separation()
     test_leak()
-    print("✓ separation + leak guards pass\n")
+    dropped = dedupe_results()
+    print("✓ separation + leak guards pass"
+          + (f" · dropped {dropped} duplicate rows" if dropped else "") + "\n")
 
     configs = list(CONFIGS) if (args.ablate or args.config == "all") else [args.config]
     tasks = [t for t in TASKS if not args.tasks or t.id in args.tasks]

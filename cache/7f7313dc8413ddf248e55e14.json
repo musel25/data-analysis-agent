@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b70691e326d8bb96",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders (revenue = 999999.99)\\nfiltered_sales = sales[sales['revenue'] != 999999.99]\\n\\n# Remove refunded orders (status == 'refunded')\\ncompleted_orders = filtered_sales[filtered_sales['status'] == 'completed']\\n\\n# Filter for loyal customers\\nloyal_customers = completed_orders[completed_orders['customer_segment'] == 'loyal']\\n\\n# Compute mean revenue for completed orders from loyal customers\\nmean_revenue_loyal = loyal_customers['revenue'].mean()\\n\\n# Print the required numbers\\nprint(f\\\"Number of QA orders removed: {len(sales) - len(filtered_sales)}\\\")\\nprint(f\\\"Number of completed orders after removing QA: {len(completed_orders)}\\\")\\nprint(f\\\"Number of loyal customer completed orders: {len(loyal_customers)}\\\")\\nprint(f\\\"Mean revenue of loyal customer completed orders: {mean_revenue_loyal}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5788,
+  "completion_tokens": 305
+ }
+}

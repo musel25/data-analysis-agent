@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a6e20d41a576309f",
+    "function": {
+     "arguments": "{\"code\": \"# Compute response rates by arm, stratified by severity\\n# We'll compute the response rate within each severity group, then pool using standardization\\n\\n# Define severity levels\\nseverity_order = ['mild', 'moderate', 'severe']\\n\\n# Compute response rates within each severity group\\nresponse_rates = df_clean.groupby(['severity', 'arm'])['responded'].mean().reset_index()\\nresponse_rates = response_rates.pivot(index='severity', columns='arm', values='responded')\\nresponse_rates = response_rates.reindex(severity_order)\\n\\n# Compute overall response rates by arm (raw, unadjusted)\\nraw_treatment_rate = df_clean[df_clean['arm'] == 'treatment']['responded'].mean()\\nraw_control_rate = df_clean[df_clean['arm'] == 'control']['responded'].mean()\\n\\n# Compute weighted average response rate by arm, using severity distribution as weights\\n# Use the overall severity distribution in the full sample as the reference\\nseverity_dist = df_clean['severity'].value_counts(normalize=True)\\n\\n# Standardized response rate for treatment arm\\nstd_treatment_rate = (response_rates['treatment'] * severity_dist).sum()\\n\\n# Standardized response rate for control arm\\nstd_control_rate = (response_rates['control'] * severity_dist).sum()\\n\\n# Treatment effect (difference in proportions, standardized)\\ntreatment_effect = std_treatment_rate - std_control_rate\\n\\n# Output\\nprint(f'Raw treatment rate: {raw_treatment_rate:.4f}')\\nprint(f'Raw control rate: {raw_control_rate:.4f}')\\nprint(f'Standardized treatment rate: {std_treatment_rate:.4f}')\\nprint(f'Standardized control rate: {std_control_rate:.4f}')\\nprint(f'Treatment effect (standardized difference): {treatment_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5119,
+  "completion_tokens": 416
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8ead10a243eb57a3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the trial data\\ndata = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Replace sentinel value -999.0 with NaN in biomarker_baseline\\ndata['biomarker_baseline'] = data['biomarker_baseline'].replace(-999.0, pd.NA)\\n\\n# Define severity levels and their order\\nseverity_order = ['mild', 'moderate', 'severe']\\n\\n# Compute stratum-specific response rates and differences\\nstratum_results = []\\n\\nfor severity in severity_order:\\n    # Subset data for this severity level\\n    subset = data[data['severity'] == severity]\\n    \\n    # Compute response rates\\n    response_rate_treatment = subset[subset['arm'] == 'treatment']['responded'].mean()\\n    response_rate_control = subset[subset['arm'] == 'control']['responded'].mean()\\n    \\n    # Compute difference\\n    diff = response_rate_treatment - response_rate_control\\n    \\n    # Store result\\n    stratum_results.append({\\n        'severity': severity,\\n        'response_rate_treatment': response_rate_treatment,\\n        'response_rate_control': response_rate_control,\\n        'difference': diff\\n    })\\n\\n# Convert to DataFrame\\nstratum_df = pd.DataFrame(stratum_results)\\n\\n# Compute overall treatment effect using standardization (using control group distribution as reference)\\n# First, compute the proportion of patients in each severity stratum in the control group\\ncontrol_stratum_counts = data[data['arm'] == 'control']['severity'].value_counts(normalize=True)\\n\\n# Weighted average of stratum-specific differences\\nweighted_diff = 0\\nfor severity in severity_order:\\n    diff = stratum_df[stratum_df['severity'] == severity]['difference'].iloc[0]\\n    weight = control_stratum_counts[severity]\\n    weighted_diff += diff * weight\\n\\n# Print stratum-specific results and overall effect\\nprint(\\\"Stratum-specific differences in response rates (treatment - control):\\\")\\nprint(stratum_df)\\nprint(f\\\"\\\\nOverall treatment effect (standardized): {weighted_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8962,
+  "completion_tokens": 498
+ }
+}

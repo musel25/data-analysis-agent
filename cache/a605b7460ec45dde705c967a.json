@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9cfeec5d3bc4e8b6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Define the confounders\\nconfounders = ['customer_segment', 'age_group']\\n\\n# Create age groups\\ndef create_age_group(age):\\n    if age < 25:\\n        return '<25'\\n    elif age < 35:\\n        return '25-35'\\n    elif age < 50:\\n        return '35-50'\\n    else:\\n        return '50+'\\n\\ndf['age_group'] = df['customer_age'].apply(create_age_group)\\n\\n# Compute conversion rates within strata defined by confounders\\ndef compute_stratified_rate(df, channel_col, converted_col, strata_cols):\\n    # Group by strata and compute conversion rate within each group\\n    strata_df = df.groupby(strata_cols + [channel_col])[converted_col].agg(['count', 'sum']).reset_index()\\n    strata_df['conversion_rate'] = strata_df['sum'] / strata_df['count']\\n    \\n    # Pivot to have one row per strata with email and paid_search rates\\n    pivot_df = strata_df.pivot_table(index=strata_cols, columns=channel_col, values='conversion_rate', fill_value=0)\\n    pivot_df = pivot_df.reset_index()\\n    \\n    # Compute weighted average conversion rate for each channel\\n    total_count = df.groupby(strata_cols)['converted'].count().reset_index(name='total_count')\\n    pivot_df = pivot_df.merge(total_count, on=strata_cols)\\n    \\n    # Compute weighted average for email\\n    pivot_df['weighted_email'] = pivot_df['email'] * pivot_df['total_count']\\n    weighted_avg_email = pivot_df['weighted_email'].sum() / pivot_df['total_count'].sum()\\n    \\n    # Compute weighted average for paid_search\\n    pivot_df['weighted_paid_search'] = pivot_df['paid_search'] * pivot_df['total_count']\\n    weighted_avg_paid_search = pivot_df['weighted_paid_search'].sum() / pivot_df['total_count'].sum()\\n    \\n    # Compute difference\\n    difference = weighted_avg_email - weighted_avg_paid_search\\n    \\n    return weighted_avg_email, weighted_avg_paid_search, difference\\n\\n# Compute stratified conversion rates\\nemail_rate, paid_search_rate, difference = compute_stratified_rate(\\n    df, 'channel', 'converted', confounders\\n)\\n\\n# Print results\\nprint(f\\\"Stratified conversion rate (email): {email_rate:.4f}\\\")\\nprint(f\\\"Stratified conversion rate (paid_search): {paid_search_rate:.4f}\\\")\\nprint(f\\\"Stratified difference (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4880,
+  "completion_tokens": 646
+ }
+}

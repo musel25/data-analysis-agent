@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-922acd1040036eb2",
+    "function": {
+     "arguments": "{\"code\": \"import re\\n\\n# Read the markdown file as plain text\\ndict_text = open('/home/musel/Github/research_agent/data/sales_dictionary.md', 'r').read()\\n\\n# Use regex to extract table rows (lines that start with | and end with |)\\nlines = dict_text.strip().split('\\\\n')\\nmd_table_lines = [line for line in lines if line.strip().startswith('|') and line.strip().endswith('|')]\\n\\n# Extract field and description from each row\\nfield_desc_pairs = []\\nfor line in md_table_lines:\\n    # Split by pipe, remove empty strings and strip whitespace\\n    parts = [part.strip() for part in line.split('|') if part.strip()]\\n    if len(parts) >= 2:\\n        field = parts[0]\\n        description = ' '.join(parts[1:])\\n        field_desc_pairs.append((field, description))\\n\\n# Convert to DataFrame\\ndict_df = pd.DataFrame(field_desc_pairs, columns=['Field', 'Description'])\\ndict_df.set_index('Field', inplace=True)\\ndict_df.loc[['customer_segment', 'status', 'revenue']]\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3206,
+  "completion_tokens": 268
+ }
+}

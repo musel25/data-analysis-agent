@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b075fa5f3d2cf869",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\nimport pandas as pd\\n\\n# Use manual OLS via matrix algebra to avoid dependency issues\\n\\n# Prepare data: one-hot encode categorical variables\\nX = pd.get_dummies(data_clean, columns=['site', 'severity', 'sex', 'assay_batch'], drop_first=True)\\n\\n# Define outcome and predictors\\ny = X['biomarker_change']\\nX = X.drop(columns=['biomarker_change', 'patient_id', 'sample_seq', 'arm'])\\n\\n# Add constant (intercept)\\nX = pd.concat([pd.Series(1, index=X.index, name='const'), X], axis=1)\\n\\n# Convert to numpy arrays\\nX = X.values\\ny = y.values\\n\\n# Compute OLS coefficients manually: (X'X)^(-1)X'y\\nXtX = np.dot(X.T, X)\\nXtX_inv = np.linalg.inv(XtX)\\nbeta = np.dot(XtX_inv, np.dot(X.T, y))\\n\\n# Extract treatment effect\\n# Find the index of 'arm[T.treatment]' in the column names\\ncol_names = X.columns\\ntreatment_col = 'arm[T.treatment]'\\nif treatment_col in col_names:\\n    treatment_idx = list(col_names).index(treatment_col)\\n    treatment_effect = beta[treatment_idx]\\n    # Compute standard error manually\\n    y_pred = np.dot(X, beta)\\n    residuals = y - y_pred\\n    n, k = X.shape\\n    mse = np.sum(residuals**2) / (n - k)\\n    var_beta = mse * np.diag(XtX_inv)\\n    se_treatment = np.sqrt(var_beta[treatment_idx])\\n    # 95% CI\\n    t_crit = 1.96  # z-value for 95% CI\\n    ci_lower = treatment_effect - t_crit * se_treatment\\n    ci_upper = treatment_effect + t_crit * se_treatment\\nelse:\\n    treatment_effect = np.nan\\n    se_treatment = np.nan\\n    ci_lower = np.nan\\n    ci_upper = np.nan\\n\\n# Print results\\nprint(f\\\"Treatment effect (adjusted): {treatment_effect:.3f}\\\")\\nprint(f\\\"Standard error: {se_treatment:.3f}\\\")\\nprint(f\\\"95% CI: [{ci_lower:.3f}, {ci_upper:.3f}]\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5236,
+  "completion_tokens": 544
+ }
+}

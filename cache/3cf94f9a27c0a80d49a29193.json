@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-847b6ee9e9c16cbe",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Check for QA orders: revenue == '999999.99'\\nqa_mask = df['revenue'] == '999999.99'\\n\\n# If no QA orders, proceed\\nif qa_mask.sum() == 0:\\n    print(\\\"No QA orders found. Proceeding with full dataset.\\\")\\n    df_clean = df\\nelse:\\n    print(f\\\"Found {qa_mask.sum()} QA orders. Removing them.\\\")\\n    df_clean = df[~qa_mask]\\n\\n# Now, filter for loyal customers only\\nloyal_df = df_clean[df_clean['customer_segment'] == 'loyal']\\n\\n# Compute conversion rate: fraction of loyal customers who converted\\nn_loyal = len(loyal_df)\\nn_converted = loyal_df['converted'].sum()\\nconversion_rate = n_converted / n_loyal\\n\\n# Print results\\nprint(f\\\"Total loyal customers: {n_loyal}\\\")\\nprint(f\\\"Converted among loyal: {n_converted}\\\")\\nprint(f\\\"Conversion rate (fraction): {conversion_rate}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7807,
+  "completion_tokens": 296
+ }
+}

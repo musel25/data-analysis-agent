@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8b7962e2c221cc89",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Convert revenue to numeric, coercing errors to NaN\\nsales_df['revenue'] = pd.to_numeric(sales_df['revenue'], errors='coerce')\\n\\n# Drop rows with invalid revenue values\\nsales_df = sales_df.dropna(subset=['revenue'])\\n\\n# Ensure only completed orders are considered for conversion\\nsales_df = sales_df[sales_df['status'] == 'completed']\\n\\n# Stratify by customer_segment and compute conversion rates within each stratum\\nstratified_rates = sales_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='channel')\\n\\n# Compute the difference in conversion rates within each segment\\nstratified_diff = stratified_rates['email'] - stratified_rates['paid_search']\\n\\n# Compute the overall difference using stratification (weighted average)\\n# Weight by proportion of each segment in the overall sample\\nsegment_weights = sales_df.groupby('customer_segment').size() / sales_df.shape[0]\\n\\n# Apply weights to each segment's difference\\nweighted_diff = (stratified_diff * segment_weights).sum()\\n\\n# Print results\\nprint('Stratified conversion rates by channel and segment:\\\\n', stratified_rates)\\nprint('\\\\nDifference within each segment (email - paid_search):\\\\n', stratified_diff)\\nprint('\\\\nWeighted average difference (stratified):', weighted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3573,
+  "completion_tokens": 351
+ }
+}

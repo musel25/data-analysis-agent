@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b117cdd69170613d",
+    "function": {
+     "arguments": "{\"code\": \"from pydantic import BaseModel, field_validator, model_validator\\n\\nclass QuestionContract(BaseModel):\\n    question: str\\n    estimand: str\\n    population: str\\n    units: str\\n    question_is_precise: bool\\n    \\n    @field_validator('question')\\n    def validate_question(cls, v):\\n        if not v:\\n            raise ValueError('Question is required')\\n        return v\\n    \\n    @field_validator('estimand')\\n    def validate_estimand(cls, v):\\n        if not v:\\n            raise ValueError('Estimand is required')\\n        return v\\n    \\n    @field_validator('population')\\n    def validate_population(cls, v):\\n        if not v:\\n            raise ValueError('Population is required')\\n        return v\\n    \\n    @field_validator('units')\\n    def validate_units(cls, v):\\n        if not v:\\n            raise ValueError('Units are required')\\n        return v\\n    \\n    @model_validator(mode='after')\\n    def validate_question_is_precise(cls, values):\\n        question = values.question\\n        if not isinstance(question, str):\\n            raise ValueError('Question must be a string')\\n        if 'mean' not in question.lower() or 'revenue' not in question.lower() or 'completed order' not in question.lower():\\n            raise ValueError('Question is not precise enough')\\n        return values\\n\\n# Create the contract\\ncontract = QuestionContract(\\n    question=\\\"What is the mean revenue of a completed order in the sales data?\\\",\\n    estimand=\\\"mean revenue\\\",\\n    population=\\\"completed orders\\\",\\n    units=\\\"currency\\\",\\n    question_is_precise=True\\n)\\n\\ncontract\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2807,
+  "completion_tokens": 403
+ }
+}

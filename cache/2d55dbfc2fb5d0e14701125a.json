@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-af74571bc29f86bf",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since we cannot use sklearn, we will use stratification by customer_segment and age_group\\n# Compute conversion rate within each stratum (combination of customer_segment and age_group)\\n# Then compute a weighted average of the differences\\n\\n# Create age group\\ndf['age_group'] = pd.cut(df['customer_age'], bins=[0, 30, 50, 100], labels=['Young', 'Middle-aged', 'Old'])\\n\\n# Create strata: combination of customer_segment and age_group\\nstrata = df['customer_segment'] + '_' + df['age_group']\\n\\n# Compute conversion rate within each stratum for each channel\\ngrouped_strata = df.groupby(['channel', strata])['converted'].mean().unstack(level=0)\\n\\n# Compute difference in each stratum\\nstrata_diff = grouped_strata['email'] - grouped_strata['paid_search']\\n\\n# Compute total number of users in each stratum\\nstrata_count = df.groupby(strata).size()\\n\\n# Compute weighted average of differences, using strata sizes as weights\\nweighted_diff = (strata_diff * strata_count).sum() / strata_count.sum()\\n\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5371,
+  "completion_tokens": 284
+ }
+}

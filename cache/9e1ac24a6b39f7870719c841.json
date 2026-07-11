@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bcbfa1a989a230f6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Confirm premises\\nassert 'paid_search' in sales['channel'].unique(), \\\"Channel 'paid_search' not found\\\"\\nassert 'new' in sales['customer_segment'].unique(), \\\"Customer segment 'new' not found\\\"\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify and remove QA orders (revenue == 999999.99)\\nqa_mask = sales['revenue'] == 999999.99\\nprint(f\\\"Found {qa_mask.sum()} QA orders. Removing them.\\\")\\n\\n# Remove QA orders and refunded orders\\nsales_clean = sales[~qa_mask & (sales['status'] == 'completed')]\\n\\n# Check for sentinel values in customer_age\\nprint(f\\\"Number of rows with customer_age == -1: {sales_clean['customer_age'].eq(-1).sum()}\\\")\\n\\n# Filter for NEW customers reached by PAID SEARCH\\nfiltered = sales_clean[\\n    (sales_clean['channel'] == 'paid_search') &\\n    (sales_clean['customer_segment'] == 'new')\\n]\\n\\n# Compute conversion fraction\\nn_total = len(filtered)\\nn_converted = filtered['converted'].sum()\\nconversion_fraction = n_converted / n_total if n_total > 0 else 0\\n\\n# Print results\\nprint(f\\\"Total NEW paid_search customers: {n_total}\\\")\\nprint(f\\\"Converted: {n_converted}\\\")\\nprint(f\\\"Conversion fraction: {conversion_fraction}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3402,
+  "completion_tokens": 398
+ }
+}

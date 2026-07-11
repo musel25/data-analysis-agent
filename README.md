@@ -136,30 +136,46 @@ reports **which** wrong. Landing on the naive answer means the agent fell into t
 *specifically*, rather than just fumbling. That's the difference between a benchmark and a
 diagnostic.
 
+### Does it generalise? (the question more runs can't answer)
+
+Every trap in `trial.csv` is one **I** planted while designing the guardrails. Passing it only
+proves they work on the failures I *already knew about* — and more runs shrink the *variance* of
+that claim, not its **bias**.
+
+So `sales.csv` is a **held-out domain**: e-commerce, not medicine. Revenue exported as text
+(`"1,234.56"`), internal QA orders at `999999.99`, refunds left in the file, `-1` for a missing
+age, and a Simpson's paradox on **channel × segment** instead of arm × severity.
+
+| domain | pass rate | 95% CI | |
+|---|---|---|---|
+| `penguins` | 100% | `[100%, 100%]` | clean data |
+| `trial` | 82% | `[61%, 97%]` | **designed against** |
+| **`sales`** | **89%** | `[74%, 99%]` | **🎯 held-out domain** |
+
+**It does better on the domain it was never tuned for.** That's the most reassuring number here.
+
+*(Writing that dataset also found a hole in my own benchmark: `observe.py` has had a detector for
+numeric-columns-stored-as-text since the first commit, and no task ever exercised it. A benchmark
+built from one dataset only tests the mechanisms that dataset happens to provoke.)*
+
 ### The results — including the one that inverted my own thesis
 
-360 runs, 8 configs, $1.31. On the **trap tasks**, the stack is unambiguous:
+**2,240 runs · 28 tasks · 3 domains · $8.01.** Each ablation is a *paired* bootstrap against the
+full agent (10k hierarchical resamples: tasks, then runs within tasks). **If the CI crosses zero, I
+can't distinguish that mechanism from doing nothing — and I say so, instead of reporting a point
+estimate.**
 
-| | pass rate | fell for the *documented* naive answer |
-|---|---|---|
-| **full agent** | **88%** | **8%** |
-| no guardrails | 46% | 38% |
+| remove this | pass | Δ | 95% CI | verdict |
+|---|---|---|---|---|
+| **the deterministic data briefing** | 62% | **−26%** | `[−40%, −13%]` | **HURTS** |
+| *every guardrail at once* | 69% | −19% | `[−31%, −8%]` | **HURTS** |
+| **the Findings Ledger** — *my centrepiece* | 83% | −5% | `[−11%, +1%]` | no detectable effect |
+| the Question Contract | 87% | −1% | `[−6%, +4%]` | no detectable effect |
+| the grounding gate | 88% | −0% | `[−4%, +4%]` | no detectable effect |
+| the fresh-context verifier | 88% | −0% | `[−5%, +5%]` | no detectable effect |
 
-Nearly a **5× reduction in the wrong-attractor rate** — the notice–act gap, measured. And the
-guardrails buy **nothing** on clean data, which is exactly the shape a guardrail should have.
-
-**But then the single-mechanism ablations:**
-
-| remove | Δ pass rate |
-|---|---|
-| the Findings Ledger — *my centrepiece* | **0** |
-| the verifier | +2 |
-| the grounding gate | 0 |
-| the Question Contract | +2 |
-| **the deterministic data briefing** | **−27** |
-
-**Removing the briefing alone hurts as much as removing every guardrail combined.** Every gate I
-built costs nothing measurable when taken away.
+**Removing twenty lines of pandas is the largest effect in the study.** I built this design around
+*gates*. The thing carrying it is the *detector*.
 
 > ## A gate is only as good as the detector feeding it.
 >
@@ -169,10 +185,11 @@ built costs nothing measurable when taken away.
 > Tell the agent what's in the data, deterministically, before it starts, and **it acts on it.**
 > It didn't need to be forced. It needed to be *informed*.
 
-That's the honest finding, caveats and all (n=3 per task — "no measurable benefit" is not "no
-benefit", and a gate that fires on 4% of runs is insurance, not throughput). It's written up in
-full in `notebooks/07_evaluation.ipynb`, and it's the only thing in this project I couldn't have
-got by thinking harder.
+**And the bigger eval corrected me about my own centrepiece.** At 15 tasks × 3 runs the Findings
+Ledger measured *exactly zero*, and I wrote that it "does not pay for itself." At 28 × 10 it's
+**−5% [−11%, +1%]** — the only gate whose interval sits almost entirely on the "it helps" side. It
+still misses 95%, so I can't claim it. But *"the ledger does nothing"* was never a finding — it was
+**a twenty-point-wide confidence interval reported as a point estimate.**
 
 **What I'd build next isn't another gate. It's more detectors.**
 

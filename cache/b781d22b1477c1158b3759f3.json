@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b2679eefda2071d8",
+    "function": {
+     "arguments": "{\"code\": \"sales_df_clean = sales_df_clean.dropna(subset=['revenue'])\\n\\n# Compute weighted average conversion rate by channel\\n# Step 1: Compute segment weights within each channel\\nsegment_counts = sales_df_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\nsegment_totals = segment_counts.sum(axis=1)\\nsegment_weights = segment_counts.divide(segment_totals, axis=0)\\n\\n# Step 2: Compute conversion rate by channel and segment\\nconversion_by_segment = sales_df_clean.groupby(['channel', 'customer_segment'])['converted'].mean()\\n\\n# Step 3: Compute weighted average conversion rate\\nweighted_conversion_by_channel = (segment_weights * conversion_by_segment).sum(axis=1)\\n\\n# Step 4: Compute weighted average revenue\\nrevenue_by_segment = sales_df_clean.groupby(['channel', 'customer_segment'])['revenue'].mean()\\nweighted_revenue_by_channel = (segment_weights * revenue_by_segment).sum(axis=1)\\n\\nprint(f'Weighted average conversion rate by channel:\\\\n{weighted_conversion_by_channel}')\\nprint(f'Weighted average revenue by channel:\\\\n{weighted_revenue_by_channel}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4833,
+  "completion_tokens": 266
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-94679ac81e65d968",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Step 1: Filter completed orders only\\ncompleted_only = df[df['status'] == 'completed']\\n\\n# Step 2: Parse revenue as float (remove commas)\\ncompleted_only['revenue'] = completed_only['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 3: Remove QA orders (revenue = 999999.99)\\nreal_orders = completed_only[completed_only['revenue'] != 999999.99]\\n\\n# Step 4: Cross-tabulate channel vs customer_segment\\n# This shows the imbalance: email is dominated by loyal/returning, paid_search by new\\ncross_tab = pd.crosstab(real_orders['channel'], real_orders['customer_segment'])\\nprint(\\\"Cross-tabulation of channel vs customer_segment:\\\")\\nprint(cross_tab)\\n\\n# Step 5: Compute conversion rate within each segment\\nconversion_by_segment = real_orders.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\nprint(\\\"Conversion rate by channel and segment:\\\")\\nprint(conversion_by_segment)\\n\\n# Step 6: Compute overall conversion rate by channel (raw)\\nraw_conversion_email = real_orders[real_orders['channel'] == 'email']['converted'].mean()\\nraw_conversion_paid_search = real_orders[real_orders['channel'] == 'paid_search']['converted'].mean()\\n\\n# Raw difference (not causal)\\ndiff_raw = raw_conversion_email - raw_conversion_paid_search\\n\\n# Step 7: Use stratified analysis to estimate causal effect\\n# Compute weighted average conversion rate by channel, weighted by segment distribution\\n# But since we can't observe what would have happened without the campaign,\\n# we assume that within each segment, the treatment effect is the difference in conversion\\n# We compute the average difference across segments, weighted by the size of each segment\\n# in the email group (since that's who was targeted)\\n\\n# Get segment counts in email group\\nemail_segment_counts = real_orders[real_orders['channel'] == 'email']['customer_segment'].value_counts()\\ntotal_email = email_segment_counts.sum()\\n\\n# Compute weighted average of conversion differences\\nweighted_diff = 0\\nfor seg in email_segment_counts.index:\\n    email_conv = conversion_by_segment[(conversion_by_segment['channel'] == 'email') & \\n                                       (conversion_by_segment['customer_segment'] == seg)]['converted'].iloc[0]\\n    paid_conv = conversion_by_segment[(conversion_by_segment['channel'] == 'paid_search') & \\n                                      (conversion_by_segment['customer_segment'] == seg)]['converted'].iloc[0]\\n    weight = email_segment_counts[seg] / total_email\\n    weighted_diff += (email_conv - paid_conv) * weight\\n\\n# This weighted difference is our estimate of the campaign's effect\\n# It assumes that the paid_search group is a good counterfactual for each segment\\n# But it's not perfect \u2014 the paid_search group has more new customers\\n\\n# Final estimate\\ncampaign_effect_estimate = weighted_diff\\n\\n# Output all key values\\nprint(f\\\"Raw conversion rate (email): {raw_conversion_email:.4f}\\\")\\nprint(f\\\"Raw conversion rate (paid_search): {raw_conversion_paid_search:.4f}\\\")\\nprint(f\\\"Raw difference: {diff_raw:.4f} (percentage points)\\\")\\nprint(f\\\"Estimated campaign effect (stratified): {campaign_effect_estimate:.4f} (percentage points)\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4394,
+  "completion_tokens": 795
+ }
+}

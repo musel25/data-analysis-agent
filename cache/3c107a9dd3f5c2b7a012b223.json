@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-87164cae6f888d19",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Recreate the stratum approach, but avoid any potential dtype issues by ensuring proper handling\\n\\n# Create stratum: customer_segment + age_group\\n# First, ensure age_group is properly defined\\ndf['age_group'] = pd.cut(df['customer_age'], \\n                        bins=[0, 25, 35, 50, 100], \\n                        labels=['<25', '25-35', '36-50', '51+'], \\n                        include_lowest=True)\\n\\n# Ensure both columns are strings\\ndf['customer_segment'] = df['customer_segment'].astype(str)\\ndf['age_group'] = df['age_group'].astype(str)\\n\\ndf['stratum'] = df['customer_segment'] + '_' + df['age_group']\\n\\n# Compute within-stratum conversion rates\\nstratum_rates = df.groupby(['stratum', 'channel'])['converted'].agg(['count', 'sum', 'mean']).reset_index()\\nstratum_rates = stratum_rates.rename(columns={'mean': 'conversion_rate'})\\n\\n# Pivot to get email and paid_search rates per stratum\\npivot_data = stratum_rates.pivot(index='stratum', columns='channel', values='conversion_rate')\\n\\n# Compute difference: email - paid_search\\npivot_data = pivot_data.reset_index()\\npivot_data['diff'] = pivot_data['email'] - pivot_data['paid_search']\\n\\n# Compute total count per stratum (for weighting)\\nstratum_totals = df.groupby('stratum').size().reset_index(name='total_count')\\n\\n# Merge with pivot_data\\npivot_data = pivot_data.merge(stratum_totals, on='stratum')\\n\\n# Compute weighted average difference\\nweighted_diff = (pivot_data['diff'] * pivot_data['total_count']).sum() / pivot_data['total_count'].sum()\\n\\n# Also compute raw difference for reference\\nraw_email_rate = df[df['channel'] == 'email']['converted'].mean()\\nraw_paid_rate = df[df['channel'] == 'paid_search']['converted'].mean()\\nraw_diff = raw_email_rate - raw_paid_rate\\n\\n# Output results\\nprint(f\\\"Raw difference (email - paid_search): {raw_diff:.4f}\\\")\\nprint(f\\\"Stratified weighted difference (email - paid_search): {weighted_diff:.4f}\\\")\\n\\n# Display stratum-level data\\npivot_data[['stratum', 'email', 'paid_search', 'diff', 'total_count']]\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6335,
+  "completion_tokens": 563
+ }
+}

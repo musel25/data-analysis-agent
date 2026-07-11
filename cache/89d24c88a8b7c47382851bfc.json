@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-81252bcc7cba8f3b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the cleaned data\\ndf_clean = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf_clean['revenue_parsed'] = df_clean['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter: only completed orders, exclude QA orders (revenue = 999999.99) and refunded orders\\ndf_final = df_clean[(df_clean['status'] == 'completed') & \\n                     (df_clean['revenue_parsed'] != 999999.99)]\\n\\n# Compute average revenue per order by channel and customer_segment\\ndf_grouped = df_final.groupby(['channel', 'customer_segment'])['revenue_parsed'].mean().round(2)\\n\\n# Display the results\\nprint(\\\"Average revenue per completed order by channel and customer_segment:\\\")\\nprint(df_grouped)\\n\\n# Extract values for report\\nemail_new = df_grouped.loc[('email', 'new')]\\nemail_returning = df_grouped.loc[('email', 'returning')]\\nemail_loyal = df_grouped.loc[('email', 'loyal')]\\npaid_search_new = df_grouped.loc[('paid_search', 'new')]\\npaid_search_returning = df_grouped.loc[('paid_search', 'returning')]\\npaid_search_loyal = df_grouped.loc[('paid_search', 'loyal')]\\n\\n# Compare email vs paid_search within each segment\\nemail_better_new = email_new > paid_search_new\\nemail_better_returning = email_returning > paid_search_returning\\nemail_better_loyal = email_loyal > paid_search_loyal\\n\\n# Compute overall average revenue for each channel\\nemail_avg = df_final[df_final['channel'] == 'email']['revenue_parsed'].mean().round(2)\\npaid_search_avg = df_final[df_final['channel'] == 'paid_search']['revenue_parsed'].mean().round(2)\\n\\n# Print comparison\\nprint(f\\\"\\\\nEmail channel average revenue: ${email_avg}\\\")\\nprint(f\\\"Paid_search channel average revenue: ${paid_search_avg}\\\")\\n\\n# Check if email outperforms paid_search in any segment\\nif email_better_new or email_better_returning or email_better_loyal:\\n    success = True\\nelse:\\n    success = False\\n\\n# Output\\nprint(f\\\"Campaign successful? {success}\\\")\\n\\n# Return for report\\nprint(f\\\"email_new: {email_new}, email_returning: {email_returning}, email_loyal: {email_loyal}\\\")\\nprint(f\\\"paid_search_new: {paid_search_new}, paid_search_returning: {paid_search_returning}, paid_search_loyal: {paid_search_loyal}\\\")\\nprint(f\\\"email_avg: {email_avg}, paid_search_avg: {paid_search_avg}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5662,
+  "completion_tokens": 667
+ }
+}

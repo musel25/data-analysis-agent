@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ad056c05e9a597f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Deduplicate by patient_id, keeping the row with the highest sample_seq\\n# Sort by patient_id and sample_seq, then drop duplicates, keeping the highest sample_seq\\ndata_dedup = data.sort_values(by=['patient_id', 'sample_seq'], ascending=[True, False]).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Stratify by severity and compute response rate in each stratum\\n# Compute response rate by arm and severity\\nstratified = data_dedup.groupby(['severity', 'arm'])['responded'].mean().unstack(level='arm')\\nstratified.columns = ['control', 'treatment']\\nstratified = stratified.reset_index()\\n\\n# Compute difference in proportions within each stratum (treatment - control)\\nstratified['diff'] = stratified['treatment'] - stratified['control']\\n\\n# Compute overall severity distribution to use as weights\\nseverity_dist = data_dedup['severity'].value_counts(normalize=True)\\n\\n# Weighted average of stratum-specific differences\\nweighted_diff = (stratified['diff'] * stratified['severity'].map(severity_dist)).sum()\\n\\n# Output\\nprint(\\\"Stratified response rates by severity:\\\")\\nprint(stratified)\\nprint(f\\\"\\\\nWeighted average difference in proportions (treatment - control): {weighted_diff:.4f}\\\")\\n\\n# Save result\\nresult = weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8320,
+  "completion_tokens": 370
+ }
+}

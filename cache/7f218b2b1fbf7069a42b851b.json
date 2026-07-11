@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-83fba8b144d85158",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-load data to ensure clean state\\ndata = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Remove rows with biomarker_baseline == -999\\ndata_clean = data[data['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate by highest sample_seq per patient\\ndata_dedup = data_clean.loc[data_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Compute response rates by arm and severity\\nresponse_rates = data_dedup.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nresponse_rates = response_rates.pivot(index='arm', columns='severity', values='responded')\\nresponse_rates = response_rates.rename(columns={'mild': 'mild_rate', 'moderate': 'moderate_rate', 'severe': 'severe_rate'})\\n\\n# Extract response rates for control and treatment arms\\ncontrol_rates = response_rates.loc['control']\\ntreatment_rates = response_rates.loc['treatment']\\n\\n# Print control arm response rates\\nprint(\\\"Control arm response rates:\\\")\\nprint(control_rates)\\n\\n# Print treatment arm response rates\\nprint(\\\"Treatment arm response rates:\\\")\\nprint(treatment_rates)\\n\\n# Compute stratum-specific differences (treatment - control)\\nstratum_diffs = treatment_rates - control_rates\\n\\n# Print stratum differences\\nprint(\\\"Stratum differences (treatment - control):\\\")\\nprint(stratum_diffs)\\n\\n# Compute weights from control arm severity distribution\\ncontrol_severity_counts = data_dedup[data_dedup['arm'] == 'control']['severity'].value_counts().sort_index()\\ntotal_control = control_severity_counts.sum()\\nweights = control_severity_counts / total_control\\n\\n# Print weights\\nprint(\\\"Control arm severity weights:\\\")\\nprint(weights)\\n\\n# Compute weighted average difference\\nweighted_diff = (stratum_diffs * weights).sum()\\nprint(f\\\"Standardised difference (weighted average): {weighted_diff}\\\")\\n\\n# Compute raw difference for comparison\\ncontrol_response_rate = data_dedup[data_dedup['arm'] == 'control']['responded'].mean()\\ntreatment_response_rate = data_dedup[data_dedup['arm'] == 'treatment']['responded'].mean()\\nraw_diff = treatment_response_rate - control_response_rate\\nprint(f\\\"Raw difference (unadjusted): {raw_diff}\\\")\\n\\n# Final estimate\\nfinal_diff = weighted_diff\\n\\n# Output only the final difference\\nfinal_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 13925,
+  "completion_tokens": 582
+ }
+}

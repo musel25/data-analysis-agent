@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bb637b6fbaaa2e33",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Convert revenue to numeric after removing commas\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders with revenue = 999999.99\\nsales_clean = sales[sales['revenue'] != 999999.99]\\n\\n# Remove refunded orders\\nsales_clean = sales_clean[sales_clean['status'] == 'completed']\\n\\n# Now compute mean age of customers who converted\\n# Filter for converted customers\\nconverted_customers = sales_clean[sales_clean['converted'] == 1]\\n\\n# Exclude rows where customer_age == -1 (missing data)\\nconverted_customers_valid_age = converted_customers[converted_customers['customer_age'] != -1]\\n\\n# Compute mean age\\nmean_age_converted = converted_customers_valid_age['customer_age'].mean()\\n\\nprint(f\\\"Mean age of converted customers: {mean_age_converted:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3396,
+  "completion_tokens": 260
+ }
+}

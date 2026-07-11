@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3efd5425a124bbf",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since we cannot use sklearn, we'll compute a simple stratified average\\n# Stratify by severity and site, then compute within-stratum differences\\n\\n# Create a combined stratum variable\\ndata['stratum'] = data['site'] + '_' + data['severity']\\n\\n# Compute response rate within each stratum\\nstratum_response = data.groupby('stratum')['responded'].mean()\\n\\n# Compute treatment and control response rates within each stratum\\nstratum_rates = data.groupby(['stratum', 'arm'])['responded'].mean().unstack(fill_value=0)\\n\\n# Compute within-stratum difference (treatment - control)\\nstratum_diff = stratum_rates['treatment'] - stratum_rates['control']\\n\\n# Compute weight for each stratum (proportion of total sample)\\nstratum_weights = data.groupby('stratum').size() / len(data)\\n\\n# Weighted average of treatment effects across strata\\nweighted_ate = np.sum(stratum_diff * stratum_weights)\\n\\n# Output\\nweighted_ate\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5691,
+  "completion_tokens": 251
+ }
+}

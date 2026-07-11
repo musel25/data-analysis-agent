@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b5118435356e3d12",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Use a more direct approach: simulate a null distribution\\n# Randomly permute channel assignments and recompute chi2\\nn_permutations = 10000\\nchi2_perm = []\\n\\n# For each permutation, shuffle the channel labels and compute chi2\\nfor _ in range(n_permutations):\\n    shuffled_channel = np.random.permutation(sales_df['channel'].values)\\n    shuffled_table = pd.crosstab(shuffled_channel, sales_df['customer_segment'])\\n    shuffled_observed = shuffled_table.values\\n    shuffled_expected = np.outer(shuffled_table.sum(axis=1), shuffled_table.sum(axis=0)) / shuffled_table.sum()\\n    chi2_perm.append(np.sum((shuffled_observed - shuffled_expected) ** 2 / shuffled_expected))\\n\\n# Compute p-value as proportion of permuted chi2 values >= observed\\np_value = np.mean(np.array(chi2_perm) >= chi2_stat)\\n\\nprint(f\\\"Chi-square statistic (observed): {chi2_stat}\\\")\\nprint(f\\\"p-value (permutation test): {p_value}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4094,
+  "completion_tokens": 258
+ }
+}

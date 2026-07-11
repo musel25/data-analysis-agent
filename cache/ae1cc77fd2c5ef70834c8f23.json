@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9997417f5ef08379",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\nfile_path = \\\"/home/musel/Github/research_agent/data/sales.csv\\\"\\ndata = pd.read_csv(file_path)\\n\\n# Filter completed orders only\\ncompleted_data = data[data['status'] == 'completed']\\n\\n# Parse revenue as float\\ncompleted_data['revenue_numeric'] = completed_data['revenue'].str.replace(',', '').astype(float)\\n\\n# Compute average revenue within each customer segment for both channels\\nrevenue_by_group = completed_data.groupby(['channel', 'customer_segment'])['revenue_numeric'].mean().reset_index()\\n\\n# Extract the key comparisons: email vs paid_search within each segment\\n# For loyal customers\\nemail_loyal = revenue_by_group.loc[(revenue_by_group['channel'] == 'email') & (revenue_by_group['customer_segment'] == 'loyal'), 'revenue_numeric'].iloc[0]\\npaid_search_loyal = revenue_by_group.loc[(revenue_by_group['channel'] == 'paid_search') & (revenue_by_group['customer_segment'] == 'loyal'), 'revenue_numeric'].iloc[0]\\nloyal_diff = email_loyal - paid_search_loyal\\n\\n# For new customers\\nemail_new = revenue_by_group.loc[(revenue_by_group['channel'] == 'email') & (revenue_by_group['customer_segment'] == 'new'), 'revenue_numeric'].iloc[0]\\npaid_search_new = revenue_by_group.loc[(revenue_by_group['channel'] == 'paid_search') & (revenue_by_group['customer_segment'] == 'new'), 'revenue_numeric'].iloc[0]\\nnew_diff = email_new - paid_search_new\\n\\n# For returning customers\\nemail_returning = revenue_by_group.loc[(revenue_by_group['channel'] == 'email') & (revenue_by_group['customer_segment'] == 'returning'), 'revenue_numeric'].iloc[0]\\npaid_search_returning = revenue_by_group.loc[(revenue_by_group['channel'] == 'paid_search') & (revenue_by_group['customer_segment'] == 'returning'), 'revenue_numeric'].iloc[0]\\nreturning_diff = email_returning - paid_search_returning\\n\\n# Print all differences\\nprint(f\\\"Loyal customers: email - paid_search = {loyal_diff:.2f} USD\\\")\\nprint(f\\\"New customers: email - paid_search = {new_diff:.2f} USD\\\")\\nprint(f\\\"Returning customers: email - paid_search = {returning_diff:.2f} USD\\\")\\n\\n# Summary of campaign impact per segment\\nprint(\\\"\\\\nCampaign impact (email - paid_search) by segment:\\\")\\nimpact_summary = pd.DataFrame({\\n    'Segment': ['Loyal', 'New', 'Returning'],\\n    'Email Avg': [email_loyal, email_new, email_returning],\\n    'Paid Search Avg': [paid_search_loyal, paid_search_new, paid_search_returning],\\n    'Difference (email - paid_search)': [loyal_diff, new_diff, returning_diff]\\n})\\nprint(impact_summary)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5232,
+  "completion_tokens": 689
+ }
+}

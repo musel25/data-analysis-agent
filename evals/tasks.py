@@ -26,10 +26,13 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "data"))
 from make_trial import SENTINEL, clean, dedupe  # noqa: E402
+import make_sales  # noqa: E402
 
 PENGUINS = str(ROOT / "data/penguins.csv")
 TRIAL = str(ROOT / "data/trial.csv")
 DICT = str(ROOT / "data/data_dictionary.md")
+SALES = str(ROOT / "data/sales.csv")
+SALES_DICT = str(ROOT / "data/sales_dictionary.md")
 
 
 @dataclass
@@ -44,6 +47,7 @@ class Task:
     naive_label: str = ""                   # what mistake lands you there
     behavior: str = ""                      # for tasks no number can grade
     holdout: bool = False                   # never looked at during development
+    domain: str = "trial"                   # "sales" = a HELD-OUT DOMAIN the design never saw
 
 
 def _p():
@@ -58,28 +62,28 @@ TASKS: list[Task] = [
 
     # ── warm-up: clean data, no traps. The agent should ace these. ───────────────────────
     Task(
-        id="p1_lookup", category="lookup",
+        id="p1_lookup", domain="penguins", category="lookup",
         question="How many rows are in the penguins dataset?",
         files=[PENGUINS],
         gt=lambda: float(len(_p())),
         tol=0.0,
     ),
     Task(
-        id="p2_aggregate", category="aggregation",
+        id="p2_aggregate", domain="penguins", category="aggregation",
         question="What is the mean body mass in grams of the penguins? Ignore missing values.",
         files=[PENGUINS],
         gt=lambda: float(_p()["body_mass_g"].mean()),
         tol=0.001,
     ),
     Task(
-        id="p3_groupby", category="groupby",
+        id="p3_groupby", domain="penguins", category="groupby",
         question=("Which penguin species has the highest mean flipper length? "
                   "Answer with the species name."),
         files=[PENGUINS],
         gt=lambda: _p().groupby("species")["flipper_length_mm"].mean().idxmax(),
     ),
     Task(
-        id="p4_correlation", category="correlation",
+        id="p4_correlation", domain="penguins", category="correlation",
         question=("What is the Pearson correlation between flipper_length_mm and body_mass_g "
                   "in the penguins data?"),
         files=[PENGUINS],
@@ -234,6 +238,170 @@ TASKS: list[Task] = [
         naive_label="dropped the arm filter and pooled both arms within the moderate stratum",
     ),
 ]
+
+
+# ════════════════════════════════════════════════════════════════════════════════════════════
+#  THE HELD-OUT DOMAIN.
+#
+#  Every task above lives in trial.csv — the file I designed the guardrails while looking at.
+#  Passing it proves the guardrails work on the failures I already knew about, which is a much
+#  weaker claim than it looks.
+#
+#  sales.csv is e-commerce, not medicine. Different columns, different semantics, traps of the
+#  same *species* but a different animal. If the design only works on the data it was built
+#  against, this block is where that shows up.
+# ════════════════════════════════════════════════════════════════════════════════════════════
+
+def _s():
+    return pd.read_csv(SALES)
+
+
+SALES_TASKS: list[Task] = [
+    Task(
+        # Nothing in the old benchmark exercised the "numeric column stored as text" detector,
+        # which had existed in observe.py since day one. Writing a new domain is what found that.
+        id="s1_text_numbers", category="trap:dtype", domain="sales",
+        question=("In the sales data, what is the total revenue from COMPLETED orders? "
+                  "Exclude the internal test orders."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(make_sales.clean(_s())["revenue"].sum()),
+        tol=0.02,
+        naive=lambda: float(make_sales.parse_revenue(_s())["revenue"].sum()),
+        naive_label="kept the 999999.99 internal test orders (and the refunds) in the total",
+    ),
+    Task(
+        id="s2_test_orders", category="trap:outliers", domain="sales",
+        question="What is the mean revenue of a completed order in the sales data?",
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(make_sales.clean(_s())["revenue"].mean()),
+        tol=0.03,
+        naive=lambda: float(make_sales.parse_revenue(_s())["revenue"].mean()),
+        naive_label="six internal QA orders at 999999.99 move the mean by two orders of magnitude",
+    ),
+    Task(
+        id="s3_refunds", category="trap:filter", domain="sales",
+        question="How many orders in the sales data were actually completed (not refunded)?",
+        files=[SALES, SALES_DICT],
+        gt=lambda: float((_s()["status"] == "completed").sum()),
+        tol=0.0,
+        naive=lambda: float(len(_s())),
+        naive_label="counted every row, including the refunded orders",
+    ),
+    Task(
+        # THE CROWN JEWEL, IN A NEW DOMAIN. Same Simpson's paradox, zero clinical vocabulary.
+        # Email looks BETTER overall (+0.078) and is WORSE in every single segment (-0.125).
+        id="s4_simpson_sales", category="trap:confounding", domain="sales",
+        question=("Did the email campaign improve conversion compared to paid search? Report the "
+                  "effect as a difference in conversion rates (email minus paid_search)."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: _sales_adjusted(),
+        tol=0.30,
+        naive=lambda: _sales_marginal(),
+        naive_label=("compared channels without adjusting for customer_segment; email was targeted "
+                     "at loyal customers, so the marginal comparison reverses the sign"),
+    ),
+    Task(
+        id="s5_age_sentinel", category="trap:sentinel", domain="sales",
+        question="What is the mean age of customers in the sales data?",
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(_s().query("customer_age != -1")["customer_age"].mean()),
+        tol=0.02,
+        naive=lambda: float(_s()["customer_age"].mean()),
+        naive_label="treated -1 ('age not supplied') as an actual age",
+    ),
+    Task(
+        id="s6_scope", category="trap:constraint", domain="sales",
+        question=("Among LOYAL customers only, what fraction converted? "
+                  "Report a fraction between 0 and 1."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(_s().query("customer_segment == 'loyal'")["converted"].mean()),
+        tol=0.02,
+        naive=lambda: float(_s()["converted"].mean()),
+        naive_label="computed over all customers, ignoring the stated restriction to 'loyal'",
+    ),
+    Task(
+        id="s7_groupby", category="groupby", domain="sales",
+        question=("Which customer_segment has the highest conversion rate in the sales data? "
+                  "Answer with the segment name."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: _s().groupby("customer_segment")["converted"].mean().idxmax(),
+    ),
+    Task(
+        id="s8_lookup", category="lookup", domain="sales",
+        question="How many rows are in the sales dataset?",
+        files=[SALES],
+        gt=lambda: float(len(_s())),
+        tol=0.0,
+    ),
+    Task(
+        id="s9_false_premise", category="false-premise", domain="sales",
+        question=("The sales data covers three marketing channels. Which of the three channels "
+                  "produced the most revenue?"),
+        files=[SALES, SALES_DICT],
+        gt=lambda: "FALSE_PREMISE",
+        behavior=("The premise is FALSE: there are only TWO channels (email, paid_search), not "
+                  "three. The agent must say so rather than answering as if there were three."),
+    ),
+    Task(
+        id="s10_holdout_rev_seg", category="trap:outliers", domain="sales", holdout=True,
+        question=("What is the mean revenue of a completed order from LOYAL customers "
+                  "in the sales data?"),
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(make_sales.clean(_s()).query("customer_segment == 'loyal'")["revenue"].mean()),
+        tol=0.03,
+        naive=lambda: float(make_sales.parse_revenue(_s())
+                            .query("customer_segment == 'loyal'")["revenue"].mean()),
+        naive_label="kept the internal test orders and refunds within the loyal segment",
+    ),
+    Task(
+        id="s11_holdout_conv", category="trap:constraint", domain="sales", holdout=True,
+        question=("Among NEW customers reached by PAID SEARCH, what fraction converted? "
+                  "Report a fraction between 0 and 1."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(_s().query("customer_segment == 'new' and channel == 'paid_search'")
+                         ["converted"].mean()),
+        tol=0.03,
+        naive=lambda: float(_s().query("customer_segment == 'new'")["converted"].mean()),
+        naive_label="dropped the channel filter and pooled both channels within 'new'",
+    ),
+    Task(
+        id="s12_holdout_age", category="trap:sentinel", domain="sales", holdout=True,
+        question=("What is the mean age of customers who CONVERTED, in the sales data? "
+                  "Report in years."),
+        files=[SALES, SALES_DICT],
+        gt=lambda: float(_s().query("converted == 1 and customer_age != -1")["customer_age"].mean()),
+        tol=0.02,
+        naive=lambda: float(_s().query("converted == 1")["customer_age"].mean()),
+        naive_label="kept the -1 'not supplied' sentinels in the age average",
+    ),
+    Task(
+        id="s13_ambiguous", category="ambiguous", domain="sales",
+        question="Was the campaign successful?",
+        files=[SALES, SALES_DICT],
+        gt=lambda: "AMBIGUOUS",
+        behavior=("Genuinely under-specified: successful by WHICH measure (conversion rate? total "
+                  "revenue? revenue per customer?), and compared to WHAT (paid_search? a baseline?). "
+                  "The agent must state its interpretation explicitly rather than silently choosing "
+                  "one. Bonus if it notes that the channels were not randomly assigned, so a raw "
+                  "comparison is not a campaign effect."),
+    ),
+]
+
+TASKS += SALES_TASKS
+
+
+def _sales_marginal() -> float:
+    s = _s()
+    m = s.groupby("channel")["converted"].mean()
+    return float(m["email"] - m["paid_search"])
+
+
+def _sales_adjusted() -> float:
+    s = _s()
+    strat = s.groupby(["customer_segment", "channel"])["converted"].mean().unstack()
+    per = strat["email"] - strat["paid_search"]
+    w = s["customer_segment"].value_counts(normalize=True)
+    return float((per * w).sum())
 
 
 def _simpson_marginal() -> float:

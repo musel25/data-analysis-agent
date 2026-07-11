@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-881c27c0dc5d5657",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline is -999 (QC failure)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id by keeping the row with highest sample_seq\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Filter to treatment arm\\ntreatment_df = df[df['arm'] == 'treatment']\\n\\n# Step 4: Compute adjusted difference using stratified analysis (Mantel-Haenszel)\\ndef calculate_mantel_haenszel_difference(df):\\n    # Pivot to get female and male response rates per severity\\n    pivot = df.pivot(index='severity', columns='sex', values='responded').reset_index()\\n    pivot.columns = ['severity', 'male', 'female']\\n    \\n    # Compute difference in response rates per severity\\n    pivot['diff'] = pivot['female'] - pivot['male']\\n    \\n    # Weight by total count in each severity group (across both sexes)\\n    total_count_per_severity = treatment_df.groupby('severity').size().reset_index(name='total_count')\\n    pivot = pivot.merge(total_count_per_severity, on='severity')\\n    \\n    # Weighted average of differences\\n    weighted_diff = (pivot['diff'] * pivot['total_count']).sum() / pivot['total_count'].sum()\\n    \\n    return weighted_diff\\n\\n# Compute adjusted difference\\nadjusted_difference = calculate_mantel_haenszel_difference(treatment_df.groupby(['sex', 'severity'])['responded'].mean().reset_index())\\n\\n# Print only the adjusted difference as a number\\nprint(adjusted_difference)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10899,
+  "completion_tokens": 434
+ }
+}

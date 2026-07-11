@@ -267,11 +267,46 @@ print("✓ no ground truth appears in any prompt")
 
 # %% [markdown]
 # ---
-# # 6. 🚨 The punchline — the result that inverted my own thesis
+# ## 5b. Does it generalise? The question more runs cannot answer.
+#
+# Every trap in `trial.csv` is one **I** planted while designing the guardrails. Passing it only
+# proves they work on the failures I **already knew about** — and more runs shrink the *variance*
+# of that claim, not its **bias**.
+#
+# So `sales.csv` is a **held-out domain**: e-commerce, not medicine. Revenue exported as text
+# (`"1,234.56"`), internal QA orders at `999999.99`, refunds still in the file, `-1` for a missing
+# age, and a Simpson's paradox on **channel × customer_segment** instead of arm × severity.
 
 # %%
+from evals.stats import hierarchical_bootstrap
+from evals.tasks import TASKS
+
 df = pd.read_json(f"{ROOT}/evals/results.jsonl", lines=True)
+df["domain"] = df.task_id.map({t.id: t.domain for t in TASKS})
 traps = df[df.category.str.startswith("trap")]
+full_df = df[df.config == "full"]
+
+print(f"{len(df):,} runs · {df.task_id.nunique()} tasks · 3 domains · ${df.cost_usd.sum():.2f}\n")
+for dom, note in (("penguins", "clean data, no traps"),
+                  ("trial", "DESIGNED AGAINST"),
+                  ("sales", "🎯 HELD-OUT DOMAIN — never designed against")):
+    g = full_df[full_df.domain == dom]
+    m, lo, hi = hierarchical_bootstrap(g)
+    print(f"  {dom:<9} {m:>6.0%}   95% CI [{lo:.0%}, {hi:.0%}]   n={len(g):>3}   {note}")
+
+# %% [markdown]
+# ## It does **better** on the domain it was never tuned for.
+#
+# That is the most reassuring number in this project, and the one I'd have been most embarrassed to
+# be missing.
+#
+# *(Writing that dataset also found a hole in my own benchmark: `observe.py` has had a detector for
+# numeric-columns-stored-as-text since the first commit, and **no task ever exercised it.** A
+# benchmark built from one dataset only tests the mechanisms that dataset happens to provoke.)*
+
+# %% [markdown]
+# ---
+# # 6. 🚨 The punchline — the result that inverted my own thesis
 
 t = traps.groupby("config").agg(pass_rate=("passed", "mean"), naive=("wrong_attractor", "mean"))
 print("ON THE TRAP TASKS — the stack works, and it isn't close:\n")
@@ -283,31 +318,34 @@ print(f"\n   → a {t.loc['no_guardrails','naive']/t.loc['full','naive']:.0f}x r
       f"wrong-attractor rate. That is the notice–act gap, measured.")
 
 # %%
-a = df.groupby("config").agg(pass_rate=("passed", "mean"))
-label = {"no_briefing": "the deterministic data briefing   ← the DETECTOR",
+from evals.stats import ablation_table
+
+label = {"no_briefing": "the deterministic data briefing  ← the DETECTOR",
          "no_guardrails": "every guardrail at once",
-         "no_ledger": "the Findings Ledger   ← MY CENTREPIECE",
+         "no_ledger": "the Findings Ledger  ← MY CENTREPIECE",
          "no_verifier": "the fresh-context verifier",
          "no_grounding": "the numeric grounding gate",
          "no_contract": "the Question Contract",
-         "no_truncation": "observation truncation",
-         "full": "— nothing (the full agent)"}
-base = a.loc["full", "pass_rate"]
-d = (a.pass_rate - base).sort_values()
+         "no_truncation": "observation truncation"}
 
-print(f"{'REMOVE THIS':<44}{'PASS':>7}{'Δ':>8}")
-print("─" * 60)
-for k, v in d.items():
-    print(f"{label[k]:<44}{a.loc[k,'pass_rate']:>6.0%}{'  —' if abs(v)<1e-9 else f'{v:>+8.0%}'}")
+abl = ablation_table(df)     # paired bootstrap vs full, 10k hierarchical resamples
+
+print(f"{'REMOVE THIS':<46}{'PASS':>6}{'Δ':>7}{'   95% CI':>17}   VERDICT")
+print("─" * 96)
+print(f"{'— nothing (the full agent)':<46}{df[df.config=='full'].passed.mean():>6.0%}")
+for k, r in abl.iterrows():
+    print(f"{label[k]:<46}{r.pass_rate:>6.0%}{r.delta_vs_full:>+7.0%}   "
+          f"[{r.lo95:+.0%}, {r.hi95:+.0%}]".ljust(17)
+          + f"   {r.verdict}")
+
+print("\nIf the 95% CI crosses zero, I cannot distinguish that mechanism from doing nothing —")
+print("and I say so, instead of reporting a point estimate and hoping nobody checks.")
 
 # %% [markdown]
-# ## Removing the data briefing alone hurts as much as removing **everything**.
+# ## Removing twenty lines of pandas is the largest effect in the study.
 #
-# And **every single gate I built** — the ledger, the verifier, the grounding check, the contract —
-# costs **nothing measurable** when you take it away.
-#
-# I spent this whole design on **gates**. The thing actually carrying the agent is the **twenty
-# lines of pandas that look at the data before the model ever sees it.**
+# I spent this whole design on **gates**. The thing actually carrying the agent is the **detector**
+# — the deterministic profile of the data, computed before the model is called even once.
 #
 # # 🎯 A gate is only as good as the detector feeding it.
 #
@@ -322,13 +360,35 @@ for k, v in d.items():
 # doing the job. Which is exactly why `no_briefing` collapses to the same score as
 # `no_guardrails`.
 #
+# ## And the bigger eval **corrected me about my own centrepiece**
+#
+# The first version of this benchmark was 15 tasks × 3 runs. It put the Findings Ledger at
+# **exactly zero**, and I wrote — in the notebook — *"the ablation does not show the Findings
+# Ledger paying for itself."*
+#
+# At **28 tasks × 10 runs** it comes back at **Δ −5%, CI [−11%, +1%]**. The point estimate says five
+# points, and it's the **only** gate whose interval sits almost entirely on the "it helps" side. It
+# still grazes zero, so I can't claim it at 95%.
+#
+# > **"The ledger does nothing" was never a finding.** It was a twenty-point-wide confidence
+# > interval, reported as a point estimate. More data didn't confirm my conclusion — it
+# > **corrected** it.
+#
+# That's the cleanest argument I have for building the harness before trusting your own design
+# instincts.
+#
 # ### The honest caveats
 #
-# - **n = 3 runs × 15 tasks.** The `−27` is far outside the noise. The `0`s are **not** — a real
-#   5-point effect would be invisible here. *"No measurable benefit" is not "no benefit."*
-# - **A gate may be insurance, not throughput.** A grounding check that fires on 4% of runs can't
-#   move a 45-run pass rate — but you don't price a fabricated number in a drug filing by its
-#   frequency.
+# - **"No detectable effect" is not "no effect" — but now it's *bounded*.** I can say any real
+#   ledger effect is smaller than about 11 points. At 15×3 I couldn't say anything at all.
+# - **A gate may be insurance, not throughput.** A grounding check that fires on a few percent of
+#   runs can't move an average pass rate — but you don't price a fabricated number in a drug filing
+#   by its *frequency*. The right test for a gate is **adversarial, not average**, and this
+#   benchmark is an average one. That's a limitation of my evaluation, not evidence against the gate.
+# - **One oddity I won't overclaim:** removing the briefing alone (62%) scores *worse* than removing
+#   the briefing **and** every gate (69%). Gates without a detector may be *worse than nothing* —
+#   they burn the step budget on ceremony with no information behind it. But that paired CI is
+#   `[−18%, +4%]`; it crosses zero. **A hypothesis with a mechanism, not a finding.**
 #
 # ### So what would I build next?
 #

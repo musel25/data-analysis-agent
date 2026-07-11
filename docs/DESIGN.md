@@ -536,6 +536,27 @@ a mechanism does not pay for itself, it gets cut.**
 
 Here is what happened when I kept that deal.
 
+#### First: does it generalise at all?
+
+This is the question that matters most, and it is not answered by running the same benchmark more
+times. Every trap in `trial.csv` is one **I** planted while designing the guardrails. Passing it
+demonstrates the guardrails work on the failures I *already knew about*. More runs shrink the
+variance of that claim; they do nothing about its **bias**.
+
+So `sales.csv` — e-commerce, not medicine — is a **held-out domain**. Different columns, different
+semantics, traps of the same species and a different animal (see D26).
+
+| domain | pass rate | 95% CI | |
+|---|---|---|---|
+| `penguins` | 100% | `[100%, 100%]` | clean data, no traps |
+| `trial` | 82% | `[61%, 97%]` | **designed against** |
+| `sales` | **89%** | `[74%, 99%]` | **🎯 held-out domain — never designed against** |
+| held-out *tasks* | 98% | `[93%, 100%]` | never looked at while tuning the prompt |
+
+**The agent does *better* on the domain it was never tuned for than on the one it was.** That is
+the single most reassuring number in this project, and it is the one I would have been most
+embarrassed to be missing.
+
 #### What the evidence supports
 
 On the **trap tasks** — the ones with a planted decision point — the guardrails as a stack are
@@ -555,24 +576,56 @@ which is exactly what a guardrail should do.
 
 #### 🚨 And now the result I did not expect
 
-Every config, sorted by how much removing it hurts (15 tasks × 3 runs each, 360 runs, $1.31):
+**2,240 runs · 28 tasks · 3 domains · $8.01.** Each ablation is a *paired* bootstrap against the
+full agent (10,000 hierarchical resamples: tasks, then runs within tasks — GeneBench-Pro's
+protocol). **If the 95% CI crosses zero, I cannot distinguish that mechanism from doing nothing,
+and I say so in those words rather than reporting a point estimate.**
 
-| remove this | pass rate | Δ vs full | fell for the naive answer |
-|---|---|---|---|
-| *(nothing — the full agent)* | **87%** | — | 4% |
-| **the Findings Ledger** — the centrepiece of this design | 87% | **0** | 7% |
-| the fresh-context verifier | 89% | **+2** | 2% |
-| the grounding gate | 87% | **0** | 4% |
-| the Question Contract | 89% | **+2** | 4% |
-| observation truncation | 87% | **0** | 4% |
-| **the deterministic data briefing** | **60%** | **−27** | **22%** |
-| *every guardrail at once* | 62% | −24 | 20% |
+| remove this | pass rate | Δ vs full | 95% CI | verdict |
+|---|---|---|---|---|
+| *(nothing — the full agent)* | **88%** | — | | |
+| **the deterministic data briefing** | **62%** | **−26%** | `[−40%, −13%]` | **HURTS** |
+| *every guardrail at once* | 69% | −19% | `[−31%, −8%]` | **HURTS** |
+| **the Findings Ledger** — the centrepiece | 83% | **−5%** | `[−11%, +1%]` | no detectable effect |
+| the Question Contract | 87% | −1% | `[−6%, +4%]` | no detectable effect |
+| the numeric grounding gate | 88% | −0% | `[−4%, +4%]` | no detectable effect |
+| the fresh-context verifier | 88% | −0% | `[−5%, +5%]` | no detectable effect |
+| observation truncation | 89% | +1% | `[−2%, +5%]` | no detectable effect |
 
-**Removing the briefing alone is as damaging as removing every guardrail combined.** And **every
-single gate I built costs nothing measurable when taken away.**
+**Removing the briefing — twenty lines of pandas — is the single largest effect in the study, and
+it is the mechanism I spent the least time on.** I built this design around *gates*. The thing
+carrying it is the *detector*.
 
-I spent this design on **gates**. The thing carrying the agent is the ~20 lines of pandas that look
-at the data before the model ever sees it.
+#### The eval also corrected me about my own centrepiece
+
+The first version of this benchmark (15 tasks × 3 runs) put the Findings Ledger at **exactly zero**,
+and I wrote in this document that *"the ablation does not show the Findings Ledger paying for
+itself."*
+
+At 28 tasks × 10 runs it comes back at **Δ −5.0%, CI [−11.1%, +0.7%]** — the point estimate says
+five points, and it is the **only** gate whose interval sits almost entirely on the "it helps" side.
+The upper bound still grazes zero, so I cannot call it at 95%. But:
+
+> **"The ledger does nothing" was never a finding. It was a twenty-point-wide confidence interval,
+> reported as a point estimate.** More data did not confirm my conclusion — it *corrected* it.
+
+That is the clearest argument in this whole project for building the harness before trusting your
+own design instincts.
+
+#### An oddity I will not overclaim
+
+Removing the briefing alone (**62%**) scores *worse* than removing the briefing **and every gate**
+(**69%**). Removing more made it better, which is impossible if the gates only ever help.
+
+The budget shows a plausible mechanism: strip the detector but keep the gates and the agent still
+has a `note_finding` tool and a blocked exit, but **nothing informative to put in them** — it logs
+what it stumbled onto, spends turns resolving it, and burns budget on ceremony (10.6 steps, 1.5
+findings). Strip the gates too and it just computes (8.6 steps), and does slightly better.
+
+**Gates without a detector may be worse than no gates at all.** But the paired CI is
+`[−18.2%, +3.9%]` — it crosses zero. This is a **hypothesis with a mechanism, not a finding**, and
+it is exactly the kind of story that is fun to tell and would be dishonest to assert. It is the
+first thing I would design an experiment for.
 
 #### What it means
 

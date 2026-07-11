@@ -196,7 +196,19 @@ def _render_run(run):
 
 @st.cache_data
 def load_results():
-    return pd.read_json(ROOT / "evals/results.jsonl", lines=True)
+    from evals.tasks import TASKS
+    df = pd.read_json(ROOT / "evals/results.jsonl", lines=True)
+    df["domain"] = df.task_id.map({t.id: t.domain for t in TASKS})
+    return df
+
+
+@st.cache_data
+def load_stats(_df):
+    from evals.stats import ablation_table, hierarchical_bootstrap
+    abl = ablation_table(_df)
+    doms = {d: hierarchical_bootstrap(_df[(_df.config == "full") & (_df.domain == d)])
+            for d in _df.domain.dropna().unique()}
+    return abl, doms
 
 
 def bar(df, value_col, title, highlight="full", fmt="{:.0%}"):
@@ -233,12 +245,34 @@ def tab_evidence():
         f'GeneBench-Pro.</p>', unsafe_allow_html=True)
 
     full = df[df.config == "full"]
+    _, doms = load_stats(df)
+
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Pass rate", f"{full.passed.mean():.0%}")
     k2.metric("On trap tasks", f"{traps[traps.config=='full'].passed.mean():.0%}")
     k3.metric("Held-out tasks", f"{full[full.holdout].passed.mean():.0%}",
               help="Never looked at while tuning the prompt.")
     k4.metric("Cost per analysis", f"${full.cost_usd.mean():.4f}")
+
+    st.divider()
+    st.markdown("### Does it generalise?")
+    st.markdown(
+        "Every trap in `trial.csv` is one **I** planted, and every guardrail was designed while "
+        "staring at that file. Passing it proves the guardrails work on the failures I *already "
+        "knew about* — a much weaker claim than it looks.\n\n"
+        "So `sales.csv` is a **held-out domain**: e-commerce, not medicine. Different columns, "
+        "different semantics, traps of the same *species* but a different animal — revenue "
+        "exported as text (`\"1,234.56\"`), internal QA orders at `999999.99`, refunds still in "
+        "the file, `-1` for a missing age, and a Simpson's paradox on **channel × segment** "
+        "instead of arm × severity.")
+    d1, d2, d3 = st.columns(3)
+    for col, dom, note in ((d1, "penguins", "clean data, no traps"),
+                           (d2, "trial", "designed against"),
+                           (d3, "sales", "🎯 HELD-OUT DOMAIN")):
+        if dom in doms:
+            m, lo, hi = doms[dom]
+            col.metric(f"{dom} — {note}", f"{m:.0%}", help=f"95% CI [{lo:.0%}, {hi:.0%}]")
+            col.caption(f"95% CI [{lo:.0%}, {hi:.0%}]")
 
     st.divider()
     st.markdown("### The ablations")
@@ -261,40 +295,44 @@ def tab_evidence():
 
     st.divider()
     st.markdown("### 🚨 And here is the result that inverted my own thesis")
+    st.caption("Paired bootstrap against the full agent (10,000 hierarchical resamples: tasks, then "
+               "runs within tasks). **If the 95% CI crosses zero, I cannot distinguish that "
+               "mechanism from doing nothing — and I say so rather than pretending to a number.**")
 
-    delta = (a.pass_rate - a.loc["full", "pass_rate"]).sort_values()
-    tbl = pd.DataFrame({
-        "removing this…": [
-            {"no_briefing": "the deterministic data briefing  ← the DETECTOR",
+    abl, _ = load_stats(df)
+    label = {"no_briefing": "the deterministic data briefing  ← the DETECTOR",
              "no_guardrails": "every guardrail at once",
              "no_ledger": "the Findings Ledger  ← my centrepiece",
              "no_verifier": "the fresh-context verifier",
              "no_grounding": "the numeric grounding gate",
              "no_contract": "the Question Contract",
-             "no_truncation": "observation truncation",
-             "full": "— (the full agent)"}[i] for i in delta.index],
-        "pass rate": [f"{a.loc[i, 'pass_rate']:.0%}" for i in delta.index],
-        "Δ": [("—" if abs(v) < 1e-9 else f"{v:+.0%}") for v in delta],
+             "no_truncation": "observation truncation"}
+    tbl = pd.DataFrame({
+        "removing this…": [label[i] for i in abl.index],
+        "pass rate": [f"{v:.0%}" for v in abl.pass_rate],
+        "Δ vs full": [f"{v:+.0%}" for v in abl.delta_vs_full],
+        "95% CI": [f"[{lo:+.0%}, {hi:+.0%}]" for lo, hi in zip(abl.lo95, abl.hi95)],
+        "verdict": list(abl.verdict),
     })
     st.dataframe(tbl, hide_index=True, use_container_width=True)
 
     st.markdown(
-        f"""
+        """
 > ### A gate is only as good as the detector feeding it.
 >
 > **Removing the data briefing alone hurts as much as removing every guardrail combined.**
-> Every individual *gate* I built — the ledger, the verifier, the grounding check, the contract —
-> costs **nothing measurable** when taken away.
+> The individual *gates* — the ledger, the verifier, the grounding check, the contract — show
+> **no detectable effect** even with the CIs this tight.
 >
 > The papers describe a **notice–act** gap, and I read it as a failure to *act* — so I built
 > machinery to force action. The ablation says the leverage is on the **notice** side. Tell the
 > agent what's in the data, deterministically, before it starts, and **it acts on it.**
 > It didn't need to be forced. It needed to be *informed*.
 
-**The honest caveats:** n=3 per task, so *"no measurable benefit"* is not *"no benefit"* — a real
-5-point effect would be invisible here. And a gate that fires on 4% of runs is **insurance, not
-throughput**: you don't price a fabricated number in a drug filing by its frequency. To settle it
-I'd need GeneBench-Pro's protocol — 10 runs per task, triple the tasks, bootstrap CIs.
+**The honest caveats.** *"No detectable effect"* still is not *"no effect"* — the CIs bound it,
+they don't zero it. And a gate that fires on a few percent of runs is **insurance, not
+throughput**: you do not price a fabricated number in a drug filing by its frequency. The right
+test for a gate is adversarial, not average.
 
 **What I'd build next is not another gate. It's more detectors.**
         """)

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b37f7e88e228d750",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We cannot use scipy, so we'll compute a confidence interval for the mean change manually\\n# and use a bootstrap to estimate the p-value for the null hypothesis that mean change is zero\\n\\n# Extract non-missing change values\\nchange_vals = trial_df_clean[\\\"biomarker_change\\\"].dropna()\\n\\n# Compute sample mean\\nsample_mean = change_vals.mean()\\n\\n# Compute sample standard error\\nn = len(change_vals)\\nse = change_vals.std() / (n ** 0.5)\\n\\n# Compute 95% confidence interval\\nz_critical = 1.96  # for 95% CI\\nlower_ci = sample_mean - z_critical * se\\nupper_ci = sample_mean + z_critical * se\\n\\nprint(f'Sample mean change: {sample_mean:.4f}')\\nprint(f'95% Confidence Interval: [{lower_ci:.4f}, {upper_ci:.4f}]')\\n\\n# Bootstrap to estimate p-value for H0: mean change = 0\\nn_bootstrap = 10000\\nbootstrap_means = []\\n\\nfor _ in range(n_bootstrap):\\n    resample = change_vals.sample(n, replace=True)\\n    bootstrap_means.append(resample.mean())\\n\\nbootstrap_means = pd.Series(bootstrap_means)\\n\\n# Compute p-value: proportion of bootstrap means < 0 (since we're testing if mean change is >0)\\n# But note: we want to test if mean change is significantly different from zero\\n# So two-sided p-value\\np_value = 2 * min(bootstrap_means.mean() / 10000, 1 - bootstrap_means.mean() / 10000)\\n\\n# More accurately: proportion of bootstrap means with absolute value >= |observed mean|\\nobserved_abs_mean = abs(sample_mean)\\np_value = (bootstrap_means.abs() >= observed_abs_mean).mean()\\n\\nprint(f'Bootstrap p-value (two-sided): {p_value:.4f}')\\n\\n# Final summary\\nprint(f'Number of complete pairs: {len(change_vals)}')\\nprint(f'Number of positive changes: {(change_vals > 0).sum()}')\\nprint(f'Number of negative changes: {(change_vals < 0).sum()}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5134,
+  "completion_tokens": 513
+ }
+}

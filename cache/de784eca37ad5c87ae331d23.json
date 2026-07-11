@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9d748e94aa1f9361",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = '/home/musel/Github/research_agent/data/sales.csv'\\ndata = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\ndata['revenue_clean'] = data['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter: converted, completed, non-QA orders\\nfiltered_data = data[\\n    (data['converted'] == 1) &\\n    (data['status'] == 'completed') &\\n    (data['revenue_clean'] != 999999.99)\\n]\\n\\n# Check if channel is balanced by customer_segment (confounding check)\\nconfounding_check = filtered_data.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\nprint('Cross-tabulation of channel vs customer_segment (in final sample):')\\nprint(confounding_check)\\n\\n# Compute average revenue per converted order by channel\\navg_revenue_by_channel = filtered_data.groupby('channel')['revenue_clean'].mean()\\nprint('\\\\nAverage revenue per converted order by channel:')\\nprint(avg_revenue_by_channel)\\n\\n# Since the email channel was targeted at loyal customers, we must adjust for customer_segment bias.\\n# Use stratified analysis: compute average revenue within each customer_segment, then compare.\\nstratified_avg = filtered_data.groupby(['channel', 'customer_segment'])['revenue_clean'].mean().unstack(fill_value=0)\\nprint('\\\\nAverage revenue per converted order, stratified by customer_segment:')\\nprint(stratified_avg)\\n\\n# Compute the difference in average revenue between channels, within each segment\\nstratified_diff = stratified_avg['email'] - stratified_avg['paid_search']\\nprint('\\\\nDifference in average revenue (email - paid_search), by segment:')\\nprint(stratified_diff)\\n\\n# Overall average revenue difference, weighted by segment size\\nsegment_sizes = filtered_data.groupby('customer_segment').size()\\nweight_email = segment_sizes / segment_sizes.sum()\\n\\n# Weighted average difference\\nweighted_diff = (stratified_diff * weight_email).sum()\\nprint(f'\\\\nWeighted average difference (email - paid_search): {weighted_diff:.2f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5657,
+  "completion_tokens": 506
+ }
+}

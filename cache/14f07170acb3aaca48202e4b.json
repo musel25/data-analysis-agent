@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a54331c492330558",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Convert 'revenue' to float, removing commas\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders: revenue == 999999.99\\nqa_mask = df['revenue'] == 999999.99\\n\\n# Count them\\ntotal_qa = qa_mask.sum()\\nprint(f\\\"Number of QA orders: {total_qa}\\\")\\n\\n# Check if they are in the 'converted' group\\nqa_converted = df[qa_mask]['converted'].value_counts()\\nprint(f\\\"QA orders in 'converted' group: {qa_converted}\\\")\\n\\n# Now, filter for converted customers, excluding QA orders\\nconverted_df = df[(df['converted'] == 1) & (~qa_mask)]\\n\\n# Check how many converted customers remain\\nprint(\\\"Number of real converted customers (after removing QA):\\\", len(converted_df))\\n\\n# Check age distribution for real converted customers\\nprint(\\\"Age distribution for real converted customers:\\\")\\nprint(converted_df['customer_age'].value_counts().sort_index())\\n\\n# Compute mean age, excluding -1 (missing)\\nmean_age_clean = converted_df[converted_df['customer_age'] != -1]['customer_age'].mean()\\n\\n# Print the result\\nprint(f\\\"Mean age of real converted customers (excluding -1 and QA): {mean_age_clean}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4985,
+  "completion_tokens": 368
+ }
+}

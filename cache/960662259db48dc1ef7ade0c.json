@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a82537cfe42d9a71",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Filter completed orders only\\ncompleted_only = df[df['status'] == 'completed']\\n\\n# Parse revenue (remove commas)\\ncompleted_only['revenue'] = completed_only['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders\\nreal_orders = completed_only[completed_only['revenue'] != 999999.99]\\n\\n# Cross-tabulate channel vs customer_segment to check imbalance\\ncross_tab = pd.crosstab(real_orders['channel'], real_orders['customer_segment'])\\n\\n# Compute conversion rate by channel and segment\\nconversion_by_segment = real_orders.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Compute weighted average conversion rate difference, using email segment distribution as weights\\nemail_segment_counts = real_orders[real_orders['channel'] == 'email']['customer_segment'].value_counts()\\ntotal_email = email_segment_counts.sum()\\n\\nweighted_diff = 0\\nfor seg in email_segment_counts.index:\\n    email_conv = conversion_by_segment[(conversion_by_segment['channel'] == 'email') & \\n                                       (conversion_by_segment['customer_segment'] == seg)]['converted'].iloc[0]\\n    paid_conv = conversion_by_segment[(conversion_by_segment['channel'] == 'paid_search') & \\n                                      (conversion_by_segment['customer_segment'] == seg)]['converted'].iloc[0]\\n    weight = email_segment_counts[seg] / total_email\\n    weighted_diff += (email_conv - paid_conv) * weight\\n\\n# Final estimate\\ncampaign_effect_estimate = weighted_diff\\n\\n# Verify premises\\n# 1. Campaign on email: yes\\n# 2. Not randomised: yes\\n# 3. Targeted loyal customers: yes\\n# 4. Conversion rate = proportion converted: yes\\n\\n# Output result\\nprint(f\\\"Estimated campaign effect (stratified): {campaign_effect_estimate:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5749,
+  "completion_tokens": 462
+ }
+}

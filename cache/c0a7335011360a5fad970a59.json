@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bc1501727961ef1d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\ndf = df[df['biomarker_baseline'] != -999]  # Remove QC-failure rows\\n\\n# Deduplicate: keep row with highest `sample_seq` per patient_id\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Compute response rate within each severity stratum\\nresponse_by_stratum = df_dedup.groupby(['severity', 'arm'])['responded'].mean().unstack(fill_value=0)\\n\\n# Compute difference in proportions (treatment minus control) within each stratum\\ndiff_by_stratum = response_by_stratum['treatment'] - response_by_stratum['control']\\n\\n# Compute the number of patients in each stratum by arm\\nn_by_stratum = df_dedup.groupby(['severity', 'arm']).size().unstack(fill_value=0)\\n\\n# Total number of patients in control arm by stratum\\nn_control = n_by_stratum['control']\\n\\n# Weighted average of the differences using control group sizes as weights\\n# This is the Mantel-Haenszel estimate\\nweighted_diff = (diff_by_stratum * n_control).sum() / n_control.sum()\\n\\n# Final answer: the treatment effect as a difference in proportions\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 11479,
+  "completion_tokens": 323
+ }
+}

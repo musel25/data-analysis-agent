@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-902a04898eb9c8f4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = '/home/musel/Github/research_agent/data/sales.csv'\\ndata = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\ndata['revenue'] = data['revenue'].str.replace(',', '').astype(float)\\n\\n# Check for QA orders: revenue == 999999.99\\nqa_orders = data[data['revenue'] == 999999.99]\\nprint(f'Number of QA orders: {len(qa_orders)}')\\n\\n# Filter: only converted orders (converted == 1) and not refunded\\n# Also exclude QA orders\\nfiltered_data = data[(data['converted'] == 1) & (data['status'] == 'completed') & (data['revenue'] != 999999.99)]\\n\\n# Filter by channel\\ndf_email = filtered_data[filtered_data['channel'] == 'email']\\ndf_paid_search = filtered_data[filtered_data['channel'] == 'paid_search']\\n\\n# Calculate average revenue per converted order\\navg_revenue_email = df_email['revenue'].mean()\\navg_revenue_paid_search = df_paid_search['revenue'].mean()\\n\\n# Compute difference\\nrevenue_diff = avg_revenue_email - avg_revenue_paid_search\\n\\n# Print results\\nprint(f'Average revenue per converted order - Email: {avg_revenue_email:.2f}')\\nprint(f'Average revenue per converted order - Paid Search: {avg_revenue_paid_search:.2f}')\\nprint(f'Difference (Email - Paid Search): {revenue_diff:.2f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7529,
+  "completion_tokens": 385
+ }
+}

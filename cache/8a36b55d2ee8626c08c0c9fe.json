@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ce8eadf97aa4c76",
+    "function": {
+     "arguments": "{\"code\": \"from itertools import product\\n\\n# Define strata: customer_segment and age_group\\nstrata_vars = ['customer_segment', 'age_group']\\n\\n# Create a combined stratum column\\ndf['stratum'] = df['customer_segment'] + '_' + df['age_group']\\n\\n# Compute conversion rates within each stratum for each channel\\nstratum_data = df.groupby(['stratum', 'channel'])['converted'].agg(['count', 'sum', 'mean']).reset_index()\\nstratum_data = stratum_data.rename(columns={'mean': 'conversion_rate'})\\n\\n# Pivot to get conversion rate by stratum and channel\\npivot_data = stratum_data.pivot(index='stratum', columns='channel', values='conversion_rate')\\n\\n# Compute difference in conversion rates within each stratum (email - paid_search)\\npivot_data['diff'] = pivot_data['email'] - pivot_data['paid_search']\\n\\n# Compute the overall weighted difference in conversion rates\\n# Use total number of users in each stratum as weights\\nstratum_totals = df.groupby('stratum').size().reset_index(name='total_count')\\n\\n# Merge with pivot_data\\npivot_data = pivot_data.reset_index().merge(stratum_totals, on='stratum')\\n\\n# Compute weighted average difference\\nweighted_diff = (pivot_data['diff'] * pivot_data['total_count']).sum() / pivot_data['total_count'].sum()\\n\\n# Also compute the raw difference for comparison\\nraw_email_rate = df[df['channel'] == 'email']['converted'].mean()\\nraw_paid_rate = df[df['channel'] == 'paid_search']['converted'].mean()\\nraw_diff = raw_email_rate - raw_paid_rate\\n\\nprint(f\\\"Raw difference (email - paid_search): {raw_diff:.4f}\\\")\\nprint(f\\\"Stratified weighted difference (email - paid_search): {weighted_diff:.4f}\\\")\\n\\n# Output the stratum-level differences and weights\\npivot_data[['stratum', 'email', 'paid_search', 'diff', 'total_count']]\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5730,
+  "completion_tokens": 458
+ }
+}

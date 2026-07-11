@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8b58824f47ffd093",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Remove QA orders (revenue == '999999.99')\\nqa_mask = df['revenue'] == '999999.99'\\ndf_clean = df[~qa_mask]\\n\\n# Filter for completed orders\\ndf_clean_completed = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute raw conversion rates by channel\\ngrouped = df_clean_completed.groupby('channel')['converted'].mean()\\nraw_email_rate = grouped['email']\\nraw_paid_search_rate = grouped['paid_search']\\ndifference_raw = raw_email_rate - raw_paid_search_rate\\n\\n# Print all required values\\nprint(f'Raw conversion rate for email: {raw_email_rate}')\\nprint(f'Raw conversion rate for paid_search: {raw_paid_search_rate}')\\nprint(f'Difference (email - paid_search): {difference_raw}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8912,
+  "completion_tokens": 244
+ }
+}

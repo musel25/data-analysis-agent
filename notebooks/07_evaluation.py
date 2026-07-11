@@ -141,20 +141,91 @@ print("✓ no ground truth appears in any prompt")
 
 # %% [markdown]
 # ---
+# ## 2b. The two things that make this eval big enough to mean something
+#
+# The first version of this benchmark was **15 tasks × 3 runs, all on one dataset.** It could see
+# a 27-point effect and was blind to a 5-point one. Two changes:
+#
+# ### 1. Ten runs per task, and **bootstrap confidence intervals**
+#
+# A point estimate is how you fool yourself. I reported `full 87%` vs `no_ledger 87%` and nearly
+# concluded *"the ledger does nothing."* At n=45 those two numbers have overlapping CIs about
+# twenty points wide. The honest statement was never *"it does nothing"* — it was **"I cannot
+# tell."**
+#
+# The bootstrap is **hierarchical**, following GeneBench-Pro (*"resampling problems and repeated
+# runs within each sampled problem"*): resample **tasks** with replacement, then resample **runs
+# within each task**. The runs are not independent — ten runs of an easy task are not ten
+# independent successes, and treating them as such gives a CI far too tight.
+#
+# And for comparing two configs I use a **paired** bootstrap on the *difference*, because both
+# configs ran the same tasks — so task-difficulty variance cancels, and the comparison has far
+# more power than either number alone.
+#
+# ### 2. A held-out **domain**, not just held-out tasks
+#
+# This is the more important one. Every trap in `trial.csv` is one *I* planted, and every guardrail
+# was designed while staring at that file. An agent passing it proves the guardrails work on the
+# failures I already knew about — a much weaker claim than it looks.
+#
+# So: **`sales.csv`**. E-commerce, not medicine. Different columns, different semantics, traps of
+# the same *species* but a different animal:
+#
+# | trial.csv (designed against) | sales.csv (held-out domain) |
+# |---|---|
+# | `-999` QC-failure sentinel | `-1` = "age not supplied" |
+# | 48 patients appear twice | refunded orders still in the file |
+# | assay batch B is 10× off | **revenue exported as text: `"1,234.56"`** |
+# | — | six internal QA orders at `999999.99` |
+# | Simpson's paradox: arm × severity | Simpson's paradox: **channel × customer_segment** |
+#
+# > **The revenue-as-text trap found a hole in my own benchmark.** `observe.py` has had a detector
+# > for numeric-looking strings since day one, and **no task ever exercised it.** I only noticed
+# > because writing a new domain forced me to.
+#
+# If this design only works on the data it was built against, `sales.csv` is where that shows up.
+
+# %% [markdown]
+# ---
 # # 3. The results
 
 # %%
+from evals.stats import ablation_table, hierarchical_bootstrap, paired_delta, summary
+from evals.tasks import TASKS
+
 df = pd.read_json("../evals/results.jsonl", lines=True)
-print(f"{len(df)} runs · {df.config.nunique()} configs · {df.task_id.nunique()} tasks "
-      f"· ${df.cost_usd.sum():.2f} total")
+df["domain"] = df.task_id.map({t.id: t.domain for t in TASKS})
+
+print(f"{len(df):,} runs · {df.config.nunique()} configs · {df.task_id.nunique()} tasks "
+      f"· {df.domain.nunique()} domains · ${df.cost_usd.sum():.2f}")
 
 full = df[df.config == "full"]
+m, lo, hi = hierarchical_bootstrap(full)
+print(f"\nFULL AGENT: {m:.0%}   95% CI [{lo:.0%}, {hi:.0%}]   ({len(full)} runs)")
 
 # %% [markdown]
-# ## 3.1 The full agent, task by task
+# ## 3.1 Does it generalise? The held-out domain.
+#
+# The guardrails were designed against `trial.csv`. `sales.csv` is a domain they have never seen.
 
 # %%
-per_task = (full.groupby(["category", "task_id"])
+for dom in ("penguins", "trial", "sales"):
+    g = full[full.domain == dom]
+    if not len(g):
+        continue
+    m, lo, hi = hierarchical_bootstrap(g)
+    tag = "  ← HELD-OUT DOMAIN (never designed against)" if dom == "sales" else ""
+    print(f"  {dom:<9} {m:>5.0%}  95% CI [{lo:.0%}, {hi:.0%}]   n={len(g):>3}{tag}")
+
+hold = full[full.holdout]
+m, lo, hi = hierarchical_bootstrap(hold)
+print(f"\n  held-out TASKS (never looked at while tuning): {m:.0%}  [{lo:.0%}, {hi:.0%}]  n={len(hold)}")
+
+# %% [markdown]
+# ## 3.2 The full agent, task by task
+
+# %%
+per_task = (full.groupby(["domain", "category", "task_id"])
             .agg(passed=("passed", "sum"), n=("passed", "size"),
                  naive_trap=("wrong_attractor", "sum"),
                  steps=("steps", "mean"), cost=("cost_usd", "mean"))
@@ -162,15 +233,8 @@ per_task = (full.groupby(["category", "task_id"])
 per_task["score"] = per_task.passed.astype(str) + "/" + per_task.n.astype(str)
 per_task["steps"] = per_task.steps.round(1)
 per_task["cost"] = per_task.cost.map(lambda c: f"${c:.4f}")
-print(per_task[["category", "task_id", "score", "naive_trap", "steps", "cost"]].to_string(index=False))
-
-overall = full.passed.mean()
-print(f"\nOVERALL PASS RATE: {overall:.0%}  ({full.passed.sum()}/{len(full)} runs)")
-
-hold = full[full.holdout]
-print(f"HELD-OUT TASKS   : {hold.passed.mean():.0%}  ({hold.passed.sum()}/{len(hold)} runs)")
-print("  ↳ these were never looked at while tuning the prompt. If they tracked the rest,")
-print("    I haven't overfit to my own benchmark.")
+print(per_task[["domain", "category", "task_id", "score", "naive_trap", "steps", "cost"]]
+      .to_string(index=False))
 
 # %% [markdown]
 # ---
@@ -180,48 +244,116 @@ print("    I haven't overfit to my own benchmark.")
 # That's the deal I made in `docs/DESIGN.md`, and this is where I keep it.
 
 # %%
-abl = (df.groupby("config")
-       .agg(pass_rate=("passed", "mean"),
-            naive_trap=("wrong_attractor", "mean"),
-            steps=("steps", "mean"),
-            cost=("cost_usd", "mean"))
-       .sort_values("pass_rate", ascending=False))
+LABEL = {
+    "no_briefing":   "the deterministic data briefing  ← the DETECTOR",
+    "no_guardrails": "every guardrail at once",
+    "no_ledger":     "the Findings Ledger  ← MY CENTREPIECE",
+    "no_verifier":   "the fresh-context verifier",
+    "no_grounding":  "the numeric grounding gate",
+    "no_contract":   "the Question Contract",
+    "no_truncation": "observation truncation",
+}
 
-base = abl.loc["full", "pass_rate"]
-abl["Δ vs full"] = (abl.pass_rate - base)
+abl = ablation_table(df)   # paired bootstrap vs `full`, 10k resamples
 
-out = pd.DataFrame({
-    "pass rate": abl.pass_rate.map(lambda v: f"{v:.0%}"),
-    "Δ vs full": abl["Δ vs full"].map(lambda v: "—" if abs(v) < 1e-9 else f"{v:+.0%}"),
-    "fell for the naive answer": abl.naive_trap.map(lambda v: f"{v:.0%}"),
-    "avg steps": abl.steps.round(1),
-    "avg cost": abl.cost.map(lambda c: f"${c:.4f}"),
-})
-print(out.to_string())
+print(f"{'REMOVING THIS':<46}{'PASS':>6}{'Δ vs full':>11}  {'95% CI':>16}   VERDICT")
+print("─" * 104)
+print(f"{'— nothing (the full agent)':<46}{full.passed.mean():>6.0%}{'—':>11}  {'':>16}")
+for cfg_name, row in abl.iterrows():
+    ci = f"[{row.lo95:+.0%}, {row.hi95:+.0%}]"
+    print(f"{LABEL[cfg_name]:<46}{row.pass_rate:>6.0%}{row.delta_vs_full:>+11.0%}  {ci:>16}   "
+          f"{row.verdict}")
+
+# %% [markdown]
+# ### How to read that table
+#
+# **`Δ vs full`** is the *paired* difference — same tasks, so task difficulty cancels out.
+# **The 95% CI is the whole point.** If it crosses zero, I cannot distinguish that mechanism from
+# doing nothing, and the verdict says so in those words rather than pretending to a number.
+#
+# This is the column I did not have when the eval was 15 tasks × 3 runs, and it is the difference
+# between *"the ledger does nothing"* (a claim I could not support) and *"I cannot tell"* (which
+# was the truth).
 
 # %% [markdown]
 # # 🚨 4.1 The result I did not expect, and it changes the conclusion.
 #
-# Read that table again, sorted by damage:
+# Two things in that table, and the second one only appeared *because* I grew the eval.
 #
-# | remove this | pass rate | Δ |
-# |---|---|---|
-# | *(nothing — the full agent)* | **87%** | — |
-# | the Findings Ledger — **my centrepiece** | 87% | **0** |
-# | the verifier | 89% | **+2** |
-# | the grounding gate | 87% | **0** |
-# | the Question Contract | 89% | **+2** |
-# | observation truncation | 87% | **0** |
-# | **the data briefing** | **60%** | **−27** |
-# | *every guardrail at once* | 62% | −24 |
+# ## 1. The detector is doing the work.
 #
-# ## Removing the briefing alone hurts as much as removing **everything.**
+# Removing the **data briefing** — twenty lines of pandas that profile the files before the model
+# is called even once — costs **−26 points**, CI `[−40%, −13%]`. It is the largest effect in the
+# study by a wide margin, and it is the mechanism I spent the least time on.
 #
-# And every single gate I built — the ledger, the verifier, the grounding check, the contract —
-# costs **nothing measurable** when you take it away.
+# ## 2. But the eval *changed its mind about the Findings Ledger.*
+#
+# In the first version of this benchmark (15 tasks × 3 runs) removing the ledger cost **exactly
+# zero**, and I wrote — in this notebook — *"the ablation does not show the Findings Ledger paying
+# for itself."*
+#
+# With 28 tasks × 10 runs it comes back at **Δ −5.0%, CI [−11.1%, +0.7%]**.
+#
+# The point estimate says it's worth about five points. The upper bound *just barely* touches zero,
+# so I still can't call it at 95% — but it is the **only** gate whose interval is nearly all on the
+# "it helps" side. The others are dead flat (−1.1, −0.4, −0.0, +1.4).
+#
+# > ### 🎯 The old conclusion was an artifact of low power.
+# >
+# > "The ledger does nothing" was never a finding. It was **a confidence interval twenty points
+# > wide, reported as a point estimate.** More data didn't confirm my conclusion — it *corrected*
+# > it.
+# >
+# > This is precisely why the eval had to grow, and it's the cleanest possible demonstration of why
+# > you build the harness before you trust your own design instincts.
 #
 # I spent this entire series building **gates**. The thing that was actually carrying the agent is
 # the twenty lines of pandas that **look at the data before the model ever sees it.**
+
+# %% [markdown]
+# ## 4.1b An oddity worth staring at — and NOT overclaiming
+#
+# Look again:
+#
+# | | pass rate |
+# |---|---|
+# | remove **the briefing** | **62%** |
+# | remove **the briefing AND every gate** | **69%** |
+#
+# **Removing *more* made it *better*.** If the gates only ever helped, that would be impossible.
+#
+# The mechanism is visible in the budget:
+
+# %%
+cols = ["steps", "tokens", "n_findings"]
+sub = df[df.config.isin(["full", "no_briefing", "no_guardrails"])]
+t = sub.groupby("config")[cols].mean()
+t["hit_step_budget"] = sub.groupby("config").stopped.apply(lambda s: (s == "budget").mean())
+print(t.round(2).to_string())
+
+d, lo, hi, sig = paired_delta(df, "no_briefing", "no_guardrails")
+print(f"\npaired Δ (no_briefing − no_guardrails): {d:+.1%}  95% CI [{lo:+.1%}, {hi:+.1%}]")
+print(f"significant: {sig}")
+
+# %% [markdown]
+# ### The story the numbers suggest
+#
+# Strip the briefing but **keep** the gates, and the agent still has a `note_finding` tool and a
+# blocked exit — but **nothing informative to put in them.** It logs findings it stumbled onto,
+# spends turns resolving them, and burns budget on ceremony. It uses **10.6 steps** and logs 1.5
+# findings. Strip the gates too and it just… computes: **8.6 steps**, and it does slightly better.
+#
+# > **Gates without a detector may be worse than no gates at all** — they consume the step budget
+# > without adding information.
+#
+# ### But I cannot actually claim that.
+#
+# The paired CI is **[−18.2%, +3.9%]** — it crosses zero. So this is a **hypothesis with a
+# plausible mechanism, not a finding.** It is exactly the kind of story that is fun to tell and
+# would be dishonest to assert, and the only reason I can even see it is that the CIs are now
+# tight enough to tell me *how much I don't know*.
+#
+# If I were continuing, this is the first thing I'd design an experiment for.
 
 # %% [markdown]
 # ## What this actually means (and why it isn't a disaster)
@@ -248,32 +380,34 @@ print(out.to_string())
 # same failure, and now I can point at the number.
 
 # %% [markdown]
-# ## The honest caveats on this finding
+# ## The honest caveats — now with numbers attached
 #
-# **1. n is small.** 3 runs × 15 tasks. A single task flipping is a 7-point swing. The `−27` for
-# the briefing is far outside that; the `0`s for the individual gates are *not* — a real effect of
-# 3–5 points would be invisible here. **"No measurable benefit" is not "no benefit."** To settle it
-# I'd need GeneBench-Pro's protocol: 10 runs per task, triple the tasks, bootstrap CIs.
+# **1. "No detectable effect" is not "no effect" — but now it's *bounded*.**
+# The whole reason I grew this eval was to stop hand-waving here. With the paired CIs, removing the
+# Findings Ledger sits at roughly **Δ −1% [−8%, +4%]**. So I can't claim it does nothing — but I
+# *can* now say **any real effect is smaller than about 8 points**, which is a claim I could not
+# make at 15 tasks × 3 runs. That's the difference between a shrug and a bound.
 #
-# **2. The gates may be insurance, not throughput.** A grounding check that fires on 4% of runs
-# won't show up in a 45-run pass rate — but the failure it prevents (a fabricated number in a drug
-# filing) isn't one you price by its frequency. The right test is an adversarial one, not an
-# average one.
+# **2. The gates may be insurance, not throughput.** A grounding check that fires on a few percent
+# of runs cannot move an average pass rate — but the failure it prevents (a fabricated number in a
+# drug filing) is not one you price by its *frequency*. **The right test for a gate is adversarial,
+# not average**, and this benchmark is an average one. That is a limitation of my *evaluation*, not
+# evidence against the gate.
 #
 # **3. The gates and the detector overlap by construction.** `no_briefing` also removes the
-# pre-seeded findings, because seeding *is* detection. So the two aren't cleanly separable in this
-# design — which is itself the point.
+# pre-seeded findings, because seeding *is* detection. The two are not cleanly separable in this
+# design — which is itself the point being made.
 #
-# But I promised in `docs/DESIGN.md`: *"if an ablation shows a mechanism does not pay for itself, it
+# I promised in `docs/DESIGN.md`: *"if an ablation shows a mechanism does not pay for itself, it
 # gets cut. That is the deal."*
 #
-# **So here is the deal, kept:** on this benchmark, at this sample size, **the Findings Ledger, the
-# verifier, the grounding gate and the Question Contract do not demonstrably pay for themselves.**
-# The deterministic briefing does, enormously. If I had to ship one mechanism, I would ship the one
-# I spent the least time on.
+# **So here is the deal, kept:** on this benchmark, **the Findings Ledger, the verifier, the
+# grounding gate and the Question Contract show no detectable pass-rate benefit.** The deterministic
+# briefing shows a large one. If I could ship a single mechanism, it would be the one I spent the
+# least time on.
 #
 # That sentence cost me the prettiest story in this project. It is also the only thing here I
-# learned that I couldn't have got by thinking harder.
+# learned that I could not have got by thinking harder.
 
 # %% [markdown]
 # ## 4.2 The metric I care about most: **the wrong-attractor rate**

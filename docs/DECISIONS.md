@@ -368,6 +368,46 @@ The JSONL trace is what turns a failure from "it got it wrong" into "at step 4 i
 sentinels and at step 6 it computed the mean anyway" — which is the only kind of failure report you
 can act on.
 
+### D26 — A held-out *domain*, not just held-out tasks
+**The single most important thing in the evaluation, and I added it last.**
+
+Every trap in `trial.csv` is one I planted, and every guardrail was designed while staring at that
+file. An agent passing it demonstrates that my guardrails work **on the failures I already knew
+about**. That is a much weaker claim than the pass rate makes it look, and no number of extra runs
+on the same dataset fixes it — more runs shrink the *variance*, not the *bias*.
+
+**Chose:** a second synthetic dataset, `sales.csv`, in a completely different domain — e-commerce,
+not medicine. Different columns, different semantics, and traps of the same *species* but a
+different animal:
+
+| `trial.csv` (designed against) | `sales.csv` (held-out) |
+|---|---|
+| `-999` QC-failure sentinel | `-1` = "age not supplied" |
+| re-tested patients appear twice | refunded orders still in the file |
+| assay batch B is 10× off | **revenue exported as text — `"1,234.56"`** |
+| — | six internal QA orders at `999999.99` |
+| Simpson's paradox: arm × severity | Simpson's paradox: **channel × customer_segment** |
+
+**And it immediately found a hole in my own benchmark.** `observe.py` has had a detector for
+*"numeric column stored as text"* since the first commit, and **not one task ever exercised it.**
+I only noticed because writing a new domain forced me to enumerate what the detectors actually
+cover. A benchmark built from one dataset tests the mechanisms that dataset happens to provoke.
+
+### D27 — Bootstrap CIs, and a *paired* test for the ablations
+**Chose:** hierarchical bootstrap (resample tasks, then runs within tasks — GeneBench-Pro's
+protocol, 10k resamples), and for each ablation a **paired** bootstrap of the difference against
+the full agent.
+**Why hierarchical:** the runs are not independent. Ten runs of an easy task are not ten
+independent successes, and tasks differ enormously in difficulty. Resampling individual runs would
+give a CI far too tight and I would believe it.
+**Why paired:** both configs ran the *same* tasks, so task-difficulty variance — which dominates
+the absolute CIs — cancels out. The paired difference has far more power than either number alone.
+That is the test that actually answers *"does this mechanism matter?"*
+**What it changed:** the first version of this eval reported `full 87%` vs `no_ledger 87%` and I
+nearly concluded *"the ledger does nothing."* At n=45 those two numbers had overlapping CIs about
+twenty points wide. The honest statement was never *"it does nothing"* — it was **"I cannot
+tell."** A point estimate is how you fool yourself; the CI is what stops you.
+
 ### D17 — Classify failures using DrugDiscoveryBench's taxonomy
 **Chose:** hand-label every failing run as domain-reasoning / derivation / retrieval / constraint /
 final-answer-slip.

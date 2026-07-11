@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a7afbda6185c195e",
+    "function": {
+     "arguments": "{\"code\": \"from scipy.stats import ttest_ind\\n\\n# Check if conversion rates differ significantly\\nt_stat, p_value = ttest_ind(campaign_group['converted_correct'], control_group['converted_correct'], equal_var=False)\\n\\nprint(f'T-test p-value: {p_value:.6f}')\\n\\n# Calculate absolute difference in conversion rates\\nabs_diff = abs(campaign_conv - control_conv)\\n\\nprint(f'Absolute difference in conversion rates: {abs_diff:.4f}')\\n\\n# Check for confounding: customer segment imbalance\\n# 'new' segment is overrepresented in paid_search\\n# This could bias the control group upward\\n\\n# Calculate weighted conversion rate to adjust for imbalance\\n# Use overall conversion rate as baseline\\noverall_conv = df['converted_correct'].mean()\\n\\n# Compute weighted average for each group\\nweighted_campaign = campaign_group.groupby('customer_segment')['converted_correct'].mean().dot(campaign_group['customer_segment'].value_counts(normalize=True))\\nweighted_control = control_group.groupby('customer_segment')['converted_correct'].mean().dot(control_group['customer_segment'].value_counts(normalize=True))\\n\\nprint(f'Weighted campaign conversion rate: {weighted_campaign:.4f}')\\nprint(f'Weighted control conversion rate: {weighted_control:.4f}')\\nprint(f'Weighted difference: {abs(weighted_campaign - weighted_control):.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4156,
+  "completion_tokens": 309
+ }
+}

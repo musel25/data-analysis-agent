@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a719c58cad841ae9",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('/home/musel/Github/research_agent/data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for completed orders\\ncompleted_orders = sales[sales['status'] == 'completed']\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = completed_orders['revenue_clean'] == 999999.99\\n\\n# Remove QA orders\\ncompleted_valid = completed_orders[~qa_mask]\\n\\n# Compute mean revenue without QA orders\\nmean_revenue_valid = completed_valid['revenue_clean'].mean()\\n\\n# Print the number of completed orders and valid completed orders\\nprint(f\\\"Number of completed orders: {len(completed_orders)}\\\")\\nprint(f\\\"Number of valid completed orders (excluding QA): {len(completed_valid)}\\\")\\nprint(f\\\"Mean revenue of completed orders (excluding QA): {mean_revenue_valid:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5757,
+  "completion_tokens": 265
+ }
+}

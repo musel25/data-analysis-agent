@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85bd2b80e7e6752f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\nfrom sklearn.linear_model import LinearRegression\\n\\n# Use the treatment_data for regression\\n# Create dummy variables for categorical predictors\\nX = pd.get_dummies(treatment_data[['sex', 'severity', 'age', 'site']], columns=['sex', 'severity', 'site'], drop_first=True)\\n\\n# Target variable: change in biomarker\\ny = treatment_data['change']\\n\\n# Fit a linear regression model\\nmodel = LinearRegression().fit(X, y)\\n\\n# Extract coefficients\\ntreatment_data['sex_F'] = (treatment_data['sex'] == 'F').astype(int)\\n\\n# Compute adjusted mean difference\\ndef predict_change(sex, severity, age, site):\\n    # Create a DataFrame for prediction\\n    pred_df = pd.DataFrame({\\n        'sex_F': [1 if sex == 'F' else 0],\\n        'sex_M': [0],  # not used due to drop_first\\n        'severity_mild': [1 if severity == 'mild' else 0],\\n        'severity_moderate': [1 if severity == 'moderate' else 0],\\n        'severity_severe': [1 if severity == 'severe' else 0],\\n        'age': [age],\\n        'site_site_1': [1 if site == 'site_1' else 0],\\n        'site_site_2': [1 if site == 'site_2' else 0],\\n        'site_site_3': [1 if site == 'site_3' else 0]\\n    })\\n    # Predict using the model\\n    return model.predict(pred_df)[0]\\n\\n# Predict mean change for females and males, averaged across all combinations\\n# Use the actual distribution of severity, age, and site in the treatment arm\\navg_change_female = 0\\navg_change_male = 0\\nn = 0\\n\\nfor _, row in treatment_data.iterrows():\\n    # Predict for female\\n    pred_f = predict_change('F', row['severity'], row['age'], row['site'])\\n    # Predict for male\\n    pred_m = predict_change('M', row['severity'], row['age'], row['site'])\\n    avg_change_female += pred_f\\n    avg_change_male += pred_m\\n    n += 1\\n\\navg_change_female /= n\\navg_change_male /= n\\ndifference_adjusted = avg_change_female - avg_change_male\\n\\n# Output results\\nprint(f'Adjusted mean change (F): {avg_change_female:.2f} ng/mL')\\nprint(f'Adjusted mean change (M): {avg_change_male:.2f} ng/mL')\\nprint(f'Adjusted difference (F - M): {difference_adjusted:.2f} ng/mL')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9230,
+  "completion_tokens": 630
+ }
+}

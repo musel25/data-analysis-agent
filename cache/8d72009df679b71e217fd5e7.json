@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3759a0b7d7efb51",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-load data and apply fixes\\n# Step 1: Remove rows where biomarker_baseline == -999\\ndata_clean = data[data['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate by keeping highest sample_seq per patient_id\\ndata_clean = data_clean.sort_values(['patient_id', 'sample_seq'], ascending=[True, False])\\ndata_clean = data_clean.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 3: Compute stratum-specific response rates and differences\\nstratified = data_clean.groupby(['arm', 'severity'])['responded'].agg(['count', 'sum']).reset_index()\\nstratified['response_rate'] = stratified['sum'] / stratified['count']\\nstratified_pivot = stratified.pivot(index='severity', columns='arm', values='response_rate')\\nstratified_pivot.columns = ['control', 'treatment']\\ndiff_in_strata = stratified_pivot['treatment'] - stratified_pivot['control']\\n\\n# Compute weighted average of stratum-specific differences (using total counts per stratum as weights)\\nstratum_counts = data_clean.groupby('severity')['responded'].count()\\ntotal_stratum_count = stratum_counts.sum()\\nweights = stratum_counts / total_stratum_count\\nweighted_diff = (diff_in_strata * weights).sum()\\n\\n# Print all required numbers\\nprint('Stratum-specific response rates:')\\nprint(stratified_pivot)\\n\\nprint('\\\\nStratum-specific differences (treatment - control):')\\nprint(diff_in_strata)\\n\\nprint(f'\\\\nWeighted average difference in proportions (treatment - control): {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7409,
+  "completion_tokens": 400
+ }
+}
