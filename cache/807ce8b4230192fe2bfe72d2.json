@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a0cd2c05c0fb3c6e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('../data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping the row with the highest sample_seq per patient\\ndf = df.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 3: Compute the adjusted difference using stratification by severity\\n# Stratify by severity and compute response rates within each stratum\\ndf_stratified = df.groupby(['arm', 'severity'])['responded'].agg(['mean', 'count']).reset_index()\\n\\n# Compute the overall response rate for each arm, weighted by severity distribution in the control arm (standardisation)\\ncontrol_severity_dist = df[df['arm'] == 'control'].groupby('severity').size() / len(df[df['arm'] == 'control'])\\n\\n# Compute the expected response rate in treatment arm under control severity distribution\\ntreatment_expected = 0\\nfor severity in df['severity'].unique():\\n    if severity in df_stratified[df_stratified['arm'] == 'treatment']['severity'].values:\\n        rate = df_stratified[(df_stratified['arm'] == 'treatment') & (df_stratified['severity'] == severity)]['mean'].values[0]\\n        weight = control_severity_dist[severity]\\n        treatment_expected += rate * weight\\n\\n# Adjusted difference: treatment expected under control severity distribution minus control observed\\nadjusted_diff = treatment_expected - control_responded\\n\\n# Now, print only the adjusted difference, and nothing else\\nprint(adjusted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 11693,
+  "completion_tokens": 410
+ }
+}

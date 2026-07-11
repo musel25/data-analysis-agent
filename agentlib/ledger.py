@@ -199,6 +199,11 @@ class FindingsLedger:
             return f"No finding #{index}. There are {len(self.findings)}."
         f = self.findings[index - 1]
         f.status, f.resolution = status, resolution
+        # A pre-seeded finding carries a placeholder implication ("TO BE DETERMINED"). Once the
+        # agent has resolved it, that placeholder is just noise in the audit trail — and the audit
+        # trail is the thing a scientist actually reads. Replace it with what the agent decided.
+        if f.implication.startswith("TO BE DETERMINED"):
+            f.implication = resolution
         n = len(self.open())
         return (f"Finding #{index} marked {status.upper()}. "
                 + (f"{n} finding(s) still open." if n else "No findings left open — you may submit."))

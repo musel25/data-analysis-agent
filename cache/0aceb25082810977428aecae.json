@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8ea10091d03bf296",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Define the stratification variables\\nstrata_vars = ['site', 'severity']\\n\\n# Create a combined stratum identifier\\ndata['stratum'] = data['site'] + '_' + data['severity']\\n\\n# Compute response rates within each stratum for treatment and control\\nstratum_response_rates = data.groupby(['stratum', 'arm'])['responded'].mean().unstack(level='arm')\\nstratum_response_rates.columns = ['control_rate', 'treatment_rate']\\n\\n# Compute the difference in proportions within each stratum\\ndiff_in_proportions = stratum_response_rates['treatment_rate'] - stratum_response_rates['control_rate']\\n\\n# Compute the number of patients in each stratum and arm\\nstratum_counts = data.groupby(['stratum', 'arm']).size().unstack(level='arm')\\nstratum_counts.columns = ['control_count', 'treatment_count']\\n\\n# Merge with differences\\nresult_df = pd.concat([stratum_response_rates, diff_in_proportions, stratum_counts], axis=1)\\n\\n# Compute weighted average difference in proportions\\n# Weight by total number of patients in each stratum\\nresult_df['total_stratum_count'] = result_df['control_count'] + result_df['treatment_count']\\nresult_df['weight'] = result_df['total_stratum_count'] / result_df['total_stratum_count'].sum()\\n\\nweighted_diff = (result_df['diff_in_proportions'] * result_df['weight']).sum()\\n\\n# Print results\\nresult_df, weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4044,
+  "completion_tokens": 360
+ }
+}

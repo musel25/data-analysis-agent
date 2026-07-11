@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-82e9b40b4233f4e8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# Re-load data\\ntrial_df = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Map arm to treatment\\ntrial_df['treatment'] = trial_df['arm'].map({'control': 'A', 'treatment': 'B'})\\n\\n# Use a simpler approach: stratified analysis and direct comparison\\n# Check if the sex difference in response is due to imbalance in baseline biomarker\\n# Compute mean biomarker by sex: already done: F: -58.67, M: -69.04 \u2192 F has higher (less negative) baseline\\n\\n# Compute response rate by sex and treatment arm\\nresponse_by_sex_treatment = trial_df.groupby(['sex', 'treatment'])['responded'].mean().unstack()\\nprint(\\\"Response rate by sex and treatment:\\\")\\nprint(response_by_sex_treatment)\\n\\n# Compute difference in response rate between F and M within each treatment arm\\ndiff_in_control = response_by_sex_treatment.loc['F', 'A'] - response_by_sex_treatment.loc['M', 'A']\\ndiff_in_treatment = response_by_sex_treatment.loc['F', 'B'] - response_by_sex_treatment.loc['M', 'B']\\n\\nprint(f\\\"\\\\nDifference in response rate (F - M) in control arm: {diff_in_control:.4f}\\\")\\nprint(f\\\"Difference in response rate (F - M) in treatment arm: {diff_in_treatment:.4f}\\\")\\n\\n# Now compute adjusted difference using regression with numpy\\n# We'll use a logistic regression via statsmodels, but we'll use sklearn instead\\ntry:\\n    from sklearn.linear_model import LogisticRegression\\nexcept ImportError:\\n    from sklearn.linear_model import LogisticRegression\\n\\n# Prepare data\\nX = pd.get_dummies(trial_df[['sex', 'treatment', 'biomarker_baseline']], drop_first=True)\\nX = X.astype(float)\\ny = trial_df['responded']\\n\\n# Fit logistic regression\\nmodel = LogisticRegression(max_iter=1000)\\nmodel.fit(X, y)\\n\\n# Get coefficients\\ncoefficients = dict(zip(X.columns, model.coef_[0]))\\n\\n# Extract effect of being female (vs male)\\nsex_f_coeff = coefficients['sex_F']\\n\\n# Predicted probability for females and males (average biomarker, treatment B)\\nX_pred = pd.DataFrame({\\n    'sex_F': [1, 0],\\n    'sex_M': [0, 0],  # drop_first=True, so we only have F\\n    'treatment_B': [1, 1],\\n    'biomarker_baseline': [trial_df['biomarker_baseline'].mean()] * 2\\n})\\n\\n# Predict probabilities\\npred_probs = model.predict_proba(X_pred)[:, 1]\\n\\n# Adjusted response rates\\npred_f_adj = pred_probs[0]\\npred_m_adj = pred_probs[1]\\n\\nprint(f\\\"\\\\nLogistic regression coefficient for being female: {sex_f_coeff:.4f}\\\")\\nprint(f\\\"Adjusted response rate (F): {pred_f_adj:.4f}\\\")\\nprint(f\\\"Adjusted response rate (M): {pred_m_adj:.4f}\\\")\\nprint(f\\\"Adjusted difference (F - M): {pred_f_adj - pred_m_adj:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4329,
+  "completion_tokens": 763
+ }
+}

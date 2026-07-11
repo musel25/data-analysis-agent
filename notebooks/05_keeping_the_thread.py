@@ -96,8 +96,10 @@ contract = QuestionContract(
     population="All ENROLLED PATIENTS (deduplicated on patient_id — re-tested patients appear twice).",
     units="A difference in proportions, between -1 and 1.",
     constraints=["Compare treatment vs control", "Report as a difference, not a ratio"],
-    ambiguities=["Arm was assigned by clinician judgement, not randomised — so a raw comparison "
-                 "is confounded. I will adjust for severity and say so."],
+    premises=["that a raw treatment-vs-control comparison is meaningful — CHECK: the trial was "
+              "NOT randomised, so it is not"],
+    question_is_precise=True,
+    ambiguities=[],
 )
 print(contract.render())
 
@@ -112,6 +114,24 @@ print(contract.render())
 #
 # > *"A statistically valid final model is applied to the wrong data or population, on the wrong
 # > scale, or on the wrong conceptual level."*
+#
+# ### Two of these fields I did not design. The evaluation forced them on me.
+#
+# **`premises`** — *a question can be wrong.* "Which of the **four** sites had the highest response
+# rate?" There are three. "**Why** do women respond better?" They don't. Without this field, the
+# agent answered both questions fluently and **laundered a false premise into a fact.** With it:
+# 0/3 → 3/3 on the sites task.
+#
+# **`question_is_precise`** is a *required boolean*, and that's the whole trick. The contract already
+# had an `ambiguities` list — and on *"did the biomarker improve?"* the agent left it **empty every
+# single time** and silently picked a reading. The field designed to prevent the failure was the
+# field being skipped.
+#
+# > **A field the model *may* leave empty is a field the model *will* leave empty.**
+#
+# A required boolean can't be skipped. And a validator makes `ambiguities` non-empty whenever it's
+# `False`. Same move as the Findings Ledger, which we're about to meet: **make the omission
+# impossible to express, instead of asking nicely for it not to happen.**
 
 # %% [markdown]
 # ---

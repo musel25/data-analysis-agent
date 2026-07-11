@@ -253,12 +253,28 @@ Before any analysis, the agent's first action must be to fill in a contract:
 
 ```python
 class QuestionContract(BaseModel):
-    estimand:    str        # the exact quantity, in one sentence
-    population:  str        # WHICH ROWS. the denominator. stated explicitly.
-    units:       str        # g? kg? percent? fraction? log-scale?
-    constraints: list[str]  # every explicit filter/limit the user stated
-    ambiguities: list[str]  # what could be read two ways, and how I read it
+    estimand:    str         # the exact quantity, in one sentence
+    population:  str         # WHICH ROWS. the denominator. stated explicitly.
+    units:       str         # g? kg? percent? fraction? log-scale?
+    constraints: list[str]   # every explicit filter/limit the user stated
+    premises:    list[str]   # what the QUESTION assumes to be true — and must be checked
+    question_is_precise: bool   # required. forces an explicit judgement.
+    ambiguities: list[str]   # if not precise, the readings — and which one I chose
 ```
+
+Two of those fields exist because the evaluation demanded them, not because I designed them in.
+
+**`premises`** — a question can be *wrong*. *"Which of the four sites had the highest response
+rate?"* has three sites. *"Why do women respond better?"* — they don't. Without this field the agent
+answered both, fluently, and laundered a false premise into a fact. With it, 0/3 → 3/3 on the sites
+task.
+
+**`question_is_precise`** is a *required boolean*, and that is the entire trick. The contract already
+had an `ambiguities` list, and on *"Did the biomarker improve?"* the agent left it empty every single
+time and silently picked a reading. A field the model may leave empty is a field the model will leave
+empty. A required boolean cannot be skipped — and a validator makes `ambiguities` non-empty whenever
+it is `False`. Same principle as the ledger: **make the omission impossible to express, rather than
+asking nicely for it not to happen.**
 
 It is pinned into context **every turn** and it is shown to the verifier at submit time.
 
@@ -314,12 +330,41 @@ trust an automated analysis — and neither paper's systems produce it.
 
 The cost of this mechanism is about 40 lines and one extra tool.
 
-**Honest limitation:** the ledger cannot force the agent to notice something it never looked at. It
-converts *noticed-but-not-acted-upon* into a hard stop; it does nothing about *never-noticed*. That
-is why the deterministic data briefing exists — it front-loads the cheap, mechanical diagnostics
-(nulls, dtypes, cardinality, sentinel-looking values) so that the most common findings are *handed*
-to the agent rather than depending on its curiosity. Between the two, the coverage is decent. It is
-not complete, and I would not claim otherwise.
+#### The limitation — and what it cost me to learn it
+
+The ledger cannot force the agent to notice something it never looked at. It converts
+*noticed-but-not-acted-upon* into a hard stop; it does nothing about *never-noticed*.
+
+I wrote that sentence before I had evidence for it. Then I ran the ledger on the Simpson's-paradox
+task and watched it happen: the agent caught the duplicate patients, was forced to act on them, did
+so correctly — and submitted **−0.087**. It had simply never noticed the confounding, so there was
+no obligation to discharge, and the gate had nothing to block. The mechanism worked perfectly and
+the answer was still wrong-signed.
+
+The annoying part is that `data_dictionary.md` says it in plain English, and the briefing had put
+that file in the context on turn one. The agent read the warning and did not act on it — which is,
+of course, the notice–act gap wearing a different hat.
+
+**So the ledger is pre-seeded.** Anything the deterministic profiler can find — sentinels, duplicate
+identifiers, numeric-looking strings — is entered as an **open finding before turn one**. Not
+printed as a helpful note in the briefing. *Registered as an obligation.*
+
+> **Information can be ignored. An obligation cannot.**
+
+That is the division of labour the whole design rests on:
+
+| | does what |
+|---|---|
+| **deterministic code** | finds the mechanical problems, and makes them **un-ignorable** |
+| **the model** | decides what they **mean** for this particular question |
+
+And it is still not a straitjacket: on the response-rate task the agent looked at the pre-seeded
+`-999` finding and **dismissed** it — correctly, because `biomarker_baseline` never enters that
+calculation. We do not force a conclusion. We force the observation to *reach* the decision. What
+happens when it arrives is still the model's judgement.
+
+Between the seeding and the ledger the coverage is good. It is not complete, and I would not claim
+otherwise.
 
 ### 3.3 Ledger 3 — Evidence Grounding
 

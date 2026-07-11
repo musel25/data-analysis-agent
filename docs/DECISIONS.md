@@ -220,6 +220,65 @@ deterministic ones — never pay for an LLM call to find something a regex would
 guardrail here and the first one I would drop under budget pressure — which is exactly what the
 ablation is for.
 
+### D21 — Pre-seed the Findings Ledger from the deterministic checks
+**Found by running it.** The Findings Ledger's first real outing on the Simpson's-paradox task
+caught the duplicate patients, forced the agent to act on them — and produced **−0.087**, the naive
+answer. It had never noticed the confounding, so there was no obligation to discharge and the gate
+had nothing to block. The ledger did *exactly* what it was designed to do, and the answer was still
+wrong-signed.
+
+That is the limitation I had already written down in D09 (*it converts noticed-but-ignored into a
+hard stop; it does nothing about never-noticed*) arriving in person.
+
+**Chose:** anything the deterministic profiler can find — sentinels, duplicate identifiers,
+numeric-looking strings — is **pre-registered in the ledger as an OPEN finding** before turn one.
+Not printed in the briefing as a helpful note. *Entered as an obligation.*
+**Why the distinction is the whole point:** **information can be ignored; an obligation cannot.**
+The briefing already *contained* these facts and the agent scrolled past them. Same facts, different
+structural status, different outcome.
+
+This is the division of labour the design rests on:
+
+| | does what |
+|---|---|
+| deterministic code | finds the mechanical problems, and makes them **un-ignorable** |
+| the model | decides what they **mean** for this particular question |
+
+Note the agent is still free to look at a seeded finding and **dismiss** it — and on the
+response-rate task it correctly dismissed the `-999` sentinels, because `biomarker_baseline` never
+enters that calculation. We are not forcing a conclusion. We are forcing the observation to *reach*
+the decision. That distinction is what separates a guardrail from a straitjacket.
+
+### D22 — One rule of domain knowledge in the system prompt, and only one
+**Chose:** *"Before comparing two groups, check that they are comparable. If they were not randomly
+assigned, a raw comparison is not a treatment effect — it is a comparison of two different
+populations."*
+**Is this teaching to my own test?** The check I hold myself to: it names **no column, no dataset,
+and no paradox.** It states a general principle of causal inference that applies to any two-group
+comparison anywhere. If it mentioned `severity` it would be overfitting, and the three held-out
+tasks exist to catch me doing that.
+**Why it's justified at all:** DrugDiscoveryBench re-ran their unsolved tasks with the expert's
+step-by-step playbook supplied as a hint and went from 76/82 to 80/82 — *"execution is within reach
+for today's agents should they be given the expert workflow."* The models can execute. What they
+lack is the analyst's **reflex** — the thing a statistician does without being asked. So encode the
+reflex. **That is what "building on top of the base model" means: not a better model, a better
+procedure.**
+
+### D23 — Force the ambiguity judgement with a required boolean
+**Found by running it.** The contract had an `ambiguities` list. On *"Did the biomarker improve?"* —
+a question with at least three defensible readings — the agent left it **empty, every single time**,
+and silently picked one. The field designed to prevent the failure was the field being skipped.
+**Chose:** a **required** `question_is_precise: bool`, plus a validator: if it is `False`, the
+`ambiguities` list *cannot* be empty.
+**Why:** a field the model may leave empty is a field the model **will** leave empty. A required
+boolean cannot be skipped — it forces an explicit judgement rather than inviting one. This is the
+Findings Ledger trick applied to the contract: **make the omission impossible to express, rather
+than asking nicely for it not to happen.**
+Also: the contract's ambiguities are now folded into the report's `caveats` **by the harness**, not
+by the model. The agent *was* recording its interpretation and then never mentioning it in the
+answer — and reasoning that doesn't reach the reader is, from the reader's side, indistinguishable
+from reasoning that never happened.
+
 ### D12 — Cache every LLM response to disk, keyed by request hash
 **Considered:** live calls only.
 **Chose:** a ~10-line disk cache with a `LIVE` flag; the cache is **committed to the repo**.
@@ -267,6 +326,20 @@ Simulation is also the only way to *plant* a decision point (a Simpson's paradox
 denominator trap) and be certain the naive path gives a different answer.
 The two-dataset structure is also the narrative: penguins is where the agent looks brilliant;
 `trial.csv` is where it fails the way the papers say it will. That pivot is the whole story.
+
+### D24 — Repeat runs must be independent samples, not cache replays
+**A bug I shipped, and my own eval caught.** The first ablation reported three attempts per task.
+Attempts 2 and 3 cost **$0.0000**.
+
+Temperature 0 + an identical request = an identical cache key. I was not measuring variance across
+three samples. I was **replaying one sample three times and calling it three.**
+**Fixed by:** passing the attempt number as a cache nonce, and raising the eval temperature to 0.6.
+**Why it matters more than it sounds:** both papers run repeats *precisely because* agent evals are
+noisy — GeneBench-Pro uses 10 attempts and bootstraps CIs; DDB uses 3 trials. A benchmark that
+silently reports one run as three is **worse than one that honestly reports one**, because it
+launders a single lucky trajectory into an apparent consistency result.
+The `$0.0000` in the cost column is what gave it away — which is a small argument for building the
+cost meter in chapter 1 and printing it everywhere.
 
 ### D16 — Log every step as JSONL; run each task 5×
 **Why:** Agent evals are noisy — GBP runs 10 attempts and bootstraps CIs; DDB runs 3 trials. A single
