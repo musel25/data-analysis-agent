@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-84294bd8b2b48203",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# We have the cleaned df from prior steps\\n# df is deduplicated and excludes biomarker_baseline == -999\\n\\n# Compute the crude difference in proportions (as per the contract's estimand)\\nn_treatment = df[df['arm'] == 'treatment'].shape[0]\\nn_control = df[df['arm'] == 'control'].shape[0]\\nprop_treatment = df[df['arm'] == 'treatment']['responded'].mean()\\nprop_control = df[df['arm'] == 'control']['responded'].mean()\\ncrude_effect = prop_treatment - prop_control\\n\\n# Compute stratum-specific treatment effects\\narm_stratum = df.groupby(['severity', 'arm'])['responded'].agg(['count', 'sum']).reset_index()\\narm_stratum = arm_stratum.rename(columns={'count': 'n', 'sum': 'responded_sum'})\\narm_stratum['prop_response'] = arm_stratum['responded_sum'] / arm_stratum['n']\\n\\n# Pivot to get treatment and control response rates by severity\\npivot = arm_stratum.pivot(index='severity', columns='arm', values='prop_response')\\npivot = pivot.reset_index()\\npivot.columns.name = None\\n\\n# Compute stratum-specific treatment effects (treatment - control)\\npivot['treatment_effect'] = pivot['treatment'] - pivot['control']\\n\\n# Compute the overall population distribution of severity (used for standardisation)\\nseverity_dist = df['severity'].value_counts(normalize=True)\\n\\n# Standardise: weighted average of stratum-specific effects using severity_dist as weights\\n# But: the weights are correct, but the result was computed as 0.0 \u2014 why?\\n# Let's check the actual numbers\\nprint(\\\"Stratum-specific treatment effects:\\\")\\nprint(pivot[['severity', 'treatment_effect']])\\nprint(\\\"\\\\nSeverity distribution (weights):\\\")\\nprint(severity_dist)\\n\\n# Compute weighted average manually\\nweighted_effect = (pivot['treatment_effect'] * severity_dist).sum()\\nprint(f\\\"\\\\nManual weighted average: {weighted_effect}\\\")\\n\\n# Output both crude and adjusted\\nprint(f\\\"\\\\nCrude difference in proportions (treatment - control): {crude_effect:.4f}\\\")\\nprint(f\\\"\\\\nAdjusted difference (standardised): {weighted_effect:.4f}\\\")\\n\\n# Return both\\n(crude_effect, weighted_effect)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7974,
+  "completion_tokens": 553
+ }
+}

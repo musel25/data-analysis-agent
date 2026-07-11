@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1bf5bdb01c7d8d3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline is -999 (QC failure)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq per patient\\ndf = df.sort_values('sample_seq', ascending=False).drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 3: Correct assay_batch B values: divide by 10 (1 \u00b5g/L = 10 ng/mL)\\ndf.loc[df['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Now compute response rates by arm, stratified by severity\\n# But first: check if arms are balanced by severity (as per data dictionary: not randomised, so must adjust)\\narm_severity = pd.crosstab(df['arm'], df['severity'])\\nprint(\\\"Arm by Severity:\\\")\\nprint(arm_severity)\\n\\n# Compute response rates by arm, stratified by severity\\nresponse_by_arm_severity = df.groupby(['arm', 'severity'])['responded'].mean()\\nprint(\\\"\\\\nResponse Rate by Arm and Severity:\\\")\\nprint(response_by_arm_severity)\\n\\n# Compute weighted average response rate by arm, weighted by severity distribution in each arm\\n# This is a stratified estimate to adjust for confounding by severity\\nseverity_counts = df.groupby('arm')['severity'].value_counts().unstack(fill_value=0)\\nseverity_totals = severity_counts.sum(axis=1)\\nseverity_weights = severity_counts.divide(severity_totals, axis=0)\\n\\nweighted_response = (response_by_arm_severity.unstack() * severity_weights).sum(axis=1)\\n\\n# Compute difference in proportions: treatment minus control\\ntreatment_rate = weighted_response['treatment']\\ncontrol_rate = weighted_response['control']\\ndiff = treatment_rate - control_rate\\n\\n# Print results\\ntreatment_rate, control_rate, diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3284,
+  "completion_tokens": 478
+ }
+}

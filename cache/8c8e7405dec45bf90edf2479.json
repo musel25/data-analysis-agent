@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b5b2798c5f53a2ee",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Re-run the stratified analysis and print only the exact numbers we will use in evidence\\n# We will compute and print each number explicitly\\n\\n# Step 1: Compute response rates by sex and arm\\ndef get_response_rates(df, response_col='responded', arm_col='arm', sex_col='sex'):\\n    # Group by sex and arm\\n    grouped = df.groupby([sex_col, arm_col])[response_col].mean().reset_index()\\n    # Pivot to get sex as index, arms as columns\\n    pivot = grouped.pivot(index=sex_col, columns=arm_col, values=response_col)\\n    return pivot\\n\\n# Step 2: Compute differences and weights\\nresponse_rates = get_response_rates(data)\\n\\n# Extract values\\nfemale_control_rate = response_rates.loc['F', 'control']\\nfemale_treatment_rate = response_rates.loc['F', 'treatment']\\nmale_control_rate = response_rates.loc['M', 'control']\\nmale_treatment_rate = response_rates.loc['M', 'treatment']\\n\\n# Compute differences\\nfemale_diff = female_treatment_rate - female_control_rate\\nmale_diff = male_treatment_rate - male_control_rate\\n\\n# Compute weights: control group size per sex / total control group size\\ncontrol_sex_counts = data[data['arm'] == 'control'].groupby('sex').size()\\ntotal_control = control_sex_counts.sum()\\nweights = control_sex_counts / total_control\\n\\nfemale_weight = weights['F']\\nmale_weight = weights['M']\\n\\n# Compute weighted average difference\\nadjusted_effect = female_diff * female_weight + male_diff * male_weight\\n\\n# Print all required values\\nprint(f\\\"female_control_rate = {female_control_rate}\\\")\\nprint(f\\\"female_treatment_rate = {female_treatment_rate}\\\")\\nprint(f\\\"male_control_rate = {male_control_rate}\\\")\\nprint(f\\\"male_treatment_rate = {male_treatment_rate}\\\")\\nprint(f\\\"female_diff = {female_diff}\\\")\\nprint(f\\\"male_diff = {male_diff}\\\")\\nprint(f\\\"female_weight = {female_weight}\\\")\\nprint(f\\\"male_weight = {male_weight}\\\")\\nprint(f\\\"adjusted_effect = {adjusted_effect}\\\")\\n\\n# Assign to variables for evidence\\nresponse_rates = response_rates\\ncontrol_sex_counts = control_sex_counts\\ntotal_control = total_control\\nweights = weights\\nadjusted_effect = adjusted_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6518,
+  "completion_tokens": 546
+ }
+}

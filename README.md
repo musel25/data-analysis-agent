@@ -7,7 +7,7 @@ Seven notebooks build the whole thing, one mechanism at a time. Each chapter end
 agent **fail on purpose**, and the next chapter adds the one thing that fixes it. Nothing is
 introduced before you have watched its absence hurt.
 
-The finished agent is **~450 lines of Python**. No LangChain, no framework, no vector store, no
+The finished agent is **~885 lines of Python** (comments and docstrings excluded — most of the file volume is the reasoning behind each choice). No LangChain, no framework, no vector store, no
 multi-agent swarm. It runs on a **$0.10/1M-token open model** and costs **under a cent per
 analysis**.
 
@@ -73,6 +73,10 @@ It just didn't let what it saw change what it did.
 > So don't spend the budget making the model smarter. Spend it making it **structurally impossible
 > to drop the thread.**
 
+*(That's where I started. The evaluation later corrected me on **which half** of the thread-keeping
+problem actually matters — see [the results](#the-results--including-the-one-that-inverted-my-own-thesis).
+I've left the original thesis standing rather than quietly rewriting history around the answer.)*
+
 ---
 
 ## What I built on top of the base model
@@ -132,7 +136,45 @@ reports **which** wrong. Landing on the naive answer means the agent fell into t
 *specifically*, rather than just fumbling. That's the difference between a benchmark and a
 diagnostic.
 
-**Ablations** switch each mechanism off in turn. If one doesn't pay for itself, it gets cut.
+### The results — including the one that inverted my own thesis
+
+360 runs, 8 configs, $1.31. On the **trap tasks**, the stack is unambiguous:
+
+| | pass rate | fell for the *documented* naive answer |
+|---|---|---|
+| **full agent** | **88%** | **8%** |
+| no guardrails | 46% | 38% |
+
+Nearly a **5× reduction in the wrong-attractor rate** — the notice–act gap, measured. And the
+guardrails buy **nothing** on clean data, which is exactly the shape a guardrail should have.
+
+**But then the single-mechanism ablations:**
+
+| remove | Δ pass rate |
+|---|---|
+| the Findings Ledger — *my centrepiece* | **0** |
+| the verifier | +2 |
+| the grounding gate | 0 |
+| the Question Contract | +2 |
+| **the deterministic data briefing** | **−27** |
+
+**Removing the briefing alone hurts as much as removing every guardrail combined.** Every gate I
+built costs nothing measurable when taken away.
+
+> ## A gate is only as good as the detector feeding it.
+>
+> The papers describe a **notice–act** gap and I read it as a failure to *act* — so I built
+> machinery to force action. The ablation says the leverage is on the **notice** side.
+>
+> Tell the agent what's in the data, deterministically, before it starts, and **it acts on it.**
+> It didn't need to be forced. It needed to be *informed*.
+
+That's the honest finding, caveats and all (n=3 per task — "no measurable benefit" is not "no
+benefit", and a gate that fires on 4% of runs is insurance, not throughput). It's written up in
+full in `notebooks/07_evaluation.ipynb`, and it's the only thing in this project I couldn't have
+got by thinking harder.
+
+**What I'd build next isn't another gate. It's more detectors.**
 
 ---
 
@@ -144,8 +186,13 @@ cp .env.example .env        # add a Nebius Token Factory key
 uv run jupyter lab notebooks/
 ```
 
-**No API key?** Every notebook replays from the committed response cache — set `LIVE = False` in
-`agentlib/llm.py` and the whole series runs offline, deterministically, for free.
+**No API key?** Every notebook replays from the committed response cache. Put this at the top and
+the whole series runs offline, deterministically, for free:
+
+```python
+from agentlib import set_live
+set_live(False)          # replay from cache; no key, no network, no cost
+```
 
 ```bash
 uv run python data/make_trial.py            # regenerate the data (re-verifies every trap)
@@ -160,7 +207,7 @@ uv run python -m evals.run_eval --ablate    # the full ablation study
 ```
 docs/DESIGN.md        the proposal — architecture, the papers, the evaluation
 docs/DECISIONS.md     every non-obvious choice, its alternatives, and what would change my mind
-agentlib/             the agent itself (~450 lines)
+agentlib/             the agent itself (~885 lines of code)
 notebooks/            the buildup — seven chapters
 data/make_trial.py    the synthetic dataset, and the assertions that keep its traps honest
 evals/                the benchmark, the grader, the ablation runner

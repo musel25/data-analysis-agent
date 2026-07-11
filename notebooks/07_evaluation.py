@@ -200,40 +200,80 @@ out = pd.DataFrame({
 print(out.to_string())
 
 # %% [markdown]
-# ## 4.1 🚨 Read this before you read that table.
+# # 🚨 4.1 The result I did not expect, and it changes the conclusion.
 #
-# **The stack works. I cannot tell you which part of it is doing the work.**
+# Read that table again, sorted by damage:
 #
-# Look at `full` vs `no_guardrails` — that's a real, large effect. Now look at `full` vs
-# `no_ledger`: **the same pass rate.** Removing my centrepiece cost nothing measurable.
+# | remove this | pass rate | Δ |
+# |---|---|---|
+# | *(nothing — the full agent)* | **87%** | — |
+# | the Findings Ledger — **my centrepiece** | 87% | **0** |
+# | the verifier | 89% | **+2** |
+# | the grounding gate | 87% | **0** |
+# | the Question Contract | 89% | **+2** |
+# | observation truncation | 87% | **0** |
+# | **the data briefing** | **60%** | **−27** |
+# | *every guardrail at once* | 62% | −24 |
 #
-# And on the individual trap tasks, the single-mechanism ablations flip in **both directions**
-# (the ledger appears to help on `t4_simpson` and *hurt* on `t3_batch_units`). Both movements are
-# n=3. **That is noise, and I am not going to dress it up as signal.**
+# ## Removing the briefing alone hurts as much as removing **everything.**
 #
-# > ### The honest statement of what this benchmark can and cannot resolve
+# And every single gate I built — the ledger, the verifier, the grounding check, the contract —
+# costs **nothing measurable** when you take it away.
+#
+# I spent this entire series building **gates**. The thing that was actually carrying the agent is
+# the twenty lines of pandas that **look at the data before the model ever sees it.**
+
+# %% [markdown]
+# ## What this actually means (and why it isn't a disaster)
+#
+# Go back to the papers. GeneBench-Pro says models *"notice the diagnostic clue but treat it as a
+# local data cleaning issue rather than as evidence that should change the downstream method."*
+# I read that as: **the failure is on the ACT side.** So I built elaborate machinery to force action
+# — obligations, gates, blocked exits.
+#
+# My ablation says the leverage is on the **NOTICE** side.
+#
+# When the agent is simply *told* what's in the data — "`biomarker_baseline` has 88 values of
+# exactly −999"; "`patient_id` has 48 duplicates"; and here is the data dictionary — **it acts on
+# it.** It doesn't need to be forced. It needed to be *informed*.
+#
+# > ### 🎯 A gate is only as good as the detector feeding it.
 # >
-# > ✅ **It can show that the guardrails collectively matter**, and by a lot — the effect is far
-# > larger than the noise.
-# >
-# > ❌ **It cannot attribute credit to individual mechanisms.** At 3 runs × 15 tasks, one task
-# > flipping is a 7-point swing overall and a 33-point swing within a task. The per-mechanism
-# > deltas are inside that.
+# > The gates were never wrong. They were **redundant**, because the detector in front of them was
+# > already doing the job. Take the detector away and the gates have nothing to gate — which is
+# > exactly why `no_briefing` collapses to the same score as `no_guardrails`.
 #
-# My design doc promised: *"if an ablation shows a mechanism does not pay for itself, it gets cut.
-# That is the deal."* So let me keep the deal honestly: **the ablation does not show the Findings
-# Ledger paying for itself in pass rate**, and I'm not going to pretend otherwise because it's the
-# part I'm proudest of.
+# This also explains the ambiguity task cleanly (0/3, see §4.4): I have **no detector for
+# ambiguity**. So there is nothing to feed the gate, and the gate does nothing. Same mechanism,
+# same failure, and now I can point at the number.
+
+# %% [markdown]
+# ## The honest caveats on this finding
 #
-# What I'd need to settle it: **10 runs per task** (GeneBench-Pro's number) and roughly triple the
-# tasks — bootstrap CIs, not point estimates. That's the next thing I'd spend money on, and it's
-# a much better use of it than another guardrail.
+# **1. n is small.** 3 runs × 15 tasks. A single task flipping is a 7-point swing. The `−27` for
+# the briefing is far outside that; the `0`s for the individual gates are *not* — a real effect of
+# 3–5 points would be invisible here. **"No measurable benefit" is not "no benefit."** To settle it
+# I'd need GeneBench-Pro's protocol: 10 runs per task, triple the tasks, bootstrap CIs.
 #
-# It's also worth noticing *why* the ledger might be redundant here: the deterministic briefing
-# already **prints** the sentinels and duplicates it detects. The ledger's claim is that turning
-# that information into an *obligation* beats leaving it as a *note*. Against a stack that already
-# has the note, the verifier, and the prompt rules, that marginal claim is small — and small is
-# exactly what I can't measure.
+# **2. The gates may be insurance, not throughput.** A grounding check that fires on 4% of runs
+# won't show up in a 45-run pass rate — but the failure it prevents (a fabricated number in a drug
+# filing) isn't one you price by its frequency. The right test is an adversarial one, not an
+# average one.
+#
+# **3. The gates and the detector overlap by construction.** `no_briefing` also removes the
+# pre-seeded findings, because seeding *is* detection. So the two aren't cleanly separable in this
+# design — which is itself the point.
+#
+# But I promised in `docs/DESIGN.md`: *"if an ablation shows a mechanism does not pay for itself, it
+# gets cut. That is the deal."*
+#
+# **So here is the deal, kept:** on this benchmark, at this sample size, **the Findings Ledger, the
+# verifier, the grounding gate and the Question Contract do not demonstrably pay for themselves.**
+# The deterministic briefing does, enormously. If I had to ship one mechanism, I would ship the one
+# I spent the least time on.
+#
+# That sentence cost me the prettiest story in this project. It is also the only thing here I
+# learned that I couldn't have got by thinking harder.
 
 # %% [markdown]
 # ## 4.2 The metric I care about most: **the wrong-attractor rate**
@@ -463,17 +503,57 @@ print("\nThat number is the argument. The difficulty was never in the code.")
 
 # %% [markdown]
 # ---
-# ## The claim, restated
+# # The claim, restated — and corrected
+#
+# I started with this:
 #
 # > A data-analysis agent is a **while loop that writes code, runs it, and reads the results.**
 # > Everything else is a guardrail earned from a failure you watched happen.
 #
-# Both papers say frontier models fail these tasks not from lack of skill but from **dropping the
-# thread**: 54% of DrugDiscoveryBench's failures are *domain reasoning*; GeneBench-Pro's models
-# *"notice the diagnostic clue but treat it as a local data cleaning issue rather than as evidence
-# that should change the downstream statistical method."*
+# I still believe that. But I set out to prove that the guardrails doing the work were the elaborate
+# ones — the obligations, the gates, the blocked exits — and **the evaluation said otherwise.**
 #
-# So I didn't build a smarter agent. I built one that **cannot drop the thread quietly** — and
-# then I tried to prove that the mechanisms doing the work were the ones I thought were doing it.
+# ### What the numbers actually say
 #
-# The numbers above are the result. They're small, they're mine, and they're falsifiable.
+# | | |
+# |---|---|
+# | The stack works | On traps: **88% vs 46%**, and it falls for the documented naive answer **5× less often** |
+# | The guardrails are well-shaped | They buy **nothing** on clean data and everything on the traps |
+# | **But the load-bearing piece is the detector** | Remove the briefing: **−27 points.** Remove any single gate: **≈0.** |
+#
+# ### The corrected thesis
+#
+# > The papers describe a **notice–act gap**, and I read it as a failure to *act*.
+# > My ablation says the leverage is on the **notice** side.
+# >
+# > Tell the agent what's in the data — deterministically, before it starts — and it will act on it.
+# > **It did not need to be forced. It needed to be informed.**
+# >
+# > **A gate is only as good as the detector feeding it.**
+#
+# ### So what would I actually build next?
+#
+# Not another gate. **More detectors.** Every one of my remaining failures is a missing detector:
+#
+# - `trap:units` (33%) → flag any column whose distribution is **multi-modal by batch**
+# - `ambiguous` (0%) → check whether the question pins down a **population**, a **direction**, and
+#   a **unit**. Three cheap `if`s.
+#
+# And then re-run the ablation with 10 runs per task, because at n=3 I can see a 27-point effect
+# and I am blind to a 5-point one.
+#
+# ---
+#
+# ## The thing I'd want a reader to take away
+#
+# Every mechanism that survived contact with the evaluation was one the **evaluation told me to
+# build** — the pre-seeded findings, the premise check, the forced ambiguity judgement, the cache
+# nonce, three rewritten benchmark tasks. And the mechanism I was proudest of turned out to be the
+# one I can't prove earns its keep.
+#
+# **Build the eval harness first.** Not because it's rigorous — because it is *also the thing that
+# tells you what to build next*, and it is the only part of this project that could tell me I was
+# wrong.
+#
+# The numbers above are small, they're mine, and they're falsifiable. That last property is the one
+# that matters.

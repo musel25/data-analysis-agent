@@ -341,6 +341,25 @@ launders a single lucky trajectory into an apparent consistency result.
 The `$0.0000` in the cost column is what gave it away — which is a small argument for building the
 cost meter in chapter 1 and printing it everywhere.
 
+### D25 — `set_live()` instead of assigning to the flag
+**Another bug found by testing a claim instead of assuming it.** The README promised *"runs offline
+with no key — set `LIVE = False`."* I went to verify that sentence before shipping it, and it was
+false.
+
+`agentlib/__init__.py` exported the *function* `llm`, which **shadows the *submodule*
+`agentlib.llm`** on the package object. So `import agentlib.llm as L; L.LIVE = False` binds an
+attribute on a *function* and silently does nothing. The flag never moves. You discover this when
+the call you believed was cached bills you.
+
+Also, adding the cache nonce (D24) silently changed the key scheme, orphaning every response cached
+before it — so notebooks 01–04 could no longer replay at all until they were re-executed.
+
+**Chose:** stop exporting the bare name `llm` from the package, and expose an explicit
+`set_live(bool)`.
+**The lesson worth keeping:** a footgun that fails *silently* is worse than one that crashes. Both
+of these bugs were invisible from reading the code and obvious the moment I ran the exact thing the
+README told a stranger to run.
+
 ### D16 — Log every step as JSONL; run each task 5×
 **Why:** Agent evals are noisy — GBP runs 10 attempts and bootstraps CIs; DDB runs 3 trials. A single
 run is an anecdote. 5× is the honest floor at this scale, and pass@5 vs 5-of-5 tells you *which* tasks

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be5ecc68b6a5f77f",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute response rates stratified by sex\\ndef compute_stratified_effect(df, response_col='responded', arm_col='arm', sex_col='sex'):\\n    # Group by sex and arm\\n    grouped = df.groupby([sex_col, arm_col])[response_col].agg(['mean', 'count']).reset_index()\\n    \\n    # Pivot to get a table of sex vs arm: response rate\\n    pivot = grouped.pivot(index=sex_col, columns=arm_col, values='mean')\\n    \\n    # Compute difference in proportions within each sex\\n    pivot['diff'] = pivot['treatment'] - pivot['control']\\n    \\n    # Compute weighted average difference (using control group size as weight)\\n    # But since we are comparing treatment vs control, better to use inverse of total within sex\\n    # Use overall sample size within each sex to weight\\n    total_in_sex = df.groupby(sex_col).size()\\n    total_in_sex = total_in_sex.reindex(['F', 'M']).fillna(0)\\n    \\n    # Weighted average of differences by sex, weighted by the size of the group\\n    # But since we want overall treatment effect, adjust for imbalance\\n    # Use the difference in each sex and average with weights\\n    # Weight by the number of patients in each sex in the control group (common choice for standardization)\\n    \\n    # Alternatively, use the difference in each sex, and average them with weights proportional to control group size in each sex\\n    weights = total_in_sex / total_in_sex.sum()\\n    weighted_diff = (pivot['diff'] * weights).sum()\\n    \\n    return pivot, weighted_diff\\n\\n# Run stratified analysis\\nstratified_table, stratified_effect = compute_stratified_effect(data)\\n\\nstratified_table, stratified_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4061,
+  "completion_tokens": 419
+ }
+}

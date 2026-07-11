@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b2db857cb4e9ace8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Stratify by severity and compute response rates within each stratum\\ndef compute_stratified_effect(df):\\n    # Compute response rate within each severity group and arm\\n    strata = df.groupby(['severity', 'arm'])['responded'].agg(['mean', 'count']).reset_index()\\n    \\n    # Pivot to get response rates by severity and arm\\n    strata_pivot = strata.pivot(index='severity', columns='arm', values='mean')\\n    \\n    # Compute difference in proportions within each stratum\\n    strata_pivot['diff'] = strata_pivot['treatment'] - strata_pivot['control']\\n    \\n    # Compute weighted average difference (using control group counts per stratum as weights)\\n    control_counts = df[df['arm'] == 'control'].groupby('severity').size()\\n    total_control = control_counts.sum()\\n    weights = control_counts / total_control\\n    \\n    weighted_diff = (strata_pivot['diff'] * weights).sum()\\n    \\n    return strata_pivot, weighted_diff\\n\\n# Run stratified analysis\\nstrata_table, adjusted_effect = compute_stratified_effect(df)\\n\\n# Print results\\nstrata_table, adjusted_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6248,
+  "completion_tokens": 293
+ }
+}

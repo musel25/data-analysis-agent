@@ -13,7 +13,7 @@ The notebooks build every piece of this, in order, and make it fail before fixin
 from .agent import Config, Run, run_agent
 from .executor import PyExecutor
 from .ledger import Finding, FindingsLedger, QuestionContract
-from .llm import LIVE, METER, llm
+from .llm import METER, set_live
 from .report import AnalysisReport, grounded
 from .trace import replay
 
@@ -22,6 +22,6 @@ __all__ = [
     "PyExecutor",
     "QuestionContract", "FindingsLedger", "Finding",
     "AnalysisReport", "grounded",
-    "llm", "METER", "LIVE",
+    "METER", "set_live",
     "replay",
 ]

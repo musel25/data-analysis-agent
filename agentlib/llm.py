@@ -71,6 +71,22 @@ METER = Meter()
 LIVE = True
 
 
+def set_live(live: bool) -> None:
+    """Toggle live API calls. Use this rather than assigning to the flag from outside.
+
+    Why a function and not just `agentlib.llm.LIVE = False`: `agentlib/__init__.py` exports the
+    *function* `llm`, which shadows the *submodule* `agentlib.llm` on the package. So
+    `import agentlib.llm as L; L.LIVE = False` binds an attribute on the function object and
+    silently does nothing — the flag never moves, and you find out when the API call you thought
+    was cached bills you.
+
+    I only found this because I tested the "runs offline with no key" claim in the README instead
+    of assuming it. A footgun that fails silently is worse than one that crashes.
+    """
+    global LIVE
+    LIVE = live
+
+
 def _key(model, messages, tools, temperature, nonce) -> str:
     blob = json.dumps(
         {"model": model, "messages": messages, "tools": tools, "temperature": temperature,

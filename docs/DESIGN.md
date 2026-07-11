@@ -553,32 +553,69 @@ The *shape* matters as much as the size: on **clean** data (lookup, aggregation,
 correlation) both configs score 100%. The guardrails buy nothing where there is nothing to catch,
 which is exactly what a guardrail should do.
 
-#### What the evidence does **not** support
+#### 🚨 And now the result I did not expect
 
-**Removing the Findings Ledger — the centrepiece of this design — cost no measurable pass rate**
-(87% vs 87% overall; 88% vs 88% on traps). The wrong-attractor rate moved the right way (8% → 12%)
-but that is 2 runs versus 3, at n=24.
+Every config, sorted by how much removing it hurts (15 tasks × 3 runs each, 360 runs, $1.31):
 
-And on individual tasks the single-mechanism deltas flip in *both* directions — the ledger appears
-to help on the Simpson's task and to *hurt* on the units task. Both are n=3. **That is noise, and I
-am not going to launder it into signal.**
+| remove this | pass rate | Δ vs full | fell for the naive answer |
+|---|---|---|---|
+| *(nothing — the full agent)* | **87%** | — | 4% |
+| **the Findings Ledger** — the centrepiece of this design | 87% | **0** | 7% |
+| the fresh-context verifier | 89% | **+2** | 2% |
+| the grounding gate | 87% | **0** | 4% |
+| the Question Contract | 89% | **+2** | 4% |
+| observation truncation | 87% | **0** | 4% |
+| **the deterministic data briefing** | **60%** | **−27** | **22%** |
+| *every guardrail at once* | 62% | −24 | 20% |
 
-> **The honest statement of what this benchmark can resolve:**
+**Removing the briefing alone is as damaging as removing every guardrail combined.** And **every
+single gate I built costs nothing measurable when taken away.**
+
+I spent this design on **gates**. The thing carrying the agent is the ~20 lines of pandas that look
+at the data before the model ever sees it.
+
+#### What it means
+
+Go back to the papers. GeneBench-Pro says models *"notice the diagnostic clue but treat it as a
+local data cleaning issue rather than as evidence that should change the downstream method."* I read
+that as a failure to **act** — so I built machinery to force action.
+
+The ablation says the leverage is on the **notice** side.
+
+When the agent is simply *told* what is in the data — *"`biomarker_baseline` has 88 values of
+exactly −999"*, *"`patient_id` has 48 duplicates"*, plus the data dictionary — **it acts on it.** It
+did not need to be forced. It needed to be **informed**.
+
+> ## A gate is only as good as the detector feeding it.
 >
-> ✅ It can show the guardrails **collectively** matter, and by a lot.
-> ❌ It **cannot** attribute credit to individual mechanisms. At 3 runs × 15 tasks, one task
-> flipping is a 7-point overall swing and a 33-point within-task swing. Every per-mechanism delta
-> sits inside that.
+> The gates were not wrong. They were **redundant** — the detector in front of them was already
+> doing the job. Remove the detector and the gates have nothing to gate, which is precisely why
+> `no_briefing` collapses to the same score as `no_guardrails`.
 
-To settle it I would need GeneBench-Pro's protocol: **10 runs per task**, roughly triple the tasks,
-and bootstrap CIs instead of point estimates. That — not another guardrail — is the next thing I
-would spend money on.
+This also explains the ambiguity failure (§4.5) exactly: there is **no detector for ambiguity**, so
+there is nothing to feed the gate, so the gate does nothing.
 
-It is also worth being clear about *why* the ledger might genuinely be redundant here: the
-deterministic briefing already **prints** the sentinels and duplicates it detects. The ledger's
-claim is that turning that information into an *obligation* beats leaving it as a *note*. Against a
-stack that already contains the note, the verifier, and the prompt rules, that marginal claim is
-small — and small is precisely what this benchmark cannot see.
+#### The honest caveats on that finding
+
+1. **n is small.** 3 runs × 15 tasks; one task flipping is a 7-point swing. The `−27` for the
+   briefing is far outside the noise. The `0`s for the individual gates are **not** — a real effect
+   of 3–5 points would be invisible here. **"No measurable benefit" is not "no benefit."**
+2. **The gates may be insurance rather than throughput.** A grounding check that fires on 4% of runs
+   cannot move a 45-run pass rate — but the failure it prevents (a fabricated number in a filing) is
+   not one you price by frequency. The right test for a gate is adversarial, not average.
+3. **Detector and gate overlap by construction.** `no_briefing` also removes the pre-seeded
+   findings, because seeding *is* detection. They are not cleanly separable in this design — which
+   is itself the point.
+
+But the deal in this document was: *if an ablation shows a mechanism does not pay for itself, it
+gets cut.* So, kept honestly: **on this benchmark, at this sample size, the Findings Ledger, the
+verifier, the grounding gate and the Question Contract do not demonstrably pay for themselves. The
+deterministic briefing does, enormously.**
+
+If I could ship one mechanism, it would be the one I spent the least time on.
+
+To resolve the rest I would need GeneBench-Pro's protocol: **10 runs per task**, roughly triple the
+tasks, bootstrap CIs. That — not another guardrail — is the next thing I would spend money on.
 
 ### 4.5 The two failures I did not fix — and the boundary they reveal
 
