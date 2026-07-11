@@ -152,6 +152,7 @@ class Config:
     use_state_banner: bool = True
     model: str | None = None
     verbose: bool = True
+    sink: object = None      # optional callable(str) — where trajectory lines go (Streamlit, a log)
     temperature: float = 0.0
     attempt: int = 0        # nonce: makes repeat runs INDEPENDENT samples, not cache hits
 
@@ -215,8 +216,13 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
     tools = [t for t in TOOLS if _enabled(t["function"]["name"], cfg)]
 
     def say(*a):
-        if cfg.verbose:
-            print(*a)
+        # The trajectory is narration, not debug output. Send it wherever the caller wants it:
+        # stdout in a notebook, a Streamlit placeholder in the dashboard, a log in production.
+        line = " ".join(str(x) for x in a)
+        if cfg.sink is not None:
+            cfg.sink(line)
+        elif cfg.verbose:
+            print(line)
 
     say(f"\n{'─'*78}\nQUESTION: {question}\n{'─'*78}")
 
