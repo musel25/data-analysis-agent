@@ -17,36 +17,103 @@
 #
 # We are going to build a data-analysis agent from nothing. No LangChain, no framework, no magic.
 # By notebook 07 it will explore messy clinical data, catch its own mistakes, and hand back a
-# structured, audited answer — and the whole thing will be about 200 lines of Python that you
-# watched get written.
+# structured, audited answer — and every line of it will be Python you watched get written.
 #
 # This chapter has exactly one job: **show you what the raw material actually is.**
 #
 # Everything else in this series is a response to a problem you are about to watch happen.
 
+# %% [markdown]
+# ## 0. A promise, and how to check I'm keeping it
+#
+# I said **no frameworks**. So before anything else, here is the *entire* dependency list for the
+# agent:
+#
+# | | what it does | what it does **not** do |
+# |---|---|---|
+# | `openai` | makes an HTTPS POST and parses the JSON back | any agent logic |
+# | `pandas` | dataframes | any agent logic |
+# | `pydantic` | validates a dict against a schema | any agent logic |
+#
+# That's it. No LangChain, no LlamaIndex, no agent library.
+#
+# You'll also see me import from **`agentlib/`** — that is **not a framework, it's *our* code.**
+# It's the thing we are building. Every line of it gets written in front of you across these seven
+# notebooks; by notebook 07 you'll have seen all of it. It's the *destination*, not a dependency.
+#
+# But I'm not going to start by handing you a helper and saying "trust me." So let's begin with the
+# rawest possible thing.
+
+# %% [markdown]
+# ## 1. The raw API call. No wrapper, no helper, nothing.
+#
+# This is the actual HTTP request to Nebius Token Factory, in full. Nothing is hidden.
+
 # %%
-import sys, os
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv("../.env")
+
+client = OpenAI(
+    base_url="https://api.tokenfactory.nebius.com/v1/",   # ← Nebius, not OpenAI
+    api_key=os.environ["NEBIUS_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="Qwen/Qwen3-30B-A3B-Instruct-2507",
+    messages=[{"role": "user", "content": "In one sentence: what is a p-value?"}],
+)
+
+print(response.choices[0].message.content)
+
+# %% [markdown]
+# **That is the whole thing.** `base_url` + `api_key` was the entire integration with Nebius — the
+# `openai` package is just an HTTP client, and Token Factory speaks the same protocol.
+#
+# Everything else in these seven notebooks is built on top of *that call*. There is no other magic
+# ingredient. If you understand this cell, you understand the foundation of every agent you have
+# ever used.
+
+# %% [markdown]
+# ## 1b. Now we wrap it — and here is exactly what the wrapper adds
+#
+# Calling `client.chat.completions.create(...)` by hand every time is tedious, so we write one
+# helper. **It adds three things and nothing else:**
+#
+# | | why |
+# |---|---|
+# | **retry** | networks fail. Exponential backoff. |
+# | **a cost meter** | an agent makes *many* calls. If you can't say what a run cost, you can't make engineering decisions about it. |
+# | **a disk cache** | same request → same answer, instantly, free, offline. This is why these notebooks run **without an API key** (`set_live(False)`), and — as we'll see in notebook 07 — it's how you write deterministic tests for a non-deterministic system. |
+#
+# That's `agentlib/llm.py`. **~118 lines. Go read it — it's shorter than this markdown cell.**
+# It does *not* do anything clever, and I'd rather you verified that than believed me.
+
+# %%
+import sys
 sys.path.insert(0, os.path.abspath(".."))
 
-from agentlib.llm import llm, METER
+from agentlib.llm import llm, METER      # our own code. ~118 lines. no magic.
 from agentlib import config
 
 print("model :", config.AGENT_MODEL)
 print("host  :", config.BASE_URL)
 
+# same call as above, now through our helper
+msg = llm([{"role": "user", "content": "In one sentence: what is a p-value?"}])
+print("\n", msg.content)
+
 # %% [markdown]
-# ## 1. An LLM call is a function. That's all it is.
+# ## 2. An LLM call is a function. That's all it is.
 #
 # You send a list of messages. You get a message back. There is no memory, no state, no session.
 #
 # It's `f(messages) -> message`. Nothing more.
 
-# %%
-msg = llm([{"role": "user", "content": "In one sentence: what is a p-value?"}])
-print(msg.content)
-
 # %% [markdown]
-# ## 2. The "conversation" is something *you* maintain
+# ## 3. The "conversation" is something *you* maintain
 #
 # The model does not remember the last message. It cannot. Each call is fresh — the model sees
 # the entire list of messages, from scratch, every single time.
@@ -83,7 +150,7 @@ print("WITH history:\n", withctx.content[:300])
 
 # %% [markdown]
 # ---
-# ## 3. Now the problem. Ask it to do our actual job.
+# ## 4. Now the problem. Ask it to do our actual job.
 #
 # We have a real CSV on disk: 344 penguins. Let's ask about it.
 
@@ -157,7 +224,7 @@ print("THE TRUTH  :", round(trial["biomarker_baseline"].mean(), 2))
 # That's a landmine we'll step on properly in notebook 04.)*
 
 # %% [markdown]
-# ## 4. "Fine — I'll paste the data in."
+# ## 5. "Fine — I'll paste the data in."
 #
 # The obvious fix. Give it the rows and let it compute. Let's paste in 40 of them and ask for
 # something a little harder than a mean.
@@ -184,7 +251,7 @@ print("THE TRUTH  :", round(truth, 2))
 
 # %% [markdown]
 # ---
-# ## 5. The insight that shapes everything after this
+# ## 6. The insight that shapes everything after this
 #
 # The model is a **bad calculator**.
 #
@@ -210,7 +277,7 @@ print(code.content)
 
 # %% [markdown]
 # ---
-# ## 6. Housekeeping: the two things every call needs
+# ## 7. What the wrapper was quietly doing for us
 #
 # Before we go further, two small pieces of infrastructure that will run through every notebook.
 # They're already inside `llm()` — worth knowing they're there.
