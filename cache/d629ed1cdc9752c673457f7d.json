@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9cf0928ea7616413",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('/home/musel/Github/research_agent/data/trial.csv')\\n\\n# Step 1: Remove rows with biomarker_baseline = -999\\nfiltered_df = df[df['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping the row with highest sample_seq\\nfiltered_df = filtered_df.loc[filtered_df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Correct assay_batch 'B' values: divide by 10 (because \u00b5g/L \u2192 ng/mL)\\nfiltered_df.loc[filtered_df['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 4: Stratify by severity and compute response rates within each severity level\\n# We will compute the treatment effect within each severity stratum\\nstratified_rates = filtered_df.groupby(['arm', 'severity'])['responded'].mean().unstack(level='arm')\\n\\n# Compute difference in proportions within each severity stratum\\nstratified_diff = stratified_rates['treatment'] - stratified_rates['control']\\n\\n# Print the stratum-specific effects\\nprint('Stratum-specific treatment effects (treatment - control):')\\nprint(stratified_diff)\\n\\n# Now, compute an adjusted treatment effect using stratified average\\n# Weight each stratum by the number of patients in that stratum in the treatment arm\\n# Or use the overall population-weighted average\\n\\n# Total number of patients in each severity stratum\\nn_by_severity = filtered_df['severity'].value_counts().sort_index()\\n\\n# Compute weighted average of differences, using the control arm as reference for weights\\n# But better: use the total population size per severity to weight\\n# We can compute a marginal effect via standardisation\\n\\n# Overall response rate by arm (unadjusted)\\ntreatment_rate = filtered_df[filtered_df['arm'] == 'treatment']['responded'].mean()\\ncontrol_rate = filtered_df[filtered_df['arm'] == 'control']['responded'].mean()\\nunadjusted_diff = treatment_rate - control_rate\\n\\n# Now, standardise: compute expected response rate in treatment arm if it had the same severity distribution as control\\n# Or use the population-weighted average of stratum-specific risks\\n\\n# Use the control arm's severity distribution as the target\\ncontrol_severity_dist = filtered_df[filtered_df['arm'] == 'control']['severity'].value_counts(normalize=True)\\n\\n# Expected response in treatment arm under control arm's severity distribution\\nexpected_treatment = (stratified_rates['treatment'] * control_severity_dist).sum()\\n\\n# Expected response in control arm under control arm's severity distribution\\nexpected_control = (stratified_rates['control'] * control_severity_dist).sum()\\n\\n# Adjusted treatment effect\\nadjusted_diff = expected_treatment - expected_control\\n\\nprint(f'\\\\nUnadjusted treatment effect (treatment - control): {unadjusted_diff:.4f}')\\nprint(f'Adjusted treatment effect (standardised to control severity distribution): {adjusted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5078,
+  "completion_tokens": 703
+ }
+}

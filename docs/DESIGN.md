@@ -529,21 +529,85 @@ Per task, **5 runs** (both papers use 3–10; agent evals are noisy and a single
 - **process metrics** — steps, execution errors, errors *recovered from*, tokens, dollars.
 - **consistency** — pass@5 vs 5-of-5. Which tasks are flaky, and are they the ones you'd expect?
 
-### 4.4 The ablations — the actual argument
+### 4.4 The ablations — the actual argument, and what they actually showed
 
-This is how each design decision stops being an opinion:
+Each config switches off exactly one mechanism. The deal I made with myself: **if an ablation shows
+a mechanism does not pay for itself, it gets cut.**
 
-| Ablation | Prediction |
-|---|---|
-| **Findings Ledger off** | Wrong-attractor rate rises sharply on the trap tasks. *This is a miniature replication of GeneBench-Pro's central finding, on my own agent.* |
-| **Grounding gate off** | Ungrounded numbers appear in answers; derivation slips survive to the report |
-| **Question Contract off** | The constrained-scope task and the Simpson's task degrade |
-| **Observation truncation off** | Token cost explodes; accuracy drops (long-context degradation) |
-| **Verifier off** | Fewer caught slips; cheaper |
-| **No-execution baseline** (one LLM call, given only `df.head()` and the question) | Near-total failure on the trap tasks — this is the "does the loop earn its cost" control |
+Here is what happened when I kept that deal.
 
-If an ablation shows a mechanism does not pay for itself, it gets cut from the design. That is the
-deal, and I would rather report that honestly than ship a guardrail that does nothing.
+#### What the evidence supports
+
+On the **trap tasks** — the ones with a planted decision point — the guardrails as a stack are
+unambiguous:
+
+| | pass rate | fell for the *documented* naive answer |
+|---|---|---|
+| **full agent** | **88%** | **8%** |
+| **no guardrails** | **46%** | **38%** |
+
+Nearly a **5× reduction in the wrong-attractor rate.** That is the notice–act gap, measured on my
+own agent, and it is far larger than the noise.
+
+The *shape* matters as much as the size: on **clean** data (lookup, aggregation, groupby,
+correlation) both configs score 100%. The guardrails buy nothing where there is nothing to catch,
+which is exactly what a guardrail should do.
+
+#### What the evidence does **not** support
+
+**Removing the Findings Ledger — the centrepiece of this design — cost no measurable pass rate**
+(87% vs 87% overall; 88% vs 88% on traps). The wrong-attractor rate moved the right way (8% → 12%)
+but that is 2 runs versus 3, at n=24.
+
+And on individual tasks the single-mechanism deltas flip in *both* directions — the ledger appears
+to help on the Simpson's task and to *hurt* on the units task. Both are n=3. **That is noise, and I
+am not going to launder it into signal.**
+
+> **The honest statement of what this benchmark can resolve:**
+>
+> ✅ It can show the guardrails **collectively** matter, and by a lot.
+> ❌ It **cannot** attribute credit to individual mechanisms. At 3 runs × 15 tasks, one task
+> flipping is a 7-point overall swing and a 33-point within-task swing. Every per-mechanism delta
+> sits inside that.
+
+To settle it I would need GeneBench-Pro's protocol: **10 runs per task**, roughly triple the tasks,
+and bootstrap CIs instead of point estimates. That — not another guardrail — is the next thing I
+would spend money on.
+
+It is also worth being clear about *why* the ledger might genuinely be redundant here: the
+deterministic briefing already **prints** the sentinels and duplicates it detects. The ledger's
+claim is that turning that information into an *obligation* beats leaving it as a *note*. Against a
+stack that already contains the note, the verifier, and the prompt rules, that marginal claim is
+small — and small is precisely what this benchmark cannot see.
+
+### 4.5 The two failures I did not fix — and the boundary they reveal
+
+**`trap:units`** (batch B reports in µg/L, 10× too large) sits at **33% even at full strength**. The
+fix is spelled out in `data_dictionary.md`, which is *in the context*. The agent still pools the
+batches.
+
+**`ambiguous`** ("Did the biomarker improve?") is at **0/3**, and this one is more interesting,
+because I built a mechanism specifically for it: a **required** `question_is_precise` boolean, so
+the agent cannot skip the judgement. It now fills the field in — and answers **`True`**. It sincerely
+believes the question is precise.
+
+The mechanism worked. The judgement was wrong. And that gives the sharpest result in the project:
+
+> ## A gate is only as good as the detector feeding it.
+>
+> The Findings Ledger works spectacularly on duplicates (**100% vs 17%**) because a twenty-line
+> script *detects* duplicates and hands the agent an obligation it cannot walk past.
+>
+> The same gate does nothing for ambiguity — because **there is no detector for ambiguity.** Nothing
+> supplies the observation, so the gate has nothing to gate.
+>
+> These are one limitation wearing two hats. A structural gate can force an observation to **reach**
+> a decision. It cannot **create an observation that was never made.**
+
+That is the honest boundary of this whole approach, and it says exactly what to build next: not a
+better gate — **a better detector.** (Units: flag any column whose distribution is multi-modal *by
+batch*. Ambiguity: check whether the question pins down a population, a direction, and a unit —
+three cheap `if`s.)
 
 ### 4.5 Known limits of this evaluation
 

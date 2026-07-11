@@ -200,7 +200,43 @@ out = pd.DataFrame({
 print(out.to_string())
 
 # %% [markdown]
-# ## 4.1 The metric I care about most: **the wrong-attractor rate**
+# ## 4.1 🚨 Read this before you read that table.
+#
+# **The stack works. I cannot tell you which part of it is doing the work.**
+#
+# Look at `full` vs `no_guardrails` — that's a real, large effect. Now look at `full` vs
+# `no_ledger`: **the same pass rate.** Removing my centrepiece cost nothing measurable.
+#
+# And on the individual trap tasks, the single-mechanism ablations flip in **both directions**
+# (the ledger appears to help on `t4_simpson` and *hurt* on `t3_batch_units`). Both movements are
+# n=3. **That is noise, and I am not going to dress it up as signal.**
+#
+# > ### The honest statement of what this benchmark can and cannot resolve
+# >
+# > ✅ **It can show that the guardrails collectively matter**, and by a lot — the effect is far
+# > larger than the noise.
+# >
+# > ❌ **It cannot attribute credit to individual mechanisms.** At 3 runs × 15 tasks, one task
+# > flipping is a 7-point swing overall and a 33-point swing within a task. The per-mechanism
+# > deltas are inside that.
+#
+# My design doc promised: *"if an ablation shows a mechanism does not pay for itself, it gets cut.
+# That is the deal."* So let me keep the deal honestly: **the ablation does not show the Findings
+# Ledger paying for itself in pass rate**, and I'm not going to pretend otherwise because it's the
+# part I'm proudest of.
+#
+# What I'd need to settle it: **10 runs per task** (GeneBench-Pro's number) and roughly triple the
+# tasks — bootstrap CIs, not point estimates. That's the next thing I'd spend money on, and it's
+# a much better use of it than another guardrail.
+#
+# It's also worth noticing *why* the ledger might be redundant here: the deterministic briefing
+# already **prints** the sentinels and duplicates it detects. The ledger's claim is that turning
+# that information into an *obligation* beats leaving it as a *note*. Against a stack that already
+# has the note, the verifier, and the prompt rules, that marginal claim is small — and small is
+# exactly what I can't measure.
+
+# %% [markdown]
+# ## 4.2 The metric I care about most: **the wrong-attractor rate**
 #
 # Because every trap task documents its *plausible-but-wrong* answer, a failure isn't just
 # "wrong" — I can tell you **which wrong**.
@@ -209,8 +245,12 @@ print(out.to_string())
 #   the shortcut the papers say models take.
 # - Landing somewhere else ⇒ it just made a mistake.
 #
-# Those are completely different diseases and they need completely different medicine. No standard
-# harness reports this. It costs ten lines.
+# Those are different diseases needing different medicine. No standard harness reports this, and it
+# costs ten lines.
+#
+# **On the trap tasks this is where the effect is unmistakable:** the full agent falls for the
+# documented naive answer in **8%** of runs. Strip the guardrails and it's **38%** — nearly five
+# times as often. That is the notice–act gap, measured.
 
 # %%
 traps = df[df.category.str.startswith("trap")]
@@ -239,6 +279,83 @@ plt.show()
 print(trap_abl.assign(
     pass_rate=lambda d: d.pass_rate.map("{:.0%}".format),
     fell_for_naive=lambda d: d.fell_for_naive.map("{:.0%}".format)).to_string())
+
+# %% [markdown]
+# ---
+# # 4.3 By category — the plot that tells the real story
+
+# %%
+cats = (df[df.config.isin(["full", "no_guardrails"])]
+        .pivot_table(index="category", columns="config", values="passed", aggfunc="mean")
+        .reindex(columns=["no_guardrails", "full"]))
+print(cats.round(2).to_string())
+
+fig, ax = plt.subplots(figsize=(11, 4.6))
+y = np.arange(len(cats))
+ax.barh(y - 0.2, cats["no_guardrails"] * 100, 0.4, label="no guardrails", color="#e63946")
+ax.barh(y + 0.2, cats["full"] * 100, 0.4, label="full agent", color="#2a9d8f")
+ax.set_yticks(y); ax.set_yticklabels(cats.index)
+ax.set_xlabel("% of runs passed"); ax.set_xlim(0, 105)
+ax.axhline(3.5, color="#adb5bd", ls="--", lw=1)
+ax.text(101, 1.5, "clean data", rotation=90, va="center", fontsize=9, color="#6c757d")
+ax.text(101, 6.5, "traps", rotation=90, va="center", fontsize=9, color="#6c757d")
+ax.legend(loc="lower right"); ax.invert_yaxis()
+ax.spines[["top", "right"]].set_visible(False)
+ax.set_title("The guardrails do nothing on clean data — and everything on the traps",
+             fontweight="bold")
+plt.tight_layout(); plt.show()
+
+# %% [markdown]
+# > ### 💡 Look at the shape of that, not just the size.
+# >
+# > On **clean data** — lookup, aggregation, groupby, correlation — the guardrails buy **nothing**.
+# > Both configs get 100%. The agent could already do that in notebook 04.
+# >
+# > On the **traps**, the gap is enormous. That's exactly the shape you want: a guardrail that fires
+# > when there's nothing to catch is just a tax.
+# >
+# > The biggest single gap is **`trap:duplicates` — 100% vs 17%.** That is the *pre-seeded* ledger
+# > finding doing the work. The deterministic profiler spots the duplicate `patient_id`s, files them
+# > as an **open obligation**, and the agent cannot submit past them.
+
+# %% [markdown]
+# ---
+# # 4.4 🚨 The two places it still fails — and the lesson hiding in them
+#
+# I'm not going to bury these.
+#
+# ### `trap:units` — weak even at full strength
+#
+# Batch B reports in µg/L instead of ng/mL, so its values are 10× too large. The fix is documented
+# in `data_dictionary.md`, which is *in the context*. The agent still often pools the batches.
+#
+# ### `ambiguous` — **0/3. The mechanism I built for it does not work.**
+#
+# I added a **required** `question_is_precise: bool` to the contract precisely to stop the agent
+# silently picking a reading of *"Did the biomarker improve?"*
+#
+# It now dutifully fills the field in... and says **`True`**. It genuinely believes the question is
+# precise. It commits to a judgement, and the judgement is wrong.
+#
+# > ## 🎯 And *that* is the most useful thing this evaluation taught me.
+# >
+# > ### A gate is only as good as the detector feeding it.
+# >
+# > The Findings Ledger works spectacularly on duplicates (**100% vs 17%**) because a twenty-line
+# > script **detects** duplicates and hands the agent an obligation it cannot walk past.
+# >
+# > The same gate does **nothing** for ambiguity — because I have **no detector for ambiguity.**
+# > Nothing supplies the observation, so the gate has nothing to gate.
+# >
+# > These are the same limitation wearing two hats. A structural gate can force an observation to
+# > **reach** a decision. It cannot **create an observation that was never made.**
+#
+# That is the honest boundary of this entire approach, and it tells me exactly what to build next:
+# not a better gate — **a better detector.** (For units: flag any column whose distribution is
+# multi-modal *by batch*. For ambiguity: check whether the question pins down a population, a
+# direction, and a unit — three cheap `if`s.)
+#
+# I'd rather ship that sentence than a table with no red cells in it.
 
 # %% [markdown]
 # ---
