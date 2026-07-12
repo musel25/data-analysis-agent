@@ -28,10 +28,13 @@
 # | **1. The destination** | run the agent, live |
 # | **2. The problem** | it says a working drug doesn't work |
 # | **3. The papers** | 54% of real agent failures are *not* coding failures |
+# | **3b. Part 1** | what's convincing, and **three things that aren't** |
 # | **4. The design** | three ledgers and a gated exit |
-# | **5. The evidence** | 4,480 runs, 8 ablations, a held-out domain |
+# | **5. The evidence** | 4,480 runs · 28 tasks · 3 domains · 20 runs/cell |
 # | **6. The punchline** | **the result that inverted my own thesis** |
-# | **7. The dashboard** | *(embedded below)* |
+# | **7. 🐛 The six bugs** | **the six times my own harness caught me lying to myself** |
+# | **8. 🎯 The detector** | I stopped *saying* what I'd build next, and built it |
+# | **9. The dashboard** | *(embedded below)* |
 #
 # *The seven teaching notebooks (`01`–`07`) build every piece of this from nothing. This one is
 # the tour.*
@@ -182,6 +185,54 @@ print("═" * 66)
 # The model *had* everything it needed.
 #
 # It just didn't let what it saw change what it did.
+
+# %% [markdown]
+# ---
+# # 3b. Part 1 — and here is where I think they are **wrong**
+#
+# ### First, what is genuinely convincing — because a review that is all attack is not a review
+#
+# **GBP's benchmark design is the best thing in either paper, and I copied all three principles:**
+#
+# 1. **Simulate, so you know the truth.** Real data gives you ground truth you can *assume*.
+#    Simulation gives you ground truth you can **compute** — and it is the only way to *plant* a
+#    decision point and be certain the naive path lands somewhere else.
+# 2. **Ablation-verify the separation.** Assert that the plausible-but-wrong answer lies far outside
+#    the tolerance band. **I implemented this and it immediately killed two of my own tasks** — a
+#    median that was robust to the sentinels I'd planted, and an age question independent of its own
+#    filter. Both looked perfectly reasonable. Both graded *nothing*. The assertion found them; I
+#    didn't.
+# 3. **Binary, all-or-nothing grading.** *"An agent that executes several intermediate steps
+#    correctly but returns the wrong decision-relevant answer has not successfully automated the
+#    analysis."* Partial credit measures effort. Binary measures usefulness.
+#
+# And **DDB's expert authorship** is the expensive, unglamorous, right thing to do. 82 tasks written
+# by pharmaceutical scientists, grounded in real patents. You cannot generate that.
+#
+# ### Now — three things that are questionable
+#
+# | | |
+# |---|---|
+# | **DDB's failure taxonomy is built from ONE RUN per (model, task)** — by its own caption. | And agent runs are *enormously* noisy: on my harness the **same task, same config** gave `1/10` on one run of the benchmark and `6/10` on the next. A single trajectory is not a description of a model. It is **one draw from a wide distribution.** So the honest reading of "54% domain reasoning" is *"of 226 single trajectories we happened to sample, 54% looked like domain reasoning to us."* |
+# | **DDB's most-quoted forward-looking claim rests on four tasks.** *"76/82 solved… execution is within reach."* | "76/82" is not a pass rate — it is **best-of-N across 12 models × 6 harnesses × 3 trials.** The best single agent scores **51.6%**. And the hint experiment moves **four tasks** (n=6), unrepeated. I believe the conclusion. I don't think this experiment establishes it. |
+# | **DDB's judge has never been shown to a human.** κ = 1.0 against two *other LLMs* on 200 items. | κ=1.0 is not reassuring, it is **suspicious**: either the rubric is so mechanical the judge is redundant (then grade it programmatically), or three models share a bias — which is exactly what inter-rater agreement is meant to catch and exactly what three LLMs cannot catch about each other. They have the experts on staff. They wrote the tasks. |
+#
+# ### And the limitation **neither paper states**
+#
+# GBP is explicit that *frontier* models **consistently notice** — the gap is in **acting**. I read
+# that, believed it, and built my entire design around forcing the agent to **act**.
+#
+# **Then I ablated it, and my results inverted theirs.** (You'll see the numbers in section 6.)
+#
+# > **The notice–act gap is a frontier-model problem. The *notice* gap is a small-model problem.**
+# >
+# > Which half of the scaffolding earns its keep depends on **which half of the job your base model
+# > already does for free.** GBP's prescription is right for GPT-5.6 and **wrong for almost anything
+# > you would actually deploy on a budget** — and neither paper reports how its failure profile
+# > shifts down the capability ladder. It is the cheapest experiment they did not run.
+#
+# *(My sharpest criticism — that **GBP's own confidence intervals are broken** — needs section 7 to
+# land, because I have to show you that it happened to me first.)*
 
 # %% [markdown]
 # ---
@@ -361,48 +412,165 @@ print("and I say so, instead of reporting a point estimate and hoping nobody che
 # doing the job. Which is exactly why `no_briefing` collapses to the same score as
 # `no_guardrails`.
 #
-# ## And the bigger eval **corrected me about my own centrepiece**
+# ## And then the harness turned around and caught *me*.
 #
-# The first version of this benchmark was 15 tasks × 3 runs. It put the Findings Ledger at
-# **exactly zero**, and I wrote — in the notebook — *"the ablation does not show the Findings
-# Ledger paying for itself."*
-#
-# At **28 tasks × 10 runs** it comes back at **Δ −2%, CI [−9%, +5%]**. The point estimate says two
-# points, and it's the **only** gate whose interval sits almost entirely on the "it helps" side. It
-# still grazes zero, so I can't claim it at 95%.
-#
-# > **"The ledger does nothing" was never a finding.** It was a twenty-point-wide confidence
-# > interval, reported as a point estimate. More data didn't confirm my conclusion — it
-# > **corrected** it.
-#
-# That's the cleanest argument I have for building the harness before trusting your own design
-# instincts.
-#
-# ### The honest caveats
-#
-# - **"No detectable effect" is not "no effect" — but now it's *bounded*.** I can say any real
-#   ledger effect is smaller than about 11 points. At 15×3 I couldn't say anything at all.
-# - **A gate may be insurance, not throughput.** A grounding check that fires on a few percent of
-#   runs can't move an average pass rate — but you don't price a fabricated number in a drug filing
-#   by its *frequency*. The right test for a gate is **adversarial, not average**, and this
-#   benchmark is an average one. That's a limitation of my evaluation, not evidence against the gate.
-# - **One oddity I won't overclaim:** removing the briefing alone (60%) scores *worse* than removing
-#   the briefing **and** every gate (65%). Gates without a detector may be *worse than nothing* —
-#   they burn the step budget on ceremony with no information behind it. But that paired CI is
-#   `[−18%, +4%]`; it crosses zero. **A hypothesis with a mechanism, not a finding.**
-#
-# ### So what would I build next?
-#
-# **Not another gate. More detectors.** Every remaining failure is a missing detector — the units
-# confounding trap (10%) needs *"cross-tab every grouping column against every other"*; the ambiguity task (0%) needs
-# *"does the question pin down a population, a direction, and a unit?"* Three cheap `if`s.
-#
-# And then re-run at 10 runs/task, because right now I can see a 27-point effect and I am blind to
-# a 5-point one.
+# Six times. **None of them was findable by reading the code.** Every single one surfaced by
+# running something and looking hard at a number that was wrong.
 
 # %% [markdown]
 # ---
-# # 7. The dashboard
+# # 7. 🐛 The six times my own eval caught me lying to myself
+#
+# | | the bug | what gave it away |
+# |---|---|---|
+# | **D24** | My cache replayed **one run three times** and I reported it as three independent samples. | attempts 2 and 3 cost **`$0.0000`** |
+# | **D28** | Two benchmark questions — **and their answers** — were written into my own system prompt as "examples". Those tasks scored 100% and 90%. | my leak guard passed the whole time. It guards the *numeric* channel; a behavioural task's ground truth is not a number. |
+# | **D29** | My one rule of domain knowledge named no column and was **still overfit** — written in clinical-trial language, it did nothing on an e-commerce confound. | the **held-out domain** |
+# | **D30** | *"Runs offline from the committed cache with no API key"* was true on **exactly one computer**: mine. Absolute paths went into the prompt, so the cache was keyed to my home directory. | cloning it somewhere else |
+# | **D31** | **The instrument lied.** ⬇️ | running the same benchmark twice |
+# | **D32** | My most-trusted gate **rejected numbers the agent had just printed** — 4 sig figs on one side, 4 decimals on the other. Fired on **26.6%** of runs; caused **54% of all budget blowouts.** | watching one trajectory eat itself |
+#
+# > ### The scoreboard: **running things — 6. reading things — 0.**
+
+# %% [markdown]
+# ## 🚨 D31 — the one that should scare you, and scares me
+#
+# I ran the **identical benchmark twice**, either side of a change I had already proved was inert
+# (same error rate, same step count, same budget-exhaustion rate — the prompt differs by one path
+# string).
+#
+# My centrepiece mechanism came back:
+#
+# | the same experiment, run twice | Δ | 95% CI | verdict |
+# |---|---|---|---|
+# | **run A** | **−9%** | `[−17%, −2%]` | ***"SIGNIFICANT"*** |
+# | **run B** | **−3%** | `[−10%, +4%]` | *"no detectable effect"* |
+#
+# **Same code. Same tasks. Opposite conclusions, from 95% intervals that barely overlap.**
+# One task went **1/10** on one run and **6/10** on the next.
+#
+# The bootstrap isn't miscoded. It's being asked something it *cannot answer*: with 10 runs per
+# cell it resamples from the ten outcomes it **happened to see**, so a cell that came back `1/10`
+# has a bootstrap distribution centred near 10% and **cannot reach 60%.** Near `p=0` and `p=1` the
+# empirical distribution is degenerate — and that is exactly where the hard tasks live.
+#
+# > **An error bar is not automatically an honest number.** It is honest only if the error bar is —
+# > and mine was computed from too little data to know.
+# >
+# > I built this harness to stop myself reading noise as signal. Then I read noise as signal
+# > **out of the harness**, twice, in opposite directions.
+#
+# ### 🎯 And this is not just my problem — it is GeneBench-Pro's.
+#
+# GBP computes its confidence intervals by **the same hierarchical bootstrap, over 10 attempts per
+# problem.** And their headline finding is that the best mainline model **scores zero across all
+# ten attempts on 45.7% of problems.**
+#
+# Those are `0/10` cells. Their bootstrap resamples ten zeros. **The interval on nearly half their
+# benchmark is `[0, 0]`** — which is certainly wrong: a problem solved 5% of the time shows `0/10`
+# about **60%** of the time.
+#
+# > **Their error bars are tightest precisely where their argument leans hardest — and they are
+# > tight because the data is degenerate, not because the estimate is precise.**
+#
+# *(This is Part 1's sharpest criticism, and I could not have made it without building the thing.)*
+#
+# **What I report now instead:** run the whole benchmark twice, and print the **spread between the
+# two runs** next to every confidence interval. That number cannot lie to you, because it is a
+# measurement rather than a model.
+
+# %%
+from evals.stats import replication
+rep = replication(df)
+print("THE ERROR BAR I ACTUALLY TRUST — the same experiment, run twice:\n")
+print(f"  {'remove this':<16} {'run A':>7} {'run B':>7} {'spread':>8} {'pooled':>8}   verdict")
+for cfg, r in rep.iterrows():
+    v = "robust" if r.spread < 0.07 and abs(r.delta_pooled) > 0.04 else (
+        "🚩 SIGN FLIPS" if (r.delta_first_half < 0) != (r.delta_second_half < 0) else "—")
+    print(f"  {cfg:<16} {r.delta_first_half*100:+6.0f}% {r.delta_second_half*100:+6.0f}%"
+          f" {r.spread*100:7.0f}pt {r.delta_pooled*100:+7.0f}%   {v}")
+print("\n  Read the SPREAD column, not the point estimate.")
+print("  If a verdict flips when you run the same experiment again, it was never a verdict.")
+print("  It was weather.")
+
+# %% [markdown]
+# ---
+# # 8. 🎯 So I stopped writing *"what I'd build next is the detector"* — and built the detector.
+#
+# Every draft of this project ended on the same self-satisfied sentence. The evidence was
+# overwhelming and it was mine:
+#
+# - sentinels, duplicates, dtype, scope → **95–100%**, because a script **detects** them and hands
+#   the agent an obligation it cannot walk past
+# - **confounding → a coin flip**, because *nothing detected it*
+#
+# And it was not a failure of **acting**. I watched the agent, at temperature 0, **notice** the
+# imbalance, log it, and then **dismiss** it:
+#
+# > *"the question asks for the difference in proportions, so no adjustment is needed."*
+#
+# **Read that again.** That is GeneBench-Pro's notice–act gap, verbatim, in my own trace — the agent
+# letting the *question's phrasing* overrule the *data's warning*. Rewording the prompt did not fix
+# it (D29). Nothing in a prompt was ever going to.
+#
+# ### The detector, in full: ~20 lines of `pd.crosstab`
+#
+# For every pair of low-cardinality categorical columns, cross-tabulate. If one's conditional
+# distribution departs from its marginal by ≥15 points, **the groups are not comparable** — seed it
+# as an open finding the agent cannot submit past.
+#
+# It names **no column, no dataset, no domain.** It finds `arm × severity` in a clinical trial and
+# `channel × customer_segment` in an e-commerce export **by exactly the same arithmetic.**
+
+# %%
+from agentlib.observe import _confounds
+for name, path in [("penguins (clean)", f"{ROOT}/data/penguins.csv"),
+                   ("trial   (medical)", f"{ROOT}/data/trial.csv"),
+                   ("sales   (held-out)", f"{ROOT}/data/sales.csv")]:
+    f = _confounds(pd.read_csv(path))
+    print(f"  {name}: {len(f)} finding(s)")
+    for x in f:
+        print(f"      {x[:96]}...")
+
+# %% [markdown]
+# **Exactly one finding per trap domain — and in both cases it is the planted trap.**
+# The outcome columns and the sequence artefacts drop out on their own.
+#
+# ### What it did
+#
+# | | before | after |
+# |---|---|---|
+# | **the demo you saw in slide 1** | **−0.087** — the confounded answer, after burning all 20 steps | **+0.150** — the truth, in 13 steps, `ACTED` not `DISMISSED` |
+# | `t4_simpson`, 20 runs | 8/20 | **13/20** |
+#
+# > ## The gate was never the problem. **The gate had nothing to gate.**
+# >
+# > Twenty lines of `pd.crosstab` did what no prompt, no ledger, no verifier and no bigger model was
+# > ever going to do — because **none of them can manufacture an observation that was never made.**
+
+# %% [markdown]
+# ## ⚠️ And here is exactly where my evidence stops
+#
+# **The 4,480-run grid you just saw was measured *before* the detector existed.** I built it,
+# watched it turn the flagship failure into a pass — and then **exhausted my API budget** before I
+# could re-run the grid with it.
+#
+# So, plainly:
+#
+# - Every ablation number in this talk is from the system **without** the detector. They are a
+#   **lower bound** on the shipped code.
+# - The detector is **on by default**. The grid stays reproducible with `--no-confound`, and the
+#   harness now **refuses to mix the two** — every result row is stamped with a fingerprint of the
+#   prompt, and `run_eval` prints a warning if they disagree.
+# - The evidence I *do* have: `t4_simpson` **8/20 → 13/20**, and the demo in slide 1.
+# - **The held-out domain never ran. I do not know what it does there, and that is the number I most
+#   want.**
+#
+# I could have shipped the old code so the table matched, and said nothing.
+
+# %% [markdown]
+# ---
+# # 9. The dashboard
 #
 # Everything above, as something you can poke at: run the agent on any question, **toggle the
 # guardrails off and watch it fail**, and browse the 4,480-run evidence.
