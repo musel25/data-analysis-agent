@@ -42,13 +42,52 @@ CONFIGS = {
 }
 
 
+def system_fingerprint() -> str:
+    """A hash of everything the model reads. Stamped on every result row.
+
+    `already_done()` resumes a run by skipping (config, task, attempt) triples it has seen. That is
+    correct only while the SYSTEM has not changed — and a prompt edit changes the system completely
+    (it also invalidates every cache key, so the next grid is billed in full).
+
+    Without this stamp, editing a prompt and re-running quietly produces a results file that is half
+    one system and half another, with nothing to tell you. That is the single most expensive kind of
+    silent bug in an eval harness, and it is invisible in every plot you would draw from it.
+
+    So: fingerprint every source of model-visible text. If it does not match the row, that row came
+    from a different agent and must be re-run, not resumed.
+
+    Note what has to go in it. My first version hashed the system prompt, the tool schemas and the
+    verifier rubric — and would have MISSED the confounding detector entirely, because that changes
+    the *briefing*, not the prompt. Anything whose output the model reads belongs here, including the
+    code that generates it.
+    """
+    import hashlib
+    import inspect
+
+    from agentlib import observe
+    from agentlib.agent import SYSTEM, TOOLS
+    from agentlib.verifier import RUBRIC
+
+    blob = SYSTEM + json.dumps(TOOLS, sort_keys=True) + RUBRIC
+    for fn in (observe.briefing, observe._suspicions, observe._confounds,
+               observe.seed_findings, observe.truncate, observe.state_banner):
+        blob += inspect.getsource(fn)
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
+
+
+FINGERPRINT = system_fingerprint()
+
+
 def already_done() -> set[tuple[str, str, int]]:
     if not RESULTS.exists():
         return set()
-    done = set()
+    done, stale = set(), 0
     for line in RESULTS.read_text().splitlines():
         try:
             r = json.loads(line)
+            if r.get("fingerprint") and r["fingerprint"] != FINGERPRINT:
+                stale += 1
+                continue          # measured with a DIFFERENT prompt — not a valid resume point
             done.add((r["config"], r["task_id"], r["attempt"]))
         except (json.JSONDecodeError, KeyError):
             continue
@@ -124,6 +163,12 @@ def main():
     ap.add_argument("--no-confound", action="store_true",
                     help="disable the D33 confounding detector — reproduces the committed grid")
     ap.add_argument("--workers", type=int, default=8, help="concurrent agent runs")
+    ap.add_argument("--max-spend", type=float, default=5.0,
+                    help="ABORT the run when the meter passes this many dollars. "
+                         "Default $5. Pass a bigger number deliberately, or --max-spend 0 to disable.")
+    ap.add_argument("--smoke", action="store_true",
+                    help="2 tasks x 3 runs on the full config (~$0.30). Run this after ANY prompt "
+                         "change, before you spend real money on a grid.")
     args = ap.parse_args()
 
     # The benchmark must be trustworthy before it is run. These are not decoration.
@@ -133,11 +178,24 @@ def main():
     test_contamination()      # no benchmark question may appear in any model-visible prompt (D28)
     test_portability()        # no machine-specific path may appear in any prompt (D30)
     dropped = dedupe_results()
+    _stale = sum(1 for l in RESULTS.read_text().splitlines() if l.strip()
+                 and json.loads(l).get("fingerprint") not in (None, FINGERPRINT)) \
+        if RESULTS.exists() else 0
+    if _stale:
+        print(f"⚠  {_stale} existing rows were measured with a DIFFERENT prompt "
+              f"(fingerprint mismatch). They will be re-run, not resumed.")
     print("✓ separation + leak + contamination + portability guards pass"
           + (f" · dropped {dropped} duplicate rows" if dropped else "") + "\n")
 
-    configs = list(CONFIGS) if (args.ablate or args.config == "all") else [args.config]
-    tasks = [t for t in TASKS if not args.tasks or t.id in args.tasks]
+    if args.smoke:
+        # A prompt change invalidates EVERY cache key, so the next grid is billed in full.
+        # Find out here, for 30 cents, whether the change did what you think it did.
+        configs, args.runs = ["full"], 3
+        tasks = [t for t in TASKS if t.id in ("t4_simpson", "s4_simpson_sales")]
+        print("SMOKE: 2 confounding tasks x 3 runs, full config. ~$0.30.\n")
+    else:
+        configs = list(CONFIGS) if (args.ablate or args.config == "all") else [args.config]
+        tasks = [t for t in TASKS if not args.tasks or t.id in args.tasks]
     done = already_done()
 
     jobs = []
@@ -167,8 +225,20 @@ def main():
     write_lock = threading.Lock()
     counter = itertools.count(1)
 
+    aborted = threading.Event()
+
     def one(job):
         cname, cfg_a, task, attempt = job
+        # THE COST GUARD. I once let an agent re-run this grid five times because every prompt
+        # edit invalidates every cache key — and burned $30 of someone else's credit doing it.
+        # A budget you have to remember to watch is a budget you will not watch.
+        if args.max_spend and METER.cost_usd >= args.max_spend:
+            if not aborted.is_set():
+                aborted.set()
+                print(f"\n  ⛔ SPEND CAP HIT: ${METER.cost_usd:.2f} >= ${args.max_spend:.2f}. "
+                      f"Aborting.\n     Results so far are saved and the run is resumable — "
+                      f"re-run with a higher --max-spend to continue.\n")
+            return None
         # Each worker gets its OWN executor. A shared kernel namespace across concurrent agents
         # would let run A see run B's variables — the agent's version of the hidden-state bug.
         ex = PyExecutor()
@@ -188,6 +258,7 @@ def main():
                 "stopped": run.stopped,
                 "model": cfg_a.model or "default",
                 "run_id": run.trace.run_id,
+                "fingerprint": FINGERPRINT,     # which agent produced this row
             }
         except Exception as e:  # a crash is a result, not an excuse to lose the run
             rec = {"config": cname, "task_id": task.id, "category": task.category,
