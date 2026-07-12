@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a304f30f8352a2db",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue 999999.99)\\nqa_count = (sales['revenue_clean'] == 999999.99).sum()\\nif qa_count > 0:\\n    sales = sales[sales['revenue_clean'] != 999999.99]\\n    print(f\\\"Dropped {qa_count} QA orders.\\\")\\n\\n# Do NOT filter by status \u2014 conversion rate is based on `converted` flag over the full dataset\\n# The `converted` column is 1 if checkout completed, regardless of refund\\n# So we compute conversion rate on all rows\\nconversion_rates = sales.groupby('customer_segment')['converted'].mean()\\n\\n# Find the segment with highest conversion rate\\nbest_segment = conversion_rates.idxmax()\\nbest_rate = conversion_rates.max()\\n\\nprint(f\\\"Conversion rates by segment (on full dataset):\\\\n{conversion_rates}\\\")\\nprint(f\\\"Highest conversion rate: {best_segment} with {best_rate:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5309,
+  "completion_tokens": 300
+ }
+}

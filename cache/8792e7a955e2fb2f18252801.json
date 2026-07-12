@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9304c4157a9fe51e",
+    "function": {
+     "arguments": "{\"code\": \"# Final, working approach: use direct computation without merge issues.\\n# We'll compute the weighted average manually.\\n\\n# Compute conversion rates by channel and segment\\nstratified = sales_df.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum']).reset_index()\\nstratified['conversion_rate'] = stratified['sum'] / stratified['count']\\n\\n# Compute segment proportions within each channel\\nsegment_counts = sales_df.groupby(['channel', 'customer_segment']).size().reset_index(name='count')\\nsegment_proportions = segment_counts.groupby('channel').apply(lambda x: x['count'] / x['count'].sum()).reset_index(name='prop')\\n\\n# Now, we'll compute the weighted average for each channel manually\\n# email\\nemail_segment_data = segment_proportions[segment_proportions['channel'] == 'email']\\nemail_stratified = stratified[stratified['channel'] == 'email']\\n\\n# Merge them on customer_segment\\nemail_merged = pd.merge(email_segment_data, email_stratified, on='customer_segment')\\nemail_weighted_rate = (email_merged['conversion_rate'] * email_merged['prop']).sum()\\n\\n# paid_search\\npaid_search_segment_data = segment_proportions[segment_proportions['channel'] == 'paid_search']\\npaid_search_stratified = stratified[stratified['channel'] == 'paid_search']\\n\\n# Merge them on customer_segment\\npaid_search_merged = pd.merge(paid_search_segment_data, paid_search_stratified, on='customer_segment')\\npaid_search_weighted_rate = (paid_search_merged['conversion_rate'] * paid_search_merged['prop']).sum()\\n\\n# Compute difference\\ndifference = email_weighted_rate - paid_search_weighted_rate\\n\\n# Print results\\nprint(f\\\"Adjusted conversion rate for email: {email_weighted_rate:.4f}\\\")\\nprint(f\\\"Adjusted conversion rate for paid_search: {paid_search_weighted_rate:.4f}\\\")\\nprint(f\\\"Difference in conversion rates (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8029,
+  "completion_tokens": 471
+ }
+}

@@ -79,17 +79,51 @@ def _sig(x: float, digits: int = 4) -> float:
     return round(x, -int(math.floor(math.log10(abs(x)))) + (digits - 1))
 
 
-def grounded(report: AnalysisReport, all_stdout: str) -> tuple[bool, list[float]]:
+GROUNDING_RTOL = 0.005      # 0.5% — see below
+
+
+def grounded(report: AnalysisReport, all_stdout: str,
+             rtol: float = GROUNDING_RTOL) -> tuple[bool, list[float]]:
     """Is every number in `evidence` present in something the code actually printed?
 
     Deliberately conservative. It HARD-gates only the `evidence` list (where the agent is making
-    an explicit factual claim), not the prose `answer` — because a gate that fires wrongly is a
-    gate its user disables. Percent-vs-fraction confusion is checked in both directions.
+    an explicit factual claim), not the prose `answer` — because **a gate that fires wrongly is a
+    gate its user disables.** Percent-vs-fraction confusion is checked in both directions.
+
+    ── D32: AND THEN IT FIRED WRONGLY. ─────────────────────────────────────────────────────────
+
+    The original version rounded both sides to 4 *significant figures* and demanded exact
+    equality. So:
+
+        the code printed   -0.0869479104773222   ->  _sig(...) = -0.08695
+        the agent reported -0.0869               ->  _sig(...) = -0.0869
+        -0.08695 != -0.0869                      ->  "REJECTED: this number never appeared"
+
+    The agent had **literally printed the number.** It rounded it to four decimals to write it
+    down — which is what any analyst does — and the gate called it a fabrication. It then could
+    not satisfy the gate at all: it re-ran the same code, hit the duplicate-code guard, re-ran
+    again, and burned its entire step budget. The forced best-effort answer was the confounded
+    one.
+
+    Measured over 4,480 runs: the gate fired on **26.6%** of them and was implicated in
+    **54% of every budget blowout in the study.**
+
+    A rounding convention is not a fabrication. The failure this gate exists to catch is
+    DrugDiscoveryBench's *"its own code printed 1, and the final tally used 2"* — an error of
+    100%, not of 0.006%. So compare with a relative tolerance instead of demanding that two
+    rounding schemes agree:
+
+        rtol = 0.5%  ->  accepts three-significant-figure reporting of a printed value
+                     ->  still rejects 8-vs-7 (14% off), 2-vs-1 (100% off), and anything invented
+
+    The lesson is the one the docstring already claimed and did not honour: **a deterministic
+    gate is only as good as its notion of "the same number."** I wrote "no LLM is involved, it
+    cannot be talked out of it" as if that made it correct. It made it *confident*.
     """
-    printed = {_sig(v) for v in _numbers(all_stdout)}
+    pool = list(_numbers(all_stdout))
     # a value can legitimately appear as 0.15 or 15 (%) — accept either reading
-    printed |= {_sig(v * 100) for v in _numbers(all_stdout)}
-    printed |= {_sig(v / 100) for v in _numbers(all_stdout) if v}
+    pool += [v * 100 for v in list(pool)]
+    pool += [v / 100 for v in list(pool) if v]
 
     claimed = set()
     for e in report.evidence:
@@ -97,12 +131,14 @@ def grounded(report: AnalysisReport, all_stdout: str) -> tuple[bool, list[float]
     if report.value is not None and isinstance(report.value, (int, float)):
         claimed.add(float(report.value))
 
-    ungrounded = [
-        v for v in claimed
-        if _sig(v) not in printed
-        and abs(v) > 1e-9
-        and not (1900 < v < 2100 and float(v).is_integer())   # years are not claims
-    ]
+    def is_grounded(v: float) -> bool:
+        if abs(v) <= 1e-9:
+            return True
+        if 1900 < v < 2100 and float(v).is_integer():        # years are not claims
+            return True
+        return any(math.isclose(v, p, rel_tol=rtol, abs_tol=1e-9) for p in pool)
+
+    ungrounded = [v for v in claimed if not is_grounded(v)]
     return (not ungrounded), ungrounded
 
 

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8e414e588a4b3a56",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Drop duplicate patient_id rows, keeping the highest sample_seq\\ntrial_df = trial_df.sort_values('sample_seq', ascending=False).drop_duplicates('patient_id', keep='first')\\n\\n# Replace sentinel value -999.0 in biomarker_baseline with NaN\\ntrial_df['biomarker_baseline'] = trial_df['biomarker_baseline'].replace(-999.0, pd.NA)\\n\\n# Calculate the change in biomarker\\ntrial_df['biomarker_change'] = trial_df['biomarker_final'] - trial_df['biomarker_baseline']\\n\\n# Compute the average change in biomarker for each arm, stratified by severity\\nstratified_means = trial_df.groupby(['arm', 'severity'])['biomarker_change'].mean().unstack(level='severity')\\n\\n# Compute the overall mean change in biomarker for each arm, weighted by severity distribution in the control arm\\ncontrol_severity_dist = trial_df[trial_df['arm'] == 'control']['severity'].value_counts(normalize=True)\\n\\n# Weighted mean for treatment arm\\nweighted_mean_treatment = (stratified_means.loc['treatment'] * control_severity_dist).sum()\\n\\n# Weighted mean for control arm\\nweighted_mean_control = (stratified_means.loc['control'] * control_severity_dist).sum()\\n\\n# Calculate the difference\\ndifference = weighted_mean_treatment - weighted_mean_control\\n\\n# Also compute the unadjusted difference for comparison\\nunadjusted_diff = trial_df[trial_df['arm'] == 'treatment']['biomarker_change'].mean() - \\\\\\n                  trial_df[trial_df['arm'] == 'control']['biomarker_change'].mean()\\n\\n# Print results\\nprint(f\\\"Weighted mean biomarker change (treatment): {weighted_mean_treatment:.2f}\\\")\\nprint(f\\\"Weighted mean biomarker change (control): {weighted_mean_control:.2f}\\\")\\nprint(f\\\"Difference (treatment - control): {difference:.2f}\\\")\\nprint(f\\\"Unadjusted difference: {unadjusted_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5349,
+  "completion_tokens": 496
+ }
+}

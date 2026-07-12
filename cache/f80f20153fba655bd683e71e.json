@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b8701cfc85acbd5a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter to SEVERE patients\\nsevere_df = df[df['severity'] == 'severe']\\n\\n# Step 2: Deduplicate on patient_id, keeping the highest sample_seq\\nsevere_dedup = severe_df.sort_values(by=['patient_id', 'sample_seq'], ascending=[True, False]).drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 3: Count number of patients after deduplication\\nn_severe_dedup = len(severe_dedup)\\nprint(f\\\"Number of SEVERE patients after deduplication: {n_severe_dedup}\\\")\\n\\n# Step 4: Count -999 in baseline after deduplication\\nn_neg999_dedup = (severe_dedup['biomarker_baseline'] == -999).sum()\\nprint(f\\\"Number of -999 in baseline after deduplication: {n_neg999_dedup}\\\")\\n\\n# Step 5: Filter out QC-failed rows\\nsevere_valid_dedup = severe_dedup[severe_dedup['biomarker_baseline'] != -999]\\n\\n# Step 6: Compute mean baseline biomarker\\nmean_baseline = severe_valid_dedup['biomarker_baseline'].mean()\\nprint(f\\\"Mean baseline biomarker (ng/mL) for SEVERE patients (deduplicated, QC-passed): {mean_baseline}\\\")\\n\\n# Final count of valid patients\\nn_valid = len(severe_valid_dedup)\\nprint(f\\\"Number of valid SEVERE patients (non -999, deduplicated): {n_valid}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5823,
+  "completion_tokens": 405
+ }
+}

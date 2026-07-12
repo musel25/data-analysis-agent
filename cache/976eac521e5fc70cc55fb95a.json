@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1b250e5d1396131",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Filter out refunded orders (they are not completed conversions)\\ncompleted_mask = df['status'] == 'completed'\\n\\n# Filter out QA orders (revenue = 999999.99)\\nqa_mask = df['revenue'] == '999999.99'\\n\\n# Apply both filters\\ndf_filtered = df[completed_mask & ~qa_mask]\\n\\n# Check the remaining rows\\nprint(f'Number of completed, non-QA orders: {len(df_filtered)}')\\n\\n# Compute conversion rate by customer_segment\\ngrouped = df_filtered.groupby('customer_segment')['converted'].mean().reset_index()\\ngrouped.rename(columns={'converted': 'conversion_rate'}, inplace=True)\\nprint(grouped)\\n\\n# Find the segment with highest conversion rate\\nbest_segment = grouped.loc[grouped['conversion_rate'].idxmax(), 'customer_segment']\\nprint(f'Highest conversion rate segment: {best_segment}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4953,
+  "completion_tokens": 250
+ }
+}

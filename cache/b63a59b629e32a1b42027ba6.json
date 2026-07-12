@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b4bba22e744a1b1a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Replace -1 in customer_age with NaN (missing)\\ndf['customer_age'] = df['customer_age'].replace(-1, pd.NA)\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop the six QA orders with revenue 999999.99\\nqa_mask = df['revenue'] == 999999.99\\ndf = df[~qa_mask]\\n\\n# Drop refunded orders (status == 'refunded')\\ncompleted_mask = df['status'] == 'completed'\\ndf = df[completed_mask]\\n\\n# Now df contains only real, completed orders with cleaned revenue and age\\nprint(f\\\"Final dataset shape: {df.shape}\\\")\\n\\n# Check conversion rate by channel and segment\\nconversion_by_channel_segment = df.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\nprint(\\\"\\\\nConversion rates by channel and segment:\\\")\\nprint(conversion_by_channel_segment)\\n\\n# Compute difference in conversion rate: email - paid_search, within each segment\\n# First, pivot to get email and paid_search rates by segment\\npivot = conversion_by_channel_segment.pivot(index='customer_segment', columns='channel', values='converted')\\n\\n# Compute difference: email - paid_search\\npivot['diff'] = pivot['email'] - pivot['paid_search']\\n\\nprint(\\\"\\\\nWithin-segment differences (email - paid_search):\\\")\\nprint(pivot[['diff']])\\n\\n# Compute overall difference in conversion rate by channel (raw)\\nraw_channel_diff = df.groupby('channel')['converted'].mean()['email'] - df.groupby('channel')['converted'].mean()['paid_search']\\nprint(f\\\"\\\\nRaw difference in conversion rate (email - paid_search): {raw_channel_diff:.4f}\\\")\\n\\n# Compute weighted average difference across segments\\nsegment_counts = df.groupby('customer_segment')['converted'].count()\\ntotal_n = segment_counts.sum()\\nweights = segment_counts / total_n\\nweighted_diff = (pivot['diff'] * weights).sum()\\nprint(f\\\"\\\\nWeighted average difference (email - paid_search): {weighted_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5628,
+  "completion_tokens": 533
+ }
+}

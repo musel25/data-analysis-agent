@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bdb17e007d097b12",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load and clean data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep highest sample_seq per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Correct assay_batch B values (divide by 10)\\ndf_dedup.loc[df_dedup['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Exclude rows with biomarker_baseline == -999\\ndf_clean = df_dedup[df_dedup['biomarker_baseline'] != -999]\\n\\n# Stratify by severity and compute response rate within each stratum\\ndef compute_response_rate(df_strat):\\n    return df_strat['responded'].mean()\\n\\n# Group by arm and severity\\ngroups = df_clean.groupby(['arm', 'severity'])\\n\\n# Compute response rates for each stratum\\nresponse_rates = groups['responded'].mean().unstack(fill_value=0)\\n\\n# Compute treatment effect within each stratum (treatment - control)\\n# Ensure both arms are present in each stratum\\nstrata = ['mild', 'moderate', 'severe']\\ntreatment_effect_strata = {}\\nfor s in strata:\\n    trt_rate = response_rates.loc['treatment', s]\\n    ctrl_rate = response_rates.loc['control', s]\\n    treatment_effect_strata[s] = trt_rate - ctrl_rate\\n\\ntreatment_effect_strata = pd.Series(treatment_effect_strata)\\n\\n# Compute overall weighted treatment effect (using stratum sizes as weights)\\nstratum_sizes = groups.size().unstack(fill_value=0)\\ntotal_n = stratum_sizes.sum().sum()\\nweights = stratum_sizes / total_n\\n\\nweighted_effect = (treatment_effect_strata * weights.sum(axis=0)).sum()\\n\\n# Output\\nprint(f'Group sizes by arm and severity:\\\\n{stratum_sizes}\\\\n')\\nprint(f'Response rates by arm and severity:\\\\n{response_rates}\\\\n')\\nprint(f'Treatment effect within each stratum (treatment - control):\\\\n{treatment_effect_strata}\\\\n')\\nprint(f'Weighted average treatment effect: {weighted_effect}')}\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5424,
+  "completion_tokens": 522
+ }
+}

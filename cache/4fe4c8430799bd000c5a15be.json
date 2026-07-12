@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-88083bb0b136f785",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, use a non-parametric test manually\\n# Use Mann-Whitney U test via numpy and statsmodels\\ntry:\\n    from statsmodels.stats.nonparametric import mannwhitneyu\\nexcept ImportError:\\n    # Fallback: implement a simple version\\n    def mannwhitneyu(x, y, alternative='two-sided'):\\n        n1, n2 = len(x), len(y)\\n        ranks = np.concatenate([x, y])\\n        ranks = np.argsort(np.argsort(ranks))  # Rank without ties\\n        rank_sum_x = np.sum(ranks[:n1])\\n        u1 = rank_sum_x - n1 * (n1 + 1) / 2\\n        u2 = n1 * n2 - u1\\n        u = min(u1, u2)\\n        \\n        # Approximate p-value using normal distribution\\n        mean_u = n1 * n2 / 2\\n        var_u = n1 * n2 * (n1 + n2 + 1) / 12\\n        z = (u - mean_u) / np.sqrt(var_u)\\n        \\n        if alternative == 'two-sided':\\n            p_value = 2 * (1 - stats.norm.cdf(abs(z)))\\n        elif alternative == 'greater':\\n            p_value = 1 - stats.norm.cdf(z)\\n        else:  # 'less'\\n            p_value = stats.norm.cdf(z)\\n        \\n        return u, p_value\\n\\n    # Import stats from scipy for norm\\n    from scipy import stats\\n\\n# Perform Mann-Whitney U test\\ncontrol_change = trial_df[trial_df['arm'] == 'control']['biomarker_change']\\ntreatment_change = trial_df[trial_df['arm'] == 'treatment']['biomarker_change']\\n\\n# Use the custom implementation\\nu_stat, p_value = mannwhitneyu(control_change, treatment_change, alternative='two-sided')\\n\\n# Calculate effect size (rank-biserial correlation)\\n# This is a simplified version\\nn1, n2 = len(control_change), len(treatment_change)\\nmean_control = np.mean(control_change)\\nmean_treatment = np.mean(treatment_change)\\n\\neffect_size = (mean_treatment - mean_control) / (np.std(np.concatenate([control_change, treatment_change])))\\n\\nprint(f\\\"U statistic: {u_stat}, p-value: {p_value}\\\")\\nprint(f\\\"Effect size (Cohen's d): {effect_size}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6008,
+  "completion_tokens": 584
+ }
+}

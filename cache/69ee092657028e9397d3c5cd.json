@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8f32e248887af37f",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Recompute weighted conversion rates correctly\\n# Weighted average conversion rate per channel, using segment-level conversion rates and segment counts\\n\\n# Segment-level conversion rates\\nsegment_conv_rates = sales_df.groupby('customer_segment')['converted'].mean()\\n\\n# Compute weighted conversion rate for each channel\\n# Weight by the number of orders in each segment within that channel\\nweighted_email = (sales_df[sales_df['channel'] == 'email'].groupby('customer_segment')['converted'].mean() * \\n                  sales_df[sales_df['channel'] == 'email']['customer_segment'].value_counts()).sum() / len(sales_df[sales_df['channel'] == 'email'])\\n\\nweighted_paid_search = (sales_df[sales_df['channel'] == 'paid_search'].groupby('customer_segment')['converted'].mean() * \\n                        sales_df[sales_df['channel'] == 'paid_search']['customer_segment'].value_counts()).sum() / len(sales_df[sales_df['channel'] == 'paid_search'])\\n\\n# Compute difference\\nadjusted_difference = weighted_email - weighted_paid_search\\n\\n# Final values\\n(email_conv_rate, paid_search_conv_rate, difference, weighted_email, weighted_paid_search, adjusted_difference)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2919,
+  "completion_tokens": 279
+ }
+}

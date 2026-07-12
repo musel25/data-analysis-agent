@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1d27319d0d6bf12",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Compute conversion rates within each customer_segment\\n# This stratifies by segment to remove confounding\\nstratified_rates = df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack()\\nprint(\\\"Conversion rates by channel and customer_segment:\\\")\\nprint(stratified_rates)\\n\\n# Compute the average conversion rate for each channel, stratified by segment\\n# This is a weighted average by segment size\\nsegment_counts = df.groupby('channel')['customer_segment'].value_counts().unstack(fill_value=0)\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_avg_email = (stratified_rates.loc['email'] * segment_counts.loc['email']).sum() / segment_counts.loc['email'].sum()\\nweighted_avg_paid_search = (stratified_rates.loc['paid_search'] * segment_counts.loc['paid_search']).sum() / segment_counts.loc['paid_search'].sum()\\n\\nprint(f\\\"\\\\nWeighted average conversion rate (email): {weighted_avg_email}\\\")\\nprint(f\\\"Weighted average conversion rate (paid_search): {weighted_avg_paid_search}\\\")\\n\\n# Compute difference\\ndifference_adjusted = weighted_avg_email - weighted_avg_paid_search\\nprint(f\\\"\\\\nAdjusted difference (email - paid_search): {difference_adjusted}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4856,
+  "completion_tokens": 315
+ }
+}

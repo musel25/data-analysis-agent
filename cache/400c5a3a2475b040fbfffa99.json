@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b938ffb92fcb93ad",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows with biomarker_baseline == -999\\ntrial_clean = trial[trial['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\ntrial_dedup = trial_clean.loc[trial_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Compute adjusted difference in proportions using stratification\\n# Stratify by severity, compute response rates within each stratum\\nstratified_rates = trial_dedup.groupby(['severity', 'arm'])['responded'].mean().unstack(level='arm')\\n\\n# Compute weights: overall proportion of patients in each severity stratum\\nseverity_weights = trial_dedup['severity'].value_counts(normalize=True)\\n\\n# Compute adjusted response rate for each arm (standardisation to the overall severity distribution)\\nadjusted_response_treatment = (stratified_rates['treatment'] * severity_weights).sum()\\nadjusted_response_control = (stratified_rates['control'] * severity_weights).sum()\\n\\n# Compute the adjusted difference in proportions\\nadjusted_diff = adjusted_response_treatment - adjusted_response_control\\n\\n# Print the final adjusted difference only, as the estimand\\nprint(adjusted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10837,
+  "completion_tokens": 314
+ }
+}

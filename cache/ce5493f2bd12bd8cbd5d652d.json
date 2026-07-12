@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-93f89ab9257d5690",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA test orders (revenue = 999999.99)\\nqa_mask = (sales['revenue_clean'] == 999999.99)\\nprint(\\\"Number of QA test orders:\\\", qa_mask.sum())\\n\\n# Identify refunded orders\\nrefunded_mask = (sales['status'] == 'refunded')\\nprint(\\\"Number of refunded orders:\\\", refunded_mask.sum())\\n\\n# Combine to get invalid orders\\ninvalid_mask = qa_mask | refunded_mask\\nprint(\\\"Number of invalid orders (QA + refunded):\\\", invalid_mask.sum())\\n\\n# Filter to only converted orders\\nconverted_mask = (sales['converted'] == 1)\\nprint(\\\"Number of converted orders:\\\", converted_mask.sum())\\n\\n# Final population: converted, valid orders\\nfinal_mask = ~invalid_mask & converted_mask\\nprint(\\\"Number of converted, valid orders (final population):\\\", final_mask.sum())\\n\\n# Extract final data\\nfinal_data = sales.loc[final_mask, ['channel', 'customer_segment', 'revenue_clean']]\\n\\n# Stratify by customer_segment and compute mean revenue per channel\\nresults = []\\nfor segment in final_data['customer_segment'].unique():\\n    segment_data = final_data[final_data['customer_segment'] == segment]\\n    email_mean = segment_data[segment_data['channel'] == 'email']['revenue_clean'].mean()\\n    paid_search_mean = segment_data[segment_data['channel'] == 'paid_search']['revenue_clean'].mean()\\n    ratio = email_mean / paid_search_mean\\n    print(f\\\"Average revenue per converted order for {segment} customers:\\\")\\n    print(f\\\"  Email channel: {email_mean:.2f}\\\")\\n    print(f\\\"  Paid_search channel: {paid_search_mean:.2f}\\\")\\n    print(f\\\"  Ratio (email / paid_search): {ratio:.2f}\\\")\\n    results.append({\\n        'customer_segment': segment,\\n        'email_mean': email_mean,\\n        'paid_search_mean': paid_search_mean,\\n        'ratio': ratio\\n    })\\n\\n# Convert to DataFrame and print\\nresults_df = pd.DataFrame(results)\\nprint(results_df)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8545,
+  "completion_tokens": 560
+ }
+}

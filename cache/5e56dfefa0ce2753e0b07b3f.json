@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8da21e8a6dbe9fac",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\nsales = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Check for the 6 QA orders with revenue = 999999.99\\nqa_orders = sales[sales['revenue_clean'] == 999999.99]\\nprint('QA orders found:', len(qa_orders))\\n\\n# Drop QA orders\\nsales_clean = sales[~(sales['revenue_clean'] == 999999.99)].copy()\\n\\n# Check for refunded orders\\nrefunded_count = (sales_clean['status'] == 'refunded').sum()\\nprint('Refunded orders:', refunded_count)\\n\\n# Drop refunded orders\\nsales_final = sales_clean[sales_clean['status'] == 'completed'].copy()\\n\\n# Now, focus on the question: mean age of customers who converted\\n# `converted` is 1 for completed orders, so we can use it directly\\nconverted_customers = sales_final[sales_final['converted'] == 1]\\n\\n# Check how many converted customers there are\\nprint('Converted customers count:', len(converted_customers))\\n\\n# Compute mean age of converted customers\\nmean_age_converted = converted_customers['customer_age'].mean()\\n\\n# Print result\\nprint(f'Mean age of converted customers: {mean_age_converted:.2f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3217,
+  "completion_tokens": 356
+ }
+}

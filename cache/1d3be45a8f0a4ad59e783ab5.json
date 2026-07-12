@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a05cfa389d621cc3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop the six QA orders with revenue = 999999.99\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Drop refunded orders (status == 'refunded')\\ndf = df[df['status'] == 'completed']\\n\\n# Filter for new customers reached by paid_search\\ndf_new_paid_search = df[(df['channel'] == 'paid_search') & (df['customer_segment'] == 'new')]\\n\\n# Compute conversion rate: fraction of converted orders\\ntotal_new_paid_search = len(df_new_paid_search)\\nconverted_new_paid_search = df_new_paid_search['converted'].sum()\\nconversion_rate = converted_new_paid_search / total_new_paid_search\\n\\n# Print result\\nconversion_rate\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3199,
+  "completion_tokens": 246
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ad70c08e5b6af7c3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA orders (revenue == 999999.99) and refunded orders\\nqa_mask = df['revenue'] == 999999.99\\ncompleted_mask = df['status'] == 'completed'\\nfiltered_df = df[~qa_mask & completed_mask]\\n\\n# Cross-tabulate channel and customer_segment to check imbalance\\ncrosstab = pd.crosstab(filtered_df['channel'], filtered_df['customer_segment'])\\nprint(\\\"Customer segment distribution by channel:\\\")\\nprint(crosstab)\\n\\n# Compute average revenue per converted order within each segment\\n# Only include segments present in both channels\\nsegments_in_both = set(filtered_df[filtered_df['channel'] == 'email']['customer_segment']) & set(filtered_df[filtered_df['channel'] == 'paid_search']['customer_segment'])\\nprint(f\\\"Segments present in both channels: {segments_in_both}\\\")\\n\\n# Filter to only those segments\\nfiltered_by_segment = filtered_df[filtered_df['customer_segment'].isin(segments_in_both)]\\n\\n# Compute average revenue per converted order within each segment\\navg_revenue_by_channel_segment = filtered_by_segment.groupby(['channel', 'customer_segment'])['revenue'].mean().unstack(level='channel')\\nprint(\\\"\\\\nAverage revenue per converted order by channel and segment:\\\")\\nprint(avg_revenue_by_channel_segment)\\n\\n# Compute the difference within each segment\\ndiff_by_segment = avg_revenue_by_channel_segment['email'] - avg_revenue_by_channel_segment['paid_search']\\nprint(\\\"\\\\nDifference (email - paid_search) by segment:\\\")\\nprint(diff_by_segment)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6153,
+  "completion_tokens": 434
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8bfc7ef9d045caa1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\nqa_count = qa_mask.sum()\\n\\n# Filter for completed orders\\ncompleted_df = df[df['status'] == 'completed']\\n\\n# Exclude QA orders from completed orders\\ncompleted_clean = completed_df[~qa_mask]\\n\\n# Compute mean revenue of completed orders (excluding QA)\\nmean_revenue = completed_clean['revenue_clean'].mean()\\n\\n# Verify premises\\nassert completed_clean['status'].eq('completed').all(), \\\"Some non-completed orders were included\\\"\\nassert qa_count == 6, \\\"Expected 6 QA orders\\\"\\nassert completed_clean['revenue_clean'].isna().sum() == 0, \\\"No missing revenue after cleaning\\\"\\n\\n# Print final result\\nprint(f\\\"Mean revenue of completed orders (excluding 6 QA orders): {mean_revenue:.2f} USD\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4822,
+  "completion_tokens": 298
+ }
+}

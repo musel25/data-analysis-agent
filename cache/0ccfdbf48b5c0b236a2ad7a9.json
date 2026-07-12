@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-859495828dfb0e00",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\nfrom sklearn.linear_model import LogisticRegression\\nfrom sklearn.preprocessing import StandardScaler\\n\\n# Create a model to estimate the adjusted effect of sex on response\\n# Use logistic regression with sex, severity, treatment arm, and biomarker baseline\\n# Use complete cases to avoid issues with sentinel values\\ntrial_model = trial_complete.copy()\\n\\n# Add a binary indicator for missing baseline biomarker (even though we're using complete cases)\\n# But since we're using complete cases, biomarker_baseline is available\\n\\n# Prepare features\\nX = trial_model[['sex', 'severity', 'arm', 'biomarker_baseline']]\\nX = pd.get_dummies(X, columns=['sex', 'severity', 'arm'], drop_first=True)\\n\\n# Target\\ny = trial_model['responded']\\n\\n# Scale features\\nscaler = StandardScaler()\\nX_scaled = scaler.fit_transform(X)\\nX_scaled = pd.DataFrame(X_scaled, columns=X.columns)\\n\\n# Fit logistic regression\\nmodel = LogisticRegression(max_iter=1000)\\nmodel.fit(X_scaled, y)\\n\\n# Get coefficients\\ncoef_df = pd.DataFrame({'feature': X_scaled.columns, 'coefficient': model.coef_[0]})\\ncoef_df = coef_df.sort_values('coefficient', ascending=False)\\n\\nprint('Logistic regression coefficients (adjusted for severity, treatment, baseline biomarker):')\\nprint(coef_df)\\n\\n# Predicted probabilities for males vs females\\n# Use average values for other covariates\\nX_pred = pd.DataFrame(\\n    {\\n        'sex_M': [1, 0],\\n        'sex_F': [0, 1],\\n        'severity_moderate': [0, 0],\\n        'severity_severe': [0, 0],\\n        'arm_treatment': [0, 0],\\n        'biomarker_baseline': [X_scaled['biomarker_baseline'].mean()] * 2\\n    }\\n)\\nX_pred = X_pred[X_scaled.columns]\\n\\n# Scale the prediction data\\nX_pred_scaled = scaler.transform(X_pred)\\n\\n# Predict probabilities\\npred_probs = model.predict_proba(X_pred_scaled)[:, 1]\\n\\n# Extract predicted response rates\\npred_response_rate_F = pred_probs[1]\\npred_response_rate_M = pred_probs[0]\\n\\nprint('\\\\nPredicted response rate (adjusted):')\\nprint(f'Female: {pred_response_rate_F:.4f}')\\nprint(f'Male:   {pred_response_rate_M:.4f}')\\n\\n# Compute adjusted difference\\nadjusted_diff = pred_response_rate_F - pred_response_rate_M\\nprint(f'Adjusted difference: {adjusted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6092,
+  "completion_tokens": 608
+ }
+}

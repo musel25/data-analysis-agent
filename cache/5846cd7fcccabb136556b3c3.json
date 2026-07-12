@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a7a9f13d03711002",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq per patient\\ndedup_data = data.loc[data.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Confirm no duplicates\\nassert dedup_data['patient_id'].duplicated().sum() == 0, \\\"Deduplication failed\\\"\\n\\n# Step 3: Stratify by severity and compute response rate within each stratum\\ndf_stratified = dedup_data.groupby(['arm', 'severity'])['responded'].agg(['mean', 'count']).reset_index()\\n\\n# Step 4: Compute weighted average response rate per arm, using the overall severity distribution as weights\\n# This is a standard method to adjust for confounding by severity\\n\\n# Get total number of patients in each severity group across the full dataset\\nseverity_totals = dedup_data['severity'].value_counts().sort_index()\\n\\n# Compute weighted response rate for each arm: sum over severity strata of (response rate * proportion in population)\\nn_total = len(dedup_data)\\n\\n# Weight each severity stratum by its proportion in the overall population\\nproportions = severity_totals / n_total\\n\\n# Compute weighted response rate for treatment arm: sum of (response rate in stratum * proportion in population)\\nweighted_response_rate_treatment = (df_stratified[df_stratified['arm'] == 'treatment']['mean'] * \\n                                    proportions).sum()\\n\\nweighted_response_rate_control = (df_stratified[df_stratified['arm'] == 'control']['mean'] * \\n                                  proportions).sum()\\n\\n# Step 5: Compute difference in proportions, adjusted by severity\\nadjusted_effect = weighted_response_rate_treatment - weighted_response_rate_control\\n\\n# Print results\\nprint(f\\\"\\\\nStratified response rates:\\\")\\nprint(df_stratified)\\nprint(f\\\"\\\\nWeighted response rate (treatment): {weighted_response_rate_treatment:.4f}\\\")\\nprint(f\\\"Weighted response rate (control): {weighted_response_rate_control:.4f}\\\")\\nprint(f\\\"Adjusted treatment effect (diff in proportions): {adjusted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9271,
+  "completion_tokens": 508
+ }
+}

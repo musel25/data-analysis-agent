@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ba516711d6d00b1",
+    "function": {
+     "arguments": "{\"code\": \"import statsmodels.api as sm\\n\\n# Create a logistic regression model to estimate the treatment effect adjusted for severity and age\\n# First, create dummy variables for severity\\ndf_model = pd.get_dummies(df, columns=['severity'], prefix='severity', drop_first=True)\\n\\n# Add a constant for intercept\\nX = df_model[['age', 'severity_moderate', 'severity_severe', 'arm_treatment']]\\nX = sm.add_constant(X)\\n\\n# Define the outcome\\ny = df_model['responded']\\n\\n# Fit the model\\nmodel = sm.Logit(y, X).fit()\\n\\n# Extract the coefficient for treatment (arm_treatment)\\ntreatment_coeff = model.params['arm_treatment']\\n\\n# Convert log-odds to probability difference using average marginal effects\\n# Compute average marginal effect of treatment\\nmarginal_effect = model.get_margeff(at='overall').margeff[3]  # Index 3 is arm_treatment\\n\\n# Output results\\ntreatment_coeff, marginal_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5396,
+  "completion_tokens": 239
+ }
+}

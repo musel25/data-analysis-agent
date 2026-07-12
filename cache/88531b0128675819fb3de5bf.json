@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9d9a37417be452aa",
+    "function": {
+     "arguments": "{\"code\": \"from sklearn.linear_model import LogisticRegression\\nfrom sklearn.preprocessing import LabelEncoder\\n\\n# Prepare data for logistic regression\\nsales_df_model = sales_df_completed.copy()\\n\\n# Encode channel as categorical\\nle = LabelEncoder()\\nsales_df_model['channel_encoded'] = le.fit_transform(sales_df_model['channel'])\\n\\n# Create dummy variables for customer_segment\\nsegment_dummies = pd.get_dummies(sales_df_model['customer_segment'], drop_first=True)\\nsales_df_model = pd.concat([sales_df_model, segment_dummies], axis=1)\\n\\n# Define features and target\\nX = sales_df_model[['channel_encoded', 'loyal', 'returning']]\\nX = sm.add_constant(X)  # Add intercept\\ny = sales_df_model['converted']\\n\\n# Use statsmodels with a different approach\\nimport statsmodels.api as sm\\nmodel = sm.Logit(y, X).fit()\\n\\n# Print the summary\\nprint(model.summary())\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4479,
+  "completion_tokens": 222
+ }
+}

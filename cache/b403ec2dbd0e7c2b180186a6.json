@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-939239a7f9cd0c5d",
+    "function": {
+     "arguments": "{\"code\": \"overall_conversion_rate = sales_df['converted'].mean()\\n\\n# Compute weighted average conversion rate by channel to account for segment imbalance\\n# Use the segment and age group distribution to weight\\n\\n# Get the overall distribution of segments and age groups\\noverall_dist = sales_df.groupby(['customer_segment', 'age_group']).size() / len(sales_df)\\n\\n# Compute weighted conversion rate for each channel\\nweighted_cv_email = 0\\nweighted_cv_paid_search = 0\\n\\nfor seg in ['loyal', 'new', 'returning']:\\n    for age in ['<30', '30-50', '50+']:\\n        # Get conversion rate for this segment and age\\n        try:\\n            rate = cv_by_all.loc[('email', seg, age), 'rate']\\n            weight = overall_dist[seg, age]\\n            weighted_cv_email += rate * weight\\n        except KeyError:\\n            pass\\n        \\n        try:\\n            rate = cv_by_all.loc[('paid_search', seg, age), 'rate']\\n            weight = overall_dist[seg, age]\\n            weighted_cv_paid_search += rate * weight\\n        except KeyError:\\n            pass\\n\\n# Final weighted rates\\nprint(f\\\"Weighted conversion rate (email): {weighted_cv_email:.3f}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {weighted_cv_paid_search:.3f}\\\")\\n\\n# Compare\\nif weighted_cv_paid_search > weighted_cv_email:\\n    campaign_success = True\\nelse:\\n    campaign_success = False\\n\\nprint(f\\\"Campaign success (after adjustment): {campaign_success}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5686,
+  "completion_tokens": 372
+ }
+}

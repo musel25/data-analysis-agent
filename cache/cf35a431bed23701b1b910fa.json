@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bcf39aba3f691b5e",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\nfrom scipy import stats\\n\\n# We already have:\\n# treatment_only: treatment arm, deduplicated, no -999 baseline\\n# stratified_diff: difference in response rates (F - M) within each severity stratum\\n# weights: number of patients in each severity group (across both sexes)\\n\\n# Extract stratum-specific differences and sample sizes\\nstrata = ['mild', 'moderate', 'severe']\\ndifferences = []\\nse = []\\nfor s in strata:\\n    # Get number of females and males in this stratum\\n    n_f = treatment_only[(treatment_only['sex'] == 'F') & (treatment_only['severity'] == s)].shape[0]\\n    n_m = treatment_only[(treatment_only['sex'] == 'M') & (treatment_only['severity'] == s)].shape[0]\\n    \\n    # Get response rates\\n    p_f = treatment_only[(treatment_only['sex'] == 'F') & (treatment_only['severity'] == s)]['responded'].mean()\\n    p_m = treatment_only[(treatment_only['sex'] == 'M') & (treatment_only['severity'] == s)]['responded'].mean()\\n    \\n    # Difference\\n    diff = p_f - p_m\\n    differences.append(diff)\\n    \\n    # Standard error of difference (assuming independence)\\n    se_f = np.sqrt(p_f * (1 - p_f) / n_f) if n_f > 0 else 0\\n    se_m = np.sqrt(p_m * (1 - p_m) / n_m) if n_m > 0 else 0\\n    se_diff = np.sqrt(se_f**2 + se_m**2)\\n    se.append(se_diff)\\n\\n# Convert to arrays\\ndifferences = np.array(differences)\\nse = np.array(se)\\nweights = np.array([treatment_only[treatment_only['severity'] == s].shape[0] for s in strata])\\n\\n# Weighted average difference\\nweighted_diff = (differences * weights).sum() / weights.sum()\\n\\n# Weighted standard error for the overall difference\\n# Using variance-weighted combination\\nw = weights / (se**2)\\nw = w / w.sum()  # Normalize weights\\n\\n# Variance of weighted average\\nvar_weighted = 1 / np.sum(w)\\nse_weighted = np.sqrt(var_weighted)\\n\\n# 95% CI\\nlower = weighted_diff - 1.96 * se_weighted\\nupper = weighted_diff + 1.96 * se_weighted\\n\\n# Print results\\nprint(f\\\"Weighted average difference (F - M): {weighted_diff:.4f}\\\")\\nprint(f\\\"95% CI: [{lower:.4f}, {upper:.4f}]\\\")\\nprint(f\\\"Standard error: {se_weighted:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6786,
+  "completion_tokens": 660
+ }
+}

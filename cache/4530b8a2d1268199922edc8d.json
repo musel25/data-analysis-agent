@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a2006dff4b6f2e67",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string with commas to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders (revenue == 999999.99)\\ndf_clean = df[df['revenue_numeric'] != 999999.99].copy()\\n\\ndf_clean = df_clean.drop(columns=['revenue_numeric'])\\n\\n# Now, filter for NEW customers reached by PAID SEARCH\\n# Group: channel == 'paid_search' AND customer_segment == 'new'\\nsubset = df_clean[(df_clean['channel'] == 'paid_search') & (df_clean['customer_segment'] == 'new')]\\n\\n# Count total orders and converted ones\\nn_total = len(subset)\\nn_converted = subset['converted'].sum()\\n\\n# Compute fraction converted\\nfraction_converted = n_converted / n_total if n_total > 0 else 0\\n\\nprint(f\\\"Total NEW customers reached by PAID SEARCH: {n_total}\\\")\\nprint(f\\\"Converted: {n_converted}\\\")\\nprint(f\\\"Fraction converted: {fraction_converted}\\\")\\n\\n# Return the fraction\\nfraction_converted\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3961,
+  "completion_tokens": 307
+ }
+}

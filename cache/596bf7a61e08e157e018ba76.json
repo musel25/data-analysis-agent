@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aab1dfe6e66decdf",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue = 999999.99)\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Drop refunded orders \u2014 they don't contribute to real revenue\\ndf = df[df['status'] == 'completed']\\n\\n# Now, restrict to converted orders \u2014 the estimand is revenue per converted order\\nconverted_df = df[df['converted'] == 1]\\n\\n# Verify: only converted orders\\nprint(f'Number of converted orders: {len(converted_df)}')\\n\\n# Compute average revenue per converted order, within each customer segment\\ngrouped = converted_df.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\ngrouped = grouped.rename(columns={'revenue': 'avg_revenue_per_converted_order'})\\n\\ngrouped.sort_values(['channel', 'customer_segment'])\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6566,
+  "completion_tokens": 278
+ }
+}

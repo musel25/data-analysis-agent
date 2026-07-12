@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a7ef1e7f44b8aa50",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders (revenue = 999999.99)\\nfiltered_sales = sales[sales['revenue_clean'] != 999999.99]\\n\\n# Replace -1 in customer_age with NaN (missing)\\nfiltered_sales['customer_age_clean'] = filtered_sales['customer_age'].where(filtered_sales['customer_age'] != -1, other=pd.NA)\\n\\n# Now compute mean age of customers who converted\\nmean_age_converted = filtered_sales[filtered_sales['converted'] == 1]['customer_age_clean'].mean()\\n\\nprint('Mean age of customers who converted:', mean_age_converted)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3886,
+  "completion_tokens": 215
+ }
+}

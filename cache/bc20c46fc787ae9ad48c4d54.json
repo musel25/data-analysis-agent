@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-99023d42f6ad0436",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We already have df_clean with 894 rows and QA orders removed\\n# Now, check for confounding: is customer_segment balanced between channels?\\n\\n# Cross-tabulate channel vs customer_segment\\ncrosstab = pd.crosstab(df_clean['channel'], df_clean['customer_segment'])\\nprint(\\\"Cross-tabulation of channel vs customer_segment:\\\\n\\\", crosstab)\\n\\n# Check conversion rates by segment within each channel\\n# First, compute conversion rate for each channel and segment\\nconv_rates = df_clean.groupby(['channel', 'customer_segment'])['converted'].agg(['mean', 'count']).round(4)\\nprint(\\\"Conversion rates by channel and segment:\\\\n\\\", conv_rates)\\n\\n# Compute overall conversion rates by channel (unadjusted)\\noverall_conv = df_clean.groupby('channel')['converted'].mean().round(4)\\nprint(\\\"Overall conversion rates (unadjusted):\\\\n\\\", overall_conv)\\n\\n# Now, compute the difference in conversion rates within each segment\\n# Then, average the differences (weighted by segment size)\\n# This is a stratified analysis\\n\\n# Get the number of orders in each segment\\nsegment_counts = df_clean['customer_segment'].value_counts()\\nprint(\\\"Segment counts:\\\\n\\\", segment_counts)\\n\\n# Compute difference in conversion rates within each segment\\ndiffs = []\\nfor segment in df_clean['customer_segment'].unique():\\n    subset = df_clean[df_clean['customer_segment'] == segment]\\n    conv_email = subset[subset['channel'] == 'email']['converted'].mean()\\n    conv_paid_search = subset[subset['channel'] == 'paid_search']['converted'].mean()\\n    diff = conv_email - conv_paid_search\\n    diffs.append((segment, diff))\\n    print(f\\\"Segment {segment}: email={conv_email:.4f}, paid_search={conv_paid_search:.4f}, diff={diff:.4f}\\\")\\n\\n# Now, compute a weighted average of the differences\\n# Weight by the number of orders in each segment\\nweighted_diff = 0\\nfor segment in df_clean['customer_segment'].unique():\\n    subset = df_clean[df_clean['customer_segment'] == segment]\\n    conv_email = subset[subset['channel'] == 'email']['converted'].mean()\\n    conv_paid_search = subset[subset['channel'] == 'paid_search']['converted'].mean()\\n    diff = conv_email - conv_paid_search\\n    count = len(subset)\\n    weighted_diff += diff * count\\n\\nweighted_diff /= len(df_clean)\\nprint(f\\\"Weighted average difference (stratified): {weighted_diff:.4f}\\\")\\n\\n# Also compute the raw difference for comparison\\nraw_diff = overall_conv['email'] - overall_conv['paid_search']\\nprint(f\\\"Raw difference (unadjusted): {raw_diff:.4f}\\\")\\n\\n# Return the stratified difference\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4687,
+  "completion_tokens": 641
+ }
+}

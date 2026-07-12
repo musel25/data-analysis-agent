@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85b1f589b6d17a98",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Check the premises\\nassert 'new' in df['customer_segment'].unique(), \\\"Premise failed: 'new' customers are not in the data\\\"\\nassert 'paid_search' in df['channel'].unique(), \\\"Premise failed: 'paid_search' is not a valid channel\\\"\\nassert df['converted'].isin([0, 1]).all(), \\\"Premise failed: 'converted' is not binary (0 or 1)\\\"\\n\\n# Now, apply filters: new customers, paid_search channel, and only completed orders\\n# Refunded orders should be excluded from conversion calculation\\nfiltered_df = df[\\n    (df['customer_segment'] == 'new') &\\n    (df['channel'] == 'paid_search') &\\n    (df['status'] == 'completed')\\n]\\n\\n# Check if any such rows exist\\nprint(\\\"Number of new customers reached by paid_search (completed only):\\\", filtered_df.shape[0])\\n\\n# Compute conversion fraction: number converted / total\\nif filtered_df.shape[0] == 0:\\n    conversion_fraction = 0.0\\nelse:\\n    conversion_fraction = filtered_df['converted'].mean()\\n\\nprint(\\\"Conversion fraction:\\\", conversion_fraction)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3266,
+  "completion_tokens": 306
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3e221aa34b3c151",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data and clean it\\ndf = pd.read_csv('data/sales.csv')\\ndf['revenue_float'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter out refunded orders and QA orders\\ndf_clean = df[(df['status'] == 'completed') & (df['revenue_float'] != 999999.99)]\\n\\n# Compute conversion rate within each customer segment and channel\\ngrouped = df_clean.groupby(['channel', 'customer_segment'])\\nsegment_stats = grouped['converted'].agg(['mean', 'count']).reset_index()\\nsegment_stats = segment_stats.rename(columns={'mean': 'conversion_rate', 'count': 'n'})\\n\\n# Compute the difference in conversion rates within each segment\\n# email - paid_search, for each segment\\ndiff_by_segment = segment_stats[segment_stats['channel'] == 'email'].copy()\\ndiff_by_segment = diff_by_segment.merge(\\n    segment_stats[segment_stats['channel'] == 'paid_search'],\\n    on='customer_segment',\\n    suffixes=('_email', '_paid_search')\\n)\\ndiff_by_segment['diff'] = diff_by_segment['conversion_rate_email'] - diff_by_segment['conversion_rate_paid_search']\\n\\n# Compute overall weighted average difference by segment size in the full clean dataset\\n# Use the total segment size across both channels as weights\\nsegment_total_n = df_clean.groupby('customer_segment')['converted'].count().to_dict()\\ndiff_by_segment['weight'] = diff_by_segment['customer_segment'].map(segment_total_n)\\n\\ntotal_n = diff_by_segment['weight'].sum()\\ndiff_by_segment['weighted_diff'] = diff_by_segment['diff'] * (diff_by_segment['weight'] / total_n)\\n\\n# Total adjusted difference\\nadjusted_diff = diff_by_segment['weighted_diff'].sum()\\n\\n# Print results\\nprint(\\\"Segment-level conversion rates:\\\\n\\\", segment_stats)\\nprint(\\\"Segment-level differences:\\\\n\\\", diff_by_segment[['customer_segment', 'diff', 'weight', 'weighted_diff']])\\nprint(\\\"Adjusted difference (email - paid_search):\\\", adjusted_diff)\\n\\n# Confirm number of QA orders removed\\nqa_removed = len(df) - len(df_clean)\\nprint(\\\"Number of QA orders removed:\\\", (df['revenue_float'] == 999999.99).sum())\\nprint(\\\"Number of refunded orders removed:\\\", (df['status'] == 'refunded').sum())\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7380,
+  "completion_tokens": 564
+ }
+}

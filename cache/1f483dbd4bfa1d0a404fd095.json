@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a25504ccd896a921",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Load and clean data\\ndf = pd.read_csv('data/sales.csv')\\ndf['customer_age'] = df['customer_age'].replace(-1, pd.NA)\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\nqa_mask = df['revenue'] == 999999.99\\ndf = df[~qa_mask]\\ncompleted_mask = df['status'] == 'completed'\\ndf = df[completed_mask]\\n\\n# Compute conversion rates by channel and segment\\nconversion_by_channel_segment = df.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\npivot = conversion_by_channel_segment.pivot(index='customer_segment', columns='channel', values='converted')\\npivot['diff'] = pivot['email'] - pivot['paid_search']\\n\\n# Compute weighted average difference\\nsegment_counts = df.groupby('customer_segment')['converted'].count()\\ntotal_n = segment_counts.sum()\\nweights = segment_counts / total_n\\nweighted_diff = (pivot['diff'] * weights).sum()\\n\\n# Compute overall conversion rates by channel\\nemail_conv = df[df['channel'] == 'email']['converted'].mean()\\npaid_search_conv = df[df['channel'] == 'paid_search']['converted'].mean()\\nraw_diff = email_conv - paid_search_conv\\n\\n# Compute average revenue by channel\\nemail_rev = df[df['channel'] == 'email']['revenue'].mean()\\npaid_search_rev = df[df['channel'] == 'paid_search']['revenue'].mean()\\nrev_diff = email_rev - paid_search_rev\\n\\n# Print results\\nprint(f\\\"Final dataset shape: {df.shape}\\\")\\nprint(\\\"\\\\nConversion rates by channel and segment:\\\")\\nprint(pivot)\\nprint(f\\\"\\\\nWeighted average difference (email - paid_search): {weighted_diff:.4f}\\\")\\nprint(f\\\"Raw difference in conversion rate: {raw_diff:.4f}\\\")\\nprint(f\\\"Difference in average revenue: {rev_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6824,
+  "completion_tokens": 466
+ }
+}

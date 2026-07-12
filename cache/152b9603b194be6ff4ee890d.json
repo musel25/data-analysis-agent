@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a21233a844818923",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We already have:\\n# df_dedup: deduplicated dataset with no -999 baseline\\n# treatment_only: treatment arm only\\n\\ntreatment_only = df_dedup[df_dedup['arm'] == 'treatment']\\n\\n# Stratify by severity and compute response rates within each stratum\\nstratified_rates = treatment_only.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).round(4)\\nstratified_rates = stratified_rates.rename(columns={'mean': 'response_rate', 'count': 'n'})\\n\\n# Compute the difference in response rates between females and males within each severity level\\nstratified_diff = (treatment_only[treatment_only['sex'] == 'F'].groupby('severity')['responded'].mean() \\n                   - treatment_only[treatment_only['sex'] == 'M'].groupby('severity')['responded'].mean())\\n\\n# Compute overall difference using weighted average of stratum-specific differences\\n# Weights: total number of patients in each severity group (across both sexes)\\nweights = treatment_only.groupby('severity').size()\\n\\n# Weighted average difference\\nweighted_diff = (stratified_diff * weights).sum() / weights.sum()\\n\\n# Compute the total numbers for reporting\\nn_females = treatment_only[treatment_only['sex'] == 'F'].shape[0]\\nn_males = treatment_only[treatment_only['sex'] == 'M'].shape[0]\\n\\n# Print supporting evidence\\nprint(f\\\"Females: {n_females} patients, response rate: {treatment_only[treatment_only['sex'] == 'F']['responded'].mean():.3f}\\\")\\nprint(f\\\"Males: {n_males} patients, response rate: {treatment_only[treatment_only['sex'] == 'M']['responded'].mean():.3f}\\\")\\nprint(f\\\"Stratum-specific differences: {stratified_diff.to_dict()}\\\")\\nprint(f\\\"Weighted average difference: {weighted_diff:.3f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5590,
+  "completion_tokens": 468
+ }
+}

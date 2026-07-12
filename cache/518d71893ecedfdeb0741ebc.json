@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-93b23fe79bf9be2b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue_float'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Check: how many rows have revenue_float == 999999.99?\\ninternal_test_rows = df[df['revenue_float'] == 999999.99]\\nprint(f\\\"Number of internal test orders (revenue = 999999.99): {len(internal_test_rows)}\\\")\\n\\n# Filter for completed orders\\ndf_completed = df[df['status'] == 'completed']\\nprint(f\\\"Number of completed orders: {len(df_completed)}\\\")\\n\\n# Among completed, how many are internal test orders?\\ninternal_test_in_completed = df_completed[df_completed['revenue_float'] == 999999.99]\\nprint(f\\\"Number of internal test orders among completed: {len(internal_test_in_completed)}\\\")\\n\\n# Exclude internal test orders from completed\\ndf_clean = df_completed[df_completed['revenue_float'] != 999999.99]\\nprint(f\\\"Number of cleaned completed orders (excl. internal test): {len(df_clean)}\\\")\\n\\n# Compute total revenue\\ntotal_revenue_cleaned = df_clean['revenue_float'].sum()\\nprint(f\\\"Total revenue from completed orders (excluding internal test): {total_revenue_cleaned}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5224,
+  "completion_tokens": 357
+ }
+}

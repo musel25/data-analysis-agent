@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-96b5cdd9dd2233e1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We have already cleaned the data. Now check for confounding between arm and severity\\n# Per documentation: treatment was assigned by clinician judgement, not randomised, and sicker patients got treatment.\\n# So we must adjust for severity when comparing response rates.\\n\\n# Compute response rates within each severity level, then combine using appropriate weighting\\n# We'll use stratified analysis: compute response rate in each severity group within each arm, then compute the difference in proportions\\n\\n# First, create a cross-tab of arm and responded, stratified by severity\\nstratified_response = df.groupby(['arm', 'severity'])['responded'].agg(['count', 'sum']).reset_index()\\nstratified_response['response_rate'] = stratified_response['sum'] / stratified_response['count']\\n\\n# Now compute the overall response rate for each arm, weighted by severity distribution\\n# Use the overall severity distribution as weights (common practice in stratified analysis)\\nseverity_total = df['severity'].value_counts().sort_index()\\ntotal_patients = len(df)\\n\\n# Compute weighted response rate per arm\\nweighted_response = []\\nfor arm in ['control', 'treatment']:\\n    arm_data = stratified_response[stratified_response['arm'] == arm]\\n    weighted_rate = (arm_data['response_rate'] * arm_data['count']).sum() / arm_data['count'].sum()\\n    weighted_response.append(weighted_rate)\\n\\n# Difference in proportions (treatment - control)\\ntreatment_rate = weighted_response[1]\\ncontrol_rate = weighted_response[0]\\ntreatment_effect = treatment_rate - control_rate\\n\\n# Output\\nprint(f\\\"Control response rate (weighted): {control_rate:.4f}\\\")\\nprint(f\\\"Treatment response rate (weighted): {treatment_rate:.4f}\\\")\\nprint(f\\\"Treatment effect (difference in proportions): {treatment_effect:.4f}\\\")\\n\\n# Also report the raw, unadjusted difference for comparison\\nraw_control = df[df['arm'] == 'control']['responded'].mean()\\nraw_treatment = df[df['arm'] == 'treatment']['responded'].mean()\\nraw_effect = raw_treatment - raw_control\\nprint(f\\\"\\\\nRaw (unadjusted) treatment effect: {raw_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3762,
+  "completion_tokens": 515
+ }
+}

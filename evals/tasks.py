@@ -1,4 +1,5 @@
-"""The benchmark. 15 tasks, programmatic ground truth, and a documented wrong answer for each.
+"""The benchmark. 28 tasks over 3 domains, programmatic ground truth, and a documented wrong answer
+for each.
 
 THE DESIGN RULE, taken from GeneBench-Pro's principle #3 ("clear numerical separation from
 incorrect answers"; violation: "wrong analyses can be graded as correct"):
@@ -442,7 +443,13 @@ def test_separation():
 
 
 def test_leak():
-    """The ground truth must never appear in anything the agent sees."""
+    """The NUMERIC ground truth must never appear in anything the agent sees.
+
+    Note the word 'numeric'. This guard passed for the entire life of the project while two
+    behavioural tasks had their questions AND their answers written into the system prompt as
+    illustrative examples (D28). It was pointed at the wrong channel. `test_contamination` below
+    is the one that would have caught it, and it exists because this one didn't.
+    """
     for t in TASKS:
         gt = t.gt()
         if not isinstance(gt, (int, float)):
@@ -452,9 +459,73 @@ def test_leak():
     return True
 
 
+def test_contamination():
+    """No benchmark question may appear, even in fragments, in anything the model reads.
+
+    The prompt, the tool schemas and the verifier's rubric are all model-visible surface. Examples
+    written into any of them are training data — and examples drawn from the benchmark are training
+    on the test set. It does not feel like cheating while you do it, because it reads as *advice*.
+
+    Checks every 4-gram of every task question against the full model-visible surface. Cheap, and
+    it is the guard I did not have when I needed it (D28).
+    """
+    import json as _json
+
+    from agentlib.agent import SYSTEM, TOOLS
+    from agentlib.verifier import RUBRIC
+
+    surface = (SYSTEM + _json.dumps(TOOLS) + RUBRIC).lower()
+    for t in TASKS:
+        words = t.question.lower().replace("?", "").replace(",", "").split()
+        for i in range(len(words) - 3):
+            frag = " ".join(words[i:i + 4])
+            assert frag not in surface, (
+                f"{t.id}: the fragment '{frag}' from this task's question appears in the "
+                f"model-visible prompt. That is training on the test set. (See D28.)"
+            )
+    return True
+
+
+def test_portability():
+    """Nothing machine-specific may reach the prompt — or the committed cache is worthless.
+
+    The prompt carries the data-file paths. If those are absolute, the cache key contains my home
+    directory, and the README's "replays offline from the committed cache" is true on exactly one
+    computer. It was, for a while (D30).
+
+    Asserts that the same agent call from two different working directories produces a
+    byte-identical prompt.
+    """
+    import os
+
+    from agentlib import observe
+    from agentlib.agent import _portable
+    from agentlib.executor import ROOT, PyExecutor
+
+    def prompt_from(cwd: str) -> str:
+        os.chdir(cwd)
+        PyExecutor().reset()                       # pins CWD back to ROOT, as a real run would
+        files = [_portable(str(ROOT / "data" / "trial.csv"))]
+        return observe.briefing(files) + "|" + ",".join(files)
+
+    here, there = prompt_from(str(ROOT / "notebooks")), prompt_from("/tmp")
+    assert here == there, "the prompt depends on the working directory — the cache is not portable"
+    assert str(ROOT) not in here, f"an absolute path ({ROOT}) reached the prompt — see D30"
+    return True
+
+
 if __name__ == "__main__":
+    # Run as a script (`uv run python evals/tasks.py`), so the repo root is not on sys.path yet
+    # and `import agentlib` inside test_contamination would fail.
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
     test_separation()
     test_leak()
+    test_contamination()
+    test_portability()
     print(f"{len(TASKS)} tasks · {sum(t.holdout for t in TASKS)} held out\n")
     print(f"{'id':<22} {'category':<20} {'truth':>12} {'naive':>12}   separation")
     print("─" * 92)
@@ -469,4 +540,6 @@ if __name__ == "__main__":
             nvs, sep = "—", ""
         print(f"{t.id:<22} {t.category:<20} {gts:>12} {nvs:>12}   {sep}")
     print("\n✓ every naive path is far outside its tolerance band (test_separation)")
-    print("✓ no ground truth appears in any prompt (test_leak)")
+    print("✓ no numeric ground truth appears in any prompt          (test_leak)")
+    print("✓ no benchmark question appears in the model's prompt    (test_contamination — D28)")
+    print("✓ the prompt is identical from any working directory     (test_portability — D30)")

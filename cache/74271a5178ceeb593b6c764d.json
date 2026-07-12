@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-90defc5fe1227b1a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the stratified analysis and print each required number explicitly\\n\\n# Compute raw difference\\nraw_diff = response_rate_treatment - response_rate_control\\nprint(f\\\"Raw difference (treatment - control): {raw_diff:.4f}\\\")\\n\\n# Compute stratum-specific effects and print them\\nstratum_effects = []\\nfor severity, group in df.groupby('severity'):\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    stratum_effects.append((severity, control_rate, treatment_rate, effect))\\n    print(f\\\"Effect in {severity} severity: {effect:.4f}\\\")\\n\\n# Compute weighted average of stratum effects\\ntotal_n = len(df)\\nstratum_counts = df['severity'].value_counts()\\nstratum_weights = stratum_counts / total_n\\n\\nweighted_effect = 0.0\\nfor severity, group in df.groupby('severity'):\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    weight = stratum_weights[severity]\\n    weighted_effect += effect * weight\\n\\nprint(f\\\"Stratified treatment effect (weighted): {weighted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5266,
+  "completion_tokens": 341
+ }
+}

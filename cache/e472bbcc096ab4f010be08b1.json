@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1ff3c718069467f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter: completed orders, exclude QA and refunded\\ncompleted_orders = df[(df['status'] == 'completed') & (df['revenue'] != 999999.99)]\\n\\n# Compute average revenue per channel, stratified by customer_segment\\nstratified_avg = completed_orders.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\n# Compute the proportion of each customer_segment within each channel\\nchannel_segment_prop = completed_orders.groupby('channel')['customer_segment'].value_counts(normalize=True).reset_index(name='prop')\\n\\n# Merge to get proportions per segment per channel\\nstratified_avg = stratified_avg.merge(channel_segment_prop, on=['channel', 'customer_segment'])\\n\\n# Compute adjusted average revenue per channel (weighted by segment proportion)\\nadjusted_avg = stratified_avg.groupby('channel').apply(\\n    lambda x: (x['revenue'] * x['prop']).sum()\\n).reset_index(name='adjusted_revenue')\\n\\n# Print full adjusted averages\\nprint(\\\"Adjusted average revenue per channel (stratified by customer_segment):\\\")\\nprint(adjusted_avg)\\n\\n# Extract values\\nemail_avg = adjusted_avg[adjusted_avg['channel'] == 'email']['adjusted_revenue'].iloc[0]\\npaid_search_avg = adjusted_avg[adjusted_avg['channel'] == 'paid_search']['adjusted_revenue'].iloc[0]\\ndiff = email_avg - paid_search_avg\\n\\nprint(f\\\"\\\\nDifference (email - paid_search): {diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6839,
+  "completion_tokens": 412
+ }
+}

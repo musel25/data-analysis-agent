@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-963dca5218026a5a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# After deduplication, check the cross-tab between arm and severity\\n# This is critical: treatment was assigned by clinician judgement, not randomised\\n# Sicker patients are more likely to get treatment\\n\\n# Compute the response rate in each arm\\nresponse_rate_control = df[df['arm'] == 'control']['responded'].mean()\\nresponse_rate_treatment = df[df['arm'] == 'treatment']['responded'].mean()\\n\\n# Compute the raw difference in proportions (treatment - control)\\ntreatment_effect = response_rate_treatment - response_rate_control\\n\\n# But: the groups are confounded by severity. We must adjust.\\n# Use stratification by severity to get a fair comparison\\n\\n# Stratify by severity and compute response rate within each stratum\\nstrata = df.groupby('severity')\\n\\nstratum_effects = []\\nfor severity, group in strata:\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    stratum_effects.append((severity, control_rate, treatment_rate, effect))\\n\\n# Convert to DataFrame for clarity\\nstratum_df = pd.DataFrame(stratum_effects, columns=['severity', 'control_rate', 'treatment_rate', 'effect'])\\nprint(stratum_df)\\n\\n# Compute the overall treatment effect using stratified adjustment (weighted average of stratum effects)\\n# Weight by the size of each stratum in the total population\\nn_total = len(df)\\nstratum_weights = df['severity'].value_counts(normalize=True)\\n\\n# Weighted average of treatment effects\\nweighted_effect = sum(stratum_df['effect'] * stratum_weights[stratum_df['severity']])\\n\\n# Output the final answer\\nprint(f\\\"\\\\nRaw difference (treatment - control): {treatment_effect:.4f}\\\")\\nprint(f\\\"Stratified treatment effect (weighted): {weighted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3820,
+  "completion_tokens": 462
+ }
+}

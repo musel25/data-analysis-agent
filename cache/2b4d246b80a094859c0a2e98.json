@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aeddbdc835fd1ce5",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the stratified weighting analysis and print all intermediate results to ensure they are visible\\n\\n# Create a stratification variable\\ndf['stratum'] = df['severity'] + '_' + df['arm'] + '_' + df['assay_batch']\\n\\n# Compute response rate within each stratum for males and females\\nstratum_response = df.groupby(['stratum', 'sex'])['responded'].mean().unstack(fill_value=0)\\nprint(\\\"Stratum-level response rates (F vs M):\\\")\\nprint(stratum_response)\\n\\n# Compute the number of males and females in each stratum\\nstratum_count = df.groupby(['stratum', 'sex']).size().unstack(fill_value=0)\\nprint(\\\"\\\\nStratum-level counts (F vs M):\\\")\\nprint(stratum_count)\\n\\n# Compute total number of patients in each stratum\\nstratum_total = stratum_count.sum(axis=1)\\nprint(\\\"\\\\nTotal patients per stratum:\\\")\\nprint(stratum_total)\\n\\n# Compute weights for each stratum: proportion of total in that stratum\\nstratum_weights = stratum_total / stratum_total.sum()\\nprint(\\\"\\\\nStratum weights:\\\")\\nprint(stratum_weights)\\n\\n# Compute weighted average response rate for each sex\\nweighted_response_f = (stratum_response['F'] * stratum_weights).sum()\\nweighted_response_m = (stratum_response['M'] * stratum_weights).sum()\\n\\nprint(f\\\"\\\\nWeighted average response rate (F): {weighted_response_f * 100:.2f}%\\\")\\nprint(f\\\"Weighted average response rate (M): {weighted_response_m * 100:.2f}%\\\")\\n\\n# Adjusted difference\\nadjusted_diff = weighted_response_f - weighted_response_m\\nprint(f\\\"Adjusted difference in response rate (F - M): {adjusted_diff * 100:.2f}%\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7458,
+  "completion_tokens": 443
+ }
+}

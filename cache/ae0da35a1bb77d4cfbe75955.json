@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-960645ac2484830f",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Final population: df_dedup, with valid baseline and deduplicated\\n# Now compute response rates by arm and severity\\n\\n# Stratify by severity and compute response rate in each arm within each stratum\\nstratified = df_dedup.groupby(['arm', 'severity'])['responded'].agg(['count', 'sum'])\\nstratified['proportion'] = stratified['sum'] / stratified['count']\\n\\nprint('Stratified response rates by arm and severity:')\\nprint(stratified[['count', 'sum', 'proportion']])\\n\\n# Compute weighted average response rate per arm, weighted by severity distribution in the total population\\n# This gives us a standardised estimate of the treatment effect\\n\\n# Total population size\\nN_total = len(df_dedup)\\n\\n# Weight for each severity stratum: proportion in total population\\nseverity_weights = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Compute standardised response rate for each arm\\nstandardised_response = {}\\nfor arm in ['control', 'treatment']:\\n    arm_data = stratified.loc[arm]\\n    weighted_avg = (arm_data['proportion'] * severity_weights).sum()\\n    standardised_response[arm] = weighted_avg\\n\\nprint(f'\\\\nStandardised response rate by arm:')\\nfor arm, rate in standardised_response.items():\\n    print(f'{arm}: {rate:.4f}')\\n\\n# Compute treatment effect: treatment minus control\\ntreatment_effect = standardised_response['treatment'] - standardised_response['control']\\n\\nprint(f'\\\\nTreatment effect (standardised): {treatment_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8068,
+  "completion_tokens": 389
+ }
+}

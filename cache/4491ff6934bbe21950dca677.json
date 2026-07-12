@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-89dd02ea2fd57b41",
+    "function": {
+     "arguments": "{\"code\": \"from collections import defaultdict\\n\\n# Stratify by severity\\nseverity_groups = df['severity'].unique()\\nstratified_diffs = []\\n\\nfor severity in severity_groups:\\n    subset = df[df['severity'] == severity]\\n    \\n    # Compute response rates within this severity stratum\\n    treatment_rate = subset[subset['arm'] == 'treatment']['responded'].mean()\\n    control_rate = subset[subset['arm'] == 'control']['responded'].mean()\\n    \\n    # Compute difference\\n    diff = treatment_rate - control_rate\\n    \\n    # Store difference and stratum size\\n    stratified_diffs.append((diff, len(subset)))\\n\\n# Compute weighted average difference (using overall stratum sizes as weights)\\ntotal_n = len(df)\\nweighted_diff = sum(diff * n / total_n for diff, n in stratified_diffs)\\n\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5974,
+  "completion_tokens": 216
+ }
+}

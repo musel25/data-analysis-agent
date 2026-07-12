@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ce5f295fc6f90d7",
+    "function": {
+     "arguments": "{\"code\": \"sales_df['channel'] = sales_df['channel'].astype('category')\\nsales_df['customer_segment'] = sales_df['customer_segment'].astype('category')\\nsales_df['age_group'] = sales_df['age_group'].astype('category')\\n\\n# Compute weighted average conversion rate by channel, adjusting for segment and age\\n# Use the overall distribution of segments and age groups as weights\\n\\n# Overall distribution of customer_segment and age_group\\noverall_segment_dist = sales_df['customer_segment'].value_counts(normalize=True)\\noverall_age_dist = sales_df['age_group'].value_counts(normalize=True)\\n\\n# Compute weighted conversion rate for each channel\\nweighted_conv_email = 0\\nweighted_conv_paid_search = 0\\n\\nfor seg in overall_segment_dist.index:\\n    for age in overall_age_dist.index:\\n        # Get conversion rate for this segment-age group in each channel\\n        rate_email = conversion_by_group[(conversion_by_group['channel'] == 'email') & \\n                                        (conversion_by_group['customer_segment'] == seg) & \\n                                        (conversion_by_group['age_group'] == age)]['converted'].values\\n        rate_paid_search = conversion_by_group[(conversion_by_group['channel'] == 'paid_search') & \\n                                              (conversion_by_group['customer_segment'] == seg) & \\n                                              (conversion_by_group['age_group'] == age)]['converted'].values\\n        \\n        # If rate is available, add weighted contribution\\n        if len(rate_email) > 0 and len(rate_paid_search) > 0:\\n            weight = overall_segment_dist[seg] * overall_age_dist[age]\\n            weighted_conv_email += rate_email[0] * weight\\n            weighted_conv_paid_search += rate_paid_search[0] * weight\\n\\nprint(f\\\"Weighted conversion rate (email): {weighted_conv_email:.4f}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {weighted_conv_paid_search:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6065,
+  "completion_tokens": 437
+ }
+}

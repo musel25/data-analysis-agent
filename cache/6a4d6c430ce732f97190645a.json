@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ab9164755489a04e",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Manual implementation of Mann-Whitney U test without scipy\\n# Combine the two groups and rank them\\ncontrol_change = trial_df[trial_df['arm'] == 'control']['biomarker_change']\\ntreatment_change = trial_df[trial_df['arm'] == 'treatment']['biomarker_change']\\n\\ndata = np.concatenate([control_change, treatment_change])\\nlabels = np.concatenate([np.zeros(len(control_change)), np.ones(len(treatment_change))])\\n\\ncombined = np.column_stack([data, labels])\\n# Sort by data value\\ncombined = combined[combined[:, 0].argsort()]\\n\\n# Assign ranks (1-based)\\nranks = np.arange(1, len(combined) + 1)\\n\\n# Assign ranks to each group\\nrank_control = ranks[combined[:, 1] == 0]\\nrank_treatment = ranks[combined[:, 1] == 1]\\n\\n# Calculate U for each group\\nn1, n2 = len(control_change), len(treatment_change)\\nU1 = len(rank_control) * len(rank_treatment) + (len(rank_control) * (len(rank_control) + 1)) / 2 - np.sum(rank_control)\\nU2 = len(rank_control) * len(rank_treatment) - U1\\n\\n# Use the smaller U\\nU = min(U1, U2)\\n\\n# Calculate p-value using normal approximation\\nmean_U = n1 * n2 / 2\\nvar_U = n1 * n2 * (n1 + n2 + 1) / 12\\nz = (U - mean_U) / np.sqrt(var_U)\\n\\n# Two-sided p-value\\np_value = 2 * (1 - np.abs(stats.norm.cdf(z)))  # Still need stats.norm\\n\\n# Since scipy is not available, use a fallback for norm.cdf\\nfrom math import erf, pi, sqrt\\n\\ndef norm_cdf(z):\\n    return 0.5 * (1 + erf(z / sqrt(2)))\\n\\np_value = 2 * (1 - norm_cdf(z))\\n\\n# Calculate effect size (rank-biserial correlation)\\neffect_size = 1 - (2 * U) / (n1 * n2)\\n\\nprint(f\\\"U statistic: {U}\\\")\\nprint(f\\\"p-value: {p_value}\\\")\\nprint(f\\\"Effect size (rank-biserial correlation): {effect_size}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6700,
+  "completion_tokens": 560
+ }
+}

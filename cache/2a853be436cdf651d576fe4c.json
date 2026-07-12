@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ca162b4d57e6f41",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Filter to only completed orders, since `converted` is defined as 1 only for completed checkouts\\n# The documentation says `converted` is 1 if the order completed checkout\\n# But we found 21 refunded orders with `converted == 1` \u2014 these are errors\\n# So we must define `converted` only for `status == 'completed'`\\n# Recompute `converted` based on `status == 'completed'` only\\n\\ndf_clean = df[df['status'] == 'completed']\\n\\n# Now compute conversion rates by channel, stratified by customer_segment\\nstratified_clean = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().unstack()\\n\\n# Compute weighted average conversion rate for each channel\\nchannel_totals_clean = df_clean.groupby('channel').size()\\nsegment_proportions_clean = df_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\nweighted_email_clean = (stratified_clean.loc['email'] * \\n                       segment_proportions_clean.loc['email'] / channel_totals_clean['email']).sum()\\nweighted_paid_search_clean = (stratified_clean.loc['paid_search'] * \\n                             segment_proportions_clean.loc['paid_search'] / channel_totals_clean['paid_search']).sum()\\n\\n# Compute difference\\ndifference_clean = weighted_email_clean - weighted_paid_search_clean\\n\\nprint(f\\\"Cleaned data: {len(df_clean)} completed orders out of {len(df)} total\\\")\\nprint(f\\\"Weighted average conversion rate (email): {weighted_email_clean}\\\")\\nprint(f\\\"Weighted average conversion rate (paid_search): {weighted_paid_search_clean}\\\")\\nprint(f\\\"Adjusted difference (email - paid_search): {difference_clean}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6369,
+  "completion_tokens": 420
+ }
+}

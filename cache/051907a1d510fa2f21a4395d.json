@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be1c8191e8e7b4d6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load and clean data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Remove refunded orders\\ndf = df[df['status'] == 'completed']\\n\\n# Ensure only converted orders are used in revenue per converted order\\ndf_converted = df[df['converted'] == 1]\\n\\n# Calculate average revenue per converted order by channel and segment\\ndf_grouped = df_converted.groupby(['channel', 'customer_segment'], as_index=False)['revenue'].mean()\\n\\n# Pivot to compare channels\\ndf_pivot = df_grouped.pivot(index='customer_segment', columns='channel', values='revenue')\\n\\ndf_pivot = df_pivot.rename(columns={'email': 'email_avg', 'paid_search': 'paid_search_avg'})\\n\\ndf_pivot['difference'] = df_pivot['email_avg'] - df_pivot['paid_search_avg']\\n\\ndf_pivot = df_pivot.round(2)\\n\\ndf_pivot\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5514,
+  "completion_tokens": 293
+ }
+}

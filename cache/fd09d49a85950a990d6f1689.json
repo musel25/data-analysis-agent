@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ac0703c46ed3c94a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We already have the cleaned dataset from prior steps\\n# Now, compute response rates by arm, stratified by severity\\n\\n# Compute response rate within each severity stratum, for each arm\\nresponse_rates = df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nresponse_rates = response_rates.pivot(index='arm', columns='severity', values='responded')\\nresponse_rates.columns.name = None\\nprint(\\\"Response rates by arm and severity:\\\")\\nprint(response_rates)\\n\\n# Compute overall response rates (raw, unadjusted)\\ntreatment_response_rate = df[df['arm'] == 'treatment']['responded'].mean()\\ncontrol_response_rate = df[df['arm'] == 'control']['responded'].mean()\\nraw_diff = treatment_response_rate - control_response_rate\\n\\n# Now compute adjusted treatment effect using stratified standardisation (direct standardisation)\\n# Weight by the overall distribution of severity across both arms\\n\\n# Total number of patients\\nn_total = len(df)\\n\\n# Overall severity distribution (across both arms)\\nseverity_dist = df['severity'].value_counts(normalize=True)\\n\\n# Compute stratum-specific response rates (already computed above)\\n# Use the same response_rates dataframe\\n\\n# Adjusted response rate for treatment arm: weighted average using overall severity weights\\nadjusted_treatment = (response_rates.loc['treatment'] * severity_dist).sum()\\nadjusted_control = (response_rates.loc['control'] * severity_dist).sum()\\n\\n# Adjusted treatment effect\\nadjusted_diff = adjusted_treatment - adjusted_control\\n\\n# Output\\nprint(f\\\"\\\\nRaw response rates:\\\\nTreatment: {treatment_response_rate:.4f} (n={df[df['arm']=='treatment'].shape[0]})\\\\nControl: {control_response_rate:.4f} (n={df[df['arm']=='control'].shape[0]})\\\\nRaw difference: {raw_diff:.4f}\\\")\\nprint(f\\\"\\\\nAdjusted response rates (direct standardisation):\\\\nTreatment: {adjusted_treatment:.4f}\\\\nControl: {adjusted_control:.4f}\\\\nAdjusted difference: {adjusted_diff:.4f}\\\")\\n\\n# Return the adjusted difference as the final answer\\nadjusted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4730,
+  "completion_tokens": 501
+ }
+}

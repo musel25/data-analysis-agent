@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3d5575c5ee2effe",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue = 999999.99)\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Drop refunded orders \u2014 they don't contribute to real revenue\\ndf = df[df['status'] == 'completed']\\n\\n# Now, restrict to converted orders only: converted == 1\\n# Because the estimand is 'revenue per converted order'\\ndf = df[df['converted'] == 1]\\n\\n# Confirm: only converted, completed, non-QA orders\\nprint(f'Final number of rows: {len(df)}')\\n\\n# Compute average revenue per converted order within each customer segment\\n# to control for confounding by customer segment\\n\\ngrouped = df.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\ngrouped = grouped.rename(columns={'revenue': 'avg_revenue_per_converted_order'})\\n\\ngrouped = grouped.sort_values(['channel', 'customer_segment'])\\n\\n# Print the full table to get exact values for evidence\\nprint(grouped)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8094,
+  "completion_tokens": 322
+ }
+}

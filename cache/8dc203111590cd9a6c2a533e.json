@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8755bbd937fd38a6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Final cleaned dataset\\ndf_clean = pd.read_csv('data/sales.csv')\\ndf_clean['revenue_clean'] = df_clean['revenue'].str.replace(',', '').astype(float)\\nqa_mask = df_clean['revenue_clean'] == 999999.99\\ndf_clean = df_clean[~qa_mask].copy()\\ndf_clean = df_clean[df_clean['customer_age'] != -1]\\n\\n# Remove refunded orders for conversion rate (since they are not 'converted')\\ndf_conv = df_clean[df_clean['status'] == 'completed'].copy()\\n\\n# Check conversion rate by channel (only completed orders)\\nraw_conv_rate = df_conv.groupby('channel')['converted'].mean()\\nprint('Raw conversion rate (completed only):')\\nprint(raw_conv_rate)\\n\\n# Cross-tabulate channel and customer_segment in completed orders\\ndf_conv_ct = pd.crosstab(df_conv['channel'], df_conv['customer_segment'])\\nprint('\\\\nCross-tabulation (completed orders):')\\nprint(df_conv_ct)\\n\\n# Standardised conversion rate using completed orders only\\n# Segment distribution in completed orders\\nsegment_dist = df_conv['customer_segment'].value_counts(normalize=True)\\n\\n# Segment distribution per channel\\nchannel_dist = df_conv.groupby('channel')['customer_segment'].value_counts(normalize=True).unstack(fill_value=0)\\n\\n# Compute standardised conversion rate\\nstandardised_conv = channel_dist.apply(lambda row: (row * segment_dist).sum() * 100, axis=1)\\nprint('\\\\nStandardised conversion rate (completed only):')\\nprint(standardised_conv)\\n\\n# Compute average revenue by channel (completed only)\\navg_revenue = df_conv.groupby('channel')['revenue_clean'].mean()\\nprint('\\\\nAverage revenue by channel (completed only):')\\nprint(avg_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7338,
+  "completion_tokens": 427
+ }
+}

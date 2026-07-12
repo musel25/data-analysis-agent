@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9889685d21c8004b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float after stripping commas\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Verify premises\\nassert df['converted'].isin([0, 1]).all(), \\\"'converted' is not binary\\\"\\nassert (df['customer_age'] >= -1).all(), \\\"'customer_age' has values below -1\\\"\\nassert (df['customer_age'] == -1).sum() == 108, \\\"Expected 108 missing ages (value -1)\\\"\\n\\n# Check for QA orders\\nqa_count = (df['revenue'] == 999999.99).sum()\\nprint(f\\\"QA orders: {qa_count}\\\")\\n\\n# Check for refunded orders\\nrefunded_count = (df['status'] == 'refunded').sum()\\nprint(f\\\"Refunded orders: {refunded_count}\\\")\\n\\n# Filter for converted customers\\nconverted_customers = df[df['converted'] == 1]\\nprint(f\\\"Total converted customers: {len(converted_customers)}\\\")\\n\\n# Filter out those with missing age (age == -1)\\nvalid_age_converted = converted_customers[converted_customers['customer_age'] != -1]\\nprint(f\\\"Converted customers with valid age: {len(valid_age_converted)}\\\")\\n\\n# Compute mean age\\nmean_age_converted = valid_age_converted['customer_age'].mean()\\nprint(f\\\"Mean age of converted customers (excluding missing age): {mean_age_converted:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4456,
+  "completion_tokens": 382
+ }
+}

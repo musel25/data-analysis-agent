@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b775803da09f5fda",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Define QA orders\\nqa_orders = df[df['revenue_numeric'] == 999999.99]\\n\\n# Define refunded orders\\nrefunded = df[df['status'] == 'refunded']\\n\\n# Now, filter for NEW customers reached by PAID SEARCH, EXCLUDING QA orders and refunded orders\\n# The question asks for the fraction of NEW customers reached by PAID SEARCH who converted.\\n# We must exclude QA orders (not real) and refunded orders (not completed)\\n# So: channel == 'paid_search', customer_segment == 'new', NOT in qa_orders, NOT refunded\\nfiltered_clean = df[\\n    (df['channel'] == 'paid_search') & \\n    (df['customer_segment'] == 'new') & \\n    (~df['revenue_numeric'].isin([999999.99])) & \\n    (df['status'] != 'refunded')\\n]\\n\\n# Check how many such rows exist\\nprint(\\\"Number of NEW customers reached by PAID SEARCH (cleaned):\\\", len(filtered_clean))\\n\\n# Now compute conversion rate: fraction of these who converted (converted == 1)\\nconverted_count_clean = filtered_clean['converted'].sum()\\ntotal_count_clean = len(filtered_clean)\\nconversion_rate_clean = converted_count_clean / total_count_clean\\n\\nprint(f\\\"Converted (cleaned): {converted_count_clean}, Total (cleaned): {total_count_clean}, Rate: {conversion_rate_clean:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5086,
+  "completion_tokens": 399
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bc75de1b745716d9",
+    "function": {
+     "arguments": "{\"code\": \"from scipy.stats import ttest_ind\\n\\n# Stratify by severity and compute mean change within each severity level\\nstratified_change = data.groupby(['arm', 'severity'])['biomarker_change'].mean().unstack(level='severity')\\n\\n# Compute the difference in change within each severity group\\nstrat_diff = stratified_change['severe'] - stratified_change['mild']\\n\\n# Compute the weighted average difference across severity groups\\n# Weight by the number of patients in each group within each arm\\nn_mild_control = data[(data['arm'] == 'control') & (data['severity'] == 'mild')].shape[0]\\nn_moderate_control = data[(data['arm'] == 'control') & (data['severity'] == 'moderate')].shape[0]\\nn_severe_control = data[(data['arm'] == 'control') & (data['severity'] == 'severe')].shape[0]\\nn_mild_treatment = data[(data['arm'] == 'treatment') & (data['severity'] == 'mild')].shape[0]\\nn_moderate_treatment = data[(data['arm'] == 'treatment') & (data['severity'] == 'moderate')].shape[0]\\nn_severe_treatment = data[(data['arm'] == 'treatment') & (data['severity'] == 'severe')].shape[0]\\n\\n# Total patients by arm\\nn_control = n_mild_control + n_moderate_control + n_severe_control\\nn_treatment = n_mild_treatment + n_moderate_treatment + n_severe_treatment\\n\\n# Compute weighted average change per arm\\nweighted_change_control = (\\n    (n_mild_control * stratified_change.loc['control', 'mild']) +\\n    (n_moderate_control * stratified_change.loc['control', 'moderate']) +\\n    (n_severe_control * stratified_change.loc['control', 'severe'])\\n) / n_control\\n\\nweighted_change_treatment = (\\n    (n_mild_treatment * stratified_change.loc['treatment', 'mild']) +\\n    (n_moderate_treatment * stratified_change.loc['treatment', 'moderate']) +\\n    (n_severe_treatment * stratified_change.loc['treatment', 'severe'])\\n) / n_treatment\\n\\n# Compute difference\\nweighted_diff = weighted_change_treatment - weighted_change_control\\n\\nprint(f\\\"Weighted average change in treatment arm: {weighted_change_treatment}\\\")\\nprint(f\\\"Weighted average change in control arm: {weighted_change_control}\\\")\\nprint(f\\\"Weighted difference (treatment - control): {weighted_diff}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5018,
+  "completion_tokens": 613
+ }
+}

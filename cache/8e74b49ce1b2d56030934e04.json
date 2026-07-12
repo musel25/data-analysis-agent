@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ade476bb076c9df",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to numeric, coercing errors to NaN\\nsales['revenue'] = pd.to_numeric(sales['revenue'], errors='coerce')\\n\\n# Filter for the two channels of interest\\nchannel_subset = sales[sales['channel'].isin(['email', 'paid_search'])]\\n\\n# Create age groups for stratification\\nage_bins = [0, 25, 35, 50, 100]\\nage_labels = ['0-25', '26-35', '36-50', '51+']\\nchannel_subset['age_group'] = pd.cut(channel_subset['customer_age'], bins=age_bins, labels=age_labels, include_lowest=True)\\n\\n# Define the stratification variables\\nstrata_vars = ['customer_segment', 'age_group']\\n\\n# Compute conversion rate within each stratum\\nstratified_rates = channel_subset.groupby(['channel'] + strata_vars)['converted'].mean().reset_index()\\n\\n# Compute the number of observations per stratum\\nstratum_counts = channel_subset.groupby(['channel'] + strata_vars).size().reset_index(name='count')\\n\\n# Merge rates and counts\\nstratified_data = pd.merge(stratified_rates, stratum_counts, on=['channel'] + strata_vars)\\n\\n# Compute weighted average conversion rate for each channel using the sum of (count * rate) / total count\\nweighted_rates = stratified_data.groupby('channel').apply(\\n    lambda x: (x['count'] * x['converted']).sum() / x['count'].sum()\\n).reset_index(name='weighted_rate')\\n\\n# Extract rates\\nemail_weighted_rate = weighted_rates[weighted_rates['channel'] == 'email']['weighted_rate'].iloc[0]\\npaid_search_weighted_rate = weighted_rates[weighted_rates['channel'] == 'paid_search']['weighted_rate'].iloc[0]\\n\\n# Compute the difference\\ndifference = email_weighted_rate - paid_search_weighted_rate\\n\\n# Print results\\nprint(f\\\"Email weighted conversion rate: {email_weighted_rate:.4f}\\\")\\nprint(f\\\"Paid search weighted conversion rate: {paid_search_weighted_rate:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9415,
+  "completion_tokens": 536
+ }
+}

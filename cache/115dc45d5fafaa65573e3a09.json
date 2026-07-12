@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b31482534c47406f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\nfrom sklearn.linear_model import LogisticRegression\\nfrom sklearn.preprocessing import StandardScaler\\n\\n# Restrict to treatment arm\\ntreatment_df = df[df['arm'] == 'treatment']\\n\\n# Define predictors and outcome\\nX = treatment_df[['sex', 'biomarker_baseline', 'age', 'severity']]\\nY = treatment_df['responded']\\n\\n# Convert sex to dummy (F=1, M=0)\\nX = pd.get_dummies(X, columns=['sex', 'severity'], drop_first=True)\\n\\n# Scale the continuous variables\\nscaler = StandardScaler()\\nX[['biomarker_baseline', 'age']] = scaler.fit_transform(X[['biomarker_baseline', 'age']])\\n\\n# Fit logistic regression\\nmodel = LogisticRegression(max_iter=1000, random_state=42)\\nmodel.fit(X, Y)\\n\\n# Extract coefficient for sex (F vs M)\\nsex_coef = model.coef_[0][0]  # Coefficient for female (F=1)\\n\\n# Convert log-odds to relative risk (approximate)\\n# OR = exp(coef)\\n# RR \u2248 OR / (1 - p + p * OR)  (approximation for small effects)\\n\\n# Compute average predicted probability for females and males\\n# Use the model to predict probabilities\\nX_f = X.copy()\\nX_f['sex_F'] = 1  # Female\\nX_f['sex_M'] = 0  # Not needed, drop_first\\n\\nX_m = X.copy()\\nX_m['sex_F'] = 0\\nX_m['sex_M'] = 1\\n\\np_f = model.predict_proba(X_f)[:, 1].mean()\\np_m = model.predict_proba(X_m)[:, 1].mean()\\n\\n# Compute difference in response rates\\nresponse_diff = p_f - p_m\\n\\n# Print results\\nprint(f'Female response rate (adjusted): {p_f:.4f}')\\nprint(f'Male response rate (adjusted): {p_m:.4f}')\\nprint(f'Difference (adjusted): {response_diff:.4f}')\\nprint(f'Log-odds difference (sex): {sex_coef:.4f}')\\n\\n# Convert to percentage points\\nresponse_diff_pct = response_diff * 100\\nresponse_diff_pct\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6536,
+  "completion_tokens": 529
+ }
+}

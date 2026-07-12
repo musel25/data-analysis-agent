@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-82aea1364023a02b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and cast to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders and refunded orders\\ndf_clean = df[(df['revenue'] != 999999.99) & (df['status'] == 'completed')]\\n\\n# Compute average revenue per completed order by channel\\navg_revenue_by_channel = df_clean.groupby('channel')['revenue'].mean().round(2)\\n\\n# Extract values\\ntotal_email_revenue = df_clean[df_clean['channel'] == 'email']['revenue'].sum()\\ntotal_paid_search_revenue = df_clean[df_clean['channel'] == 'paid_search']['revenue'].sum()\\n\\n# Confirm the population: completed, non-QA orders\\nn_email = len(df_clean[df_clean['channel'] == 'email'])\\nn_paid_search = len(df_clean[df_clean['channel'] == 'paid_search'])\\n\\nprint(f'Number of completed, non-QA orders in email channel: {n_email}')\\nprint(f'Number of completed, non-QA orders in paid_search channel: {n_paid_search}')\\nprint(f'Average revenue per order (email): {avg_revenue_by_channel[\\\"email\\\"]:.2f} USD')\\nprint(f'Average revenue per order (paid_search): {avg_revenue_by_channel[\\\"paid_search\\\"]:.2f} USD')\\nprint(f'Total revenue (email): {total_email_revenue:.2f} USD')\\nprint(f'Total revenue (paid_search): {total_paid_search_revenue:.2f} USD')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5948,
+  "completion_tokens": 398
+ }
+}

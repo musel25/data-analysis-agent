@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5f3512a23d578cb",
+    "function": {
+     "arguments": "{\"code\": \"import statsmodels.api as sm\\n\\n# Prepare data for logistic regression\\n# Create a DataFrame with predictors\\nX = df[['sex', 'age', 'severity', 'arm', 'site', 'biomarker_baseline']]\\nX = pd.get_dummies(X, columns=['sex', 'severity', 'arm', 'site'], drop_first=True)\\n\\n# Response variable\\ny = df['responded']\\n\\n# Add constant for intercept\\nX = sm.add_constant(X)\\n\\n# Fit logistic regression model\\nmodel = sm.Logit(y, X).fit()\\n\\n# Extract coefficient for female (vs male)\\n# sex_F is the coefficient for female\\nfemale_coef = model.params['sex[F]']\\n\\n# Convert log-odds to probability difference (marginal effect)\\n# Use average marginal effects\\nfrom statsmodels.stats.outcomes import MarginalEffects\\nmarginal_effects = MarginalEffects(model)\\nme = marginal_effects.summary()\\n\\n# Extract average marginal effect for female\\nfemale_marginal_effect = me.loc[me['variable'] == 'sex[F]', 'dydx'].iloc[0]\\n\\n# Compute the difference in response rate (F - M) from marginal effect\\n# This is the adjusted difference in response rate\\nadjusted_diff = female_marginal_effect\\n\\n# Print results\\nprint(model.summary())\\nprint(f\\\"\\\\nAverage marginal effect of being female (vs male): {female_marginal_effect:.4f}\\\")\\nprint(f\\\"Adjusted difference in response rate (F - M): {adjusted_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4962,
+  "completion_tokens": 357
+ }
+}

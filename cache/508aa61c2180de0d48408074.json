@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9448c66f964f1f49",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Drop QA orders and refunded orders, and convert revenue\\nsales_clean = sales[~(sales['revenue'] == '999,999.99')]\\nsales_final = sales_clean[sales_clean['status'] == 'completed']\\nsales_final['revenue'] = sales_final['revenue'].str.replace(',', '').astype(float)\\n\\n# Stratify by customer_segment and compute conversion rate within each segment\\nconversion_by_channel_segment = sales_final.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Compute the average conversion rate for each channel, weighted by segment size\\n# First, compute total number of orders per segment\\nsegment_counts = sales_final['customer_segment'].value_counts()\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_conversion = {}\\nfor channel in ['email', 'paid_search']:\\n    channel_data = conversion_by_channel_segment[conversion_by_channel_segment['channel'] == channel]\\n    total_orders = 0\\n    weighted_sum = 0\\n    for _, row in channel_data.iterrows():\\n        seg = row['customer_segment']\\n        rate = row['converted']\\n        count = segment_counts[seg]\\n        weighted_sum += rate * count\\n        total_orders += count\\n    weighted_avg = weighted_sum / total_orders\\n    weighted_conversion[channel] = round(weighted_avg, 4)\\n\\nprint(\\\"Weighted average conversion rate by channel (adjusted for segment imbalance):\\\")\\nprint(weighted_conversion)\\n\\n# Compute weighted average revenue\\nweighted_revenue = {}\\nfor channel in ['email', 'paid_search']:\\n    channel_data = sales_final.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n    channel_data = channel_data[channel_data['channel'] == channel]\\n    total_orders = 0\\n    weighted_sum = 0\\n    for _, row in channel_data.iterrows():\\n        seg = row['customer_segment']\\n        rev = row['revenue']\\n        count = segment_counts[seg]\\n        weighted_sum += rev * count\\n        total_orders += count\\n    weighted_avg = weighted_sum / total_orders\\n    weighted_revenue[channel] = round(weighted_avg, 2)\\n\\nprint(\\\"Weighted average revenue by channel (adjusted for segment imbalance):\\\")\\nprint(weighted_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5850,
+  "completion_tokens": 549
+ }
+}

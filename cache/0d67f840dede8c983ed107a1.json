@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bfb86ca83c1f74bd",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute response rates within each severity stratum\\ndef compute_response_rate(group):\\n    return group['responded'].mean()\\n\\n# Group by arm and severity\\nstratified = df.groupby(['arm', 'severity']).agg(\\n    n=('responded', 'size'),\\n    response_rate=('responded', 'mean')\\n).reset_index()\\n\\n# Compute treatment effect within each severity level\\ntreatment_effect_by_severity = []\\nfor severity in df['severity'].unique():\\n    subset = stratified[stratified['severity'] == severity]\\n    if subset.shape[0] < 2:\\n        continue\\n    t_rate = subset[subset['arm'] == 'treatment']['response_rate'].iloc[0]\\n    c_rate = subset[subset['arm'] == 'control']['response_rate'].iloc[0]\\n    effect = t_rate - c_rate\\n    treatment_effect_by_severity.append((severity, t_rate, c_rate, effect))\\n\\n# Convert to DataFrame\\nresults = pd.DataFrame(treatment_effect_by_severity, columns=['severity', 'treatment_rate', 'control_rate', 'effect'])\\nprint(results)\\n\\n# Overall difference in proportions (unadjusted)\\nunadjusted_effect = df[df['arm']=='treatment']['responded'].mean() - df[df['arm']=='control']['responded'].mean()\\nprint(f\\\"Unadjusted treatment effect: {unadjusted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6080,
+  "completion_tokens": 336
+ }
+}

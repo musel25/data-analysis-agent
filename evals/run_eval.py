@@ -22,7 +22,8 @@ from agentlib import Config, PyExecutor, run_agent
 from agentlib.llm import METER
 
 from .grade import grade
-from .tasks import TASKS, test_leak, test_separation
+from .tasks import (TASKS, test_contamination, test_leak, test_portability,
+                    test_separation)
 
 RESULTS = Path(__file__).resolve().parent / "results.jsonl"
 
@@ -116,9 +117,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="full", choices=list(CONFIGS) + ["all"])
     ap.add_argument("--runs", type=int, default=3)
+    ap.add_argument("--start", type=int, default=0, help="first attempt index (for adding runs)")
     ap.add_argument("--tasks", nargs="*", default=None)
     ap.add_argument("--model", default=None, help="override the agent model")
     ap.add_argument("--ablate", action="store_true", help="run every config")
+    ap.add_argument("--no-confound", action="store_true",
+                    help="disable the D33 confounding detector — reproduces the committed grid")
     ap.add_argument("--workers", type=int, default=8, help="concurrent agent runs")
     args = ap.parse_args()
 
@@ -126,8 +130,10 @@ def main():
     assert_single_instance()
     test_separation()
     test_leak()
+    test_contamination()      # no benchmark question may appear in any model-visible prompt (D28)
+    test_portability()        # no machine-specific path may appear in any prompt (D30)
     dropped = dedupe_results()
-    print("✓ separation + leak guards pass"
+    print("✓ separation + leak + contamination + portability guards pass"
           + (f" · dropped {dropped} duplicate rows" if dropped else "") + "\n")
 
     configs = list(CONFIGS) if (args.ablate or args.config == "all") else [args.config]
@@ -137,10 +143,12 @@ def main():
     jobs = []
     for cname in configs:
         cfg = CONFIGS[cname]
+        if args.no_confound:
+            cfg = Config(**{**cfg.__dict__, "use_confound_detector": False})
         if args.model:
             cfg = Config(**{**cfg.__dict__, "model": args.model})
         for task in tasks:
-            for attempt in range(args.runs):
+            for attempt in range(args.start, args.start + args.runs):
                 if (cname, task.id, attempt) in done:
                     continue
                 # Each attempt is an INDEPENDENT sample: a nonzero temperature plus the attempt

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd5eab3e21cdfda4",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, use numpy for t-test\\n# Compute the difference in mean change within each severity group\\nmild_diff = treatment_mild_mean - control_mild_mean\\nmod_diff = treatment_mod_mean - control_mod_mean\\nsev_diff = treatment_sev_mean - control_sev_mean\\n\\n# Compute the overall adjusted difference using the control group weights\\nweight_mild = control_mild_n / 476\\nweight_mod = control_mod_n / 476\\nweight_sev = control_sev_n / 476\\n\\nadjusted_diff = (weight_mild * mild_diff) + (weight_mod * mod_diff) + (weight_sev * sev_diff)\\n\\n# Compute standard error of the adjusted difference\\n# Use the formula for variance of a weighted sum\\nvar_mild = (treatment_mild_std**2 / treatment_mild_n) + (control_mild_std**2 / control_mild_n)\\nvar_mod = (treatment_mod_std**2 / treatment_mod_n) + (control_mod_std**2 / control_mod_n)\\nvar_sev = (treatment_sev_std**2 / treatment_sev_n) + (control_sev_std**2 / control_sev_n)\\n\\n# Variance of the weighted difference\\nvar_adj_diff = (weight_mild**2) * var_mild + (weight_mod**2) * var_mod + (weight_sev**2) * var_sev\\nse_adj_diff = np.sqrt(var_adj_diff)\\n\\n# Compute t-statistic and approximate p-value\\n# Use a z-test approximation for large samples\\nz_stat = adjusted_diff / se_adj_diff\\np_value = 2 * (1 - np.abs(np.exp(-0.5 * z_stat**2)) / np.sqrt(2 * np.pi))  # Approximate p-value\\n\\n# Print results\\nprint(f\\\"Adjusted mean difference in biomarker change (treatment - control): {adjusted_diff:.3f}\\\")\\nprint(f\\\"Standard error: {se_adj_diff:.3f}\\\")\\nprint(f\\\"z-statistic: {z_stat:.3f}\\\")\\nprint(f\\\"p-value: {p_value:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5879,
+  "completion_tokens": 495
+ }
+}

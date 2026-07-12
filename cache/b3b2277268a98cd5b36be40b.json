@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a2d97fc661ba43c0",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Calculate the average change in biomarker levels for each arm, stratified by severity\\n# and then compute the weighted average difference to account for imbalance in severity\\n\\n# Compute mean change within each arm-severity group\\nstratified_means = data.groupby(['arm', 'severity'])['biomarker_change'].mean().reset_index()\\n\\n# Compute total number of patients in each arm-severity group\\nn_by_group = data.groupby(['arm', 'severity']).size().reset_index(name='n')\\n\\n# Merge the means and counts\\nmerged = stratified_means.merge(n_by_group, on=['arm', 'severity'])\\n\\n# Compute weighted average change per arm\\nweighted_change_control = (\\n    merged[(merged['arm'] == 'control')]['biomarker_change'] * \\n    merged[(merged['arm'] == 'control')]['n']\\n).sum() / merged[merged['arm'] == 'control']['n'].sum()\\n\\nweighted_change_treatment = (\\n    merged[(merged['arm'] == 'treatment')]['biomarker_change'] * \\n    merged[(merged['arm'] == 'treatment')]['n']\\n).sum() / merged[merged['arm'] == 'treatment']['n'].sum()\\n\\n# Compute the difference (treatment - control)\\nweighted_diff = weighted_change_treatment - weighted_change_control\\n\\nprint(f\\\"Weighted average change in treatment arm: {weighted_change_treatment}\\\")\\nprint(f\\\"Weighted average change in control arm: {weighted_change_control}\\\")\\nprint(f\\\"Weighted difference (treatment - control): {weighted_diff}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5729,
+  "completion_tokens": 375
+ }
+}

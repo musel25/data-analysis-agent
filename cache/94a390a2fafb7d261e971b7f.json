@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bafcea77a281778e",
+    "function": {
+     "arguments": "{\"code\": \"from sklearn.linear_model import LogisticRegression\\nfrom sklearn.preprocessing import OneHotEncoder\\nfrom sklearn.compose import ColumnTransformer\\nfrom sklearn.pipeline import Pipeline\\n\\n# Prepare data for modeling\\nX = sales_clean[['channel', 'customer_segment']]\\ny = sales_clean['converted']\\n\\n# Create a pipeline with one-hot encoding and logistic regression\\npreprocessor = ColumnTransformer(\\n    transformers=[\\n        ('cat', OneHotEncoder(drop='first'), ['channel', 'customer_segment'])\\n    ],\\n    remainder='passthrough'\\n)\\n\\nmodel = Pipeline(steps=[\\n    ('preprocessor', preprocessor),\\n    ('classifier', LogisticRegression(max_iter=1000, random_state=42))\\n])\\n\\n# Fit the model\\nmodel.fit(X, y)\\n\\n# Extract coefficients\\nfeature_names = model.named_steps['preprocessor'].get_feature_names_out(['channel', 'customer_segment'])\\ncoefficients = model.named_steps['classifier'].coef_[0]\\n\\n# Find the coefficient for 'channel_email' (since 'channel_paid_search' is the baseline)\\nchannel_email_idx = list(feature_names).index('channel_email')\\ncoef_email = coefficients[channel_email_idx]\\n\\n# Convert log-odds to probability difference (approximate)\\n# We can compute the predicted probability difference at the mean\\nX_pred = X.copy()\\nX_pred['channel'] = X_pred['channel'].map({'email': 1, 'paid_search': 0})\\nX_pred['customer_segment'] = X_pred['customer_segment'].map({'loyal': 1, 'new': 2, 'returning': 3})\\n\\n# Predict probabilities\\npred_probs = model.predict_proba(X)\\n\\n# Compute average predicted conversion rate for each channel\\navg_email_prob = pred_probs[X['channel'] == 'email', 1].mean()\\navg_paid_search_prob = pred_probs[X['channel'] == 'paid_search', 1].mean()\\n\\n# Compute the adjusted difference\\nadjusted_diff = avg_email_prob - avg_paid_search_prob\\n\\nprint(f'Adjusted conversion rate difference (email - paid_search): {adjusted_diff:.6f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5090,
+  "completion_tokens": 482
+ }
+}

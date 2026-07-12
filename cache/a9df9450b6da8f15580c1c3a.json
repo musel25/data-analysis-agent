@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-843a709622c17f88",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute raw response rates by sex in treatment arm\\ndf_treatment['responded'] = df_treatment['responded'].astype(int)\\n\\n# Raw response rates\\nraw_females = df_treatment[df_treatment['sex'] == 'F']['responded'].mean() * 100\\nraw_males = df_treatment[df_treatment['sex'] == 'M']['responded'].mean() * 100\\n\\n# Check if severity is balanced across sexes\\nseverity_by_sex = pd.crosstab(df_treatment['sex'], df_treatment['severity'])\\nprint(f'Severity distribution by sex:\\\\n{severity_by_sex}')\\n\\n# Severity is not balanced: more males have severe/mild, more females have moderate\\n# This means sex and severity are confounded \u2014 we must adjust\\n\\n# Stratify by severity and compute adjusted response rates\\ndf_stratified = df_treatment.groupby(['sex', 'severity'])['responded'].mean().unstack(fill_value=0) * 100\\n\\n# Compute adjusted response rate using stratified average (weighted by severity distribution in treatment arm)\\n# Get overall severity distribution in treatment arm\\nseverity_weights = df_treatment['severity'].value_counts(normalize=True)\\n\\n# Adjusted response rate per sex: weighted average across severity levels\\nadjusted_females = (df_stratified.loc['F'] * severity_weights).sum()\\nadjusted_males = (df_stratified.loc['M'] * severity_weights).sum()\\n\\n# Compute difference\\nresponse_diff = adjusted_females - adjusted_males\\n\\nprint(f'Raw female response rate: {raw_females:.2f}%')\\nprint(f'Raw male response rate: {raw_males:.2f}%')\\nprint(f'Adjusted female response rate: {adjusted_females:.2f}%')\\nprint(f'Adjusted male response rate: {adjusted_males:.2f}%')\\nprint(f'Adjusted difference (female - male): {response_diff:.2f}%')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5589,
+  "completion_tokens": 458
+ }
+}

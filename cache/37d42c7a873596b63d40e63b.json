@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a69570525f5c7893",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate on patient_id, keeping the row with highest sample_seq\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Verify number of unique patients after deduplication\\nnum_unique_patients = len(df_dedup)\\nprint(f'Number of unique patients after deduplication: {num_unique_patients}')\\n\\n# Compute response rates by arm and severity\\ndf_stratified = df_dedup.groupby(['arm', 'severity'])['responded'].agg(['mean', 'count']).reset_index()\\ndf_stratified.columns = ['arm', 'severity', 'response_rate', 'n']\\n\\n# Compute within-stratum treatment effect (treatment - control)\\ndf_stratified_pivot = df_stratified.pivot(index='severity', columns='arm', values='response_rate')\\ndf_stratified_pivot = df_stratified_pivot[['treatment', 'control']]\\ndf_stratified_pivot['diff'] = df_stratified_pivot['treatment'] - df_stratified_pivot['control']\\n\\n# Compute overall adjusted difference in proportions using weighted average of stratum differences\\n# Weight by the total number of patients in each severity stratum (across arms)\\ntotal_in_stratum = df_dedup.groupby('severity').size()\\n\\n# Weighted average of within-stratum differences\\ntotal_patients = len(df_dedup)\\nweights = total_in_stratum / total_patients\\n\\nweighted_diff = (df_stratified_pivot['diff'] * weights).sum()\\n\\n# Also compute the crude (unadjusted) difference for comparison\\ncrude_diff = df_dedup.groupby('arm')['responded'].mean()['treatment'] - df_dedup.groupby('arm')['responded'].mean()['control']\\n\\nprint('Stratified response rates (by arm and severity):')\\nprint(df_stratified)\\nprint('\\\\nWithin-stratum differences (treatment - control):')\\nprint(df_stratified_pivot[['diff']])\\nprint(f'\\\\nWeighted average of within-stratum differences: {weighted_diff:.4f}')\\nprint(f'Crude difference (unadjusted): {crude_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7476,
+  "completion_tokens": 537
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a36ccd12f365f193",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for loyal customers and completed orders\\nloyal_completed = sales[\\n    (sales['customer_segment'] == 'loyal') & \\n    (sales['status'] == 'completed')\\n]\\n\\n# Count QA orders (revenue = 999999.99)\\nqa_orders = loyal_completed[sales['revenue'] == 999999.99]\\nnum_qa = len(qa_orders)\\n\\n# Filter out QA orders\\nreal_orders = loyal_completed[sales['revenue'] != 999999.99]\\nnum_real = len(real_orders)\\n\\n# Compute mean revenue\\nmean_revenue = real_orders['revenue'].mean()\\n\\n# Print all required numbers\\nprint(f'Number of QA orders (revenue = 999999.99): {num_qa}')\\nprint(f'Number of real completed orders from loyal customers: {num_real}')\\nprint(f'Mean revenue of completed orders from loyal customers: {mean_revenue}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5418,
+  "completion_tokens": 304
+ }
+}

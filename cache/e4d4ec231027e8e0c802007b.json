@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-81181a1eb0320c8e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Compute raw response rates by arm\\ntreatment_rate = df_dedup[df_dedup['arm'] == 'treatment']['responded'].mean()\\ncontrol_rate = df_dedup[df_dedup['arm'] == 'control']['responded'].mean()\\nraw_effect = treatment_rate - control_rate\\n\\n# Step 3: Compute response rates by arm and severity\\ndf_dedup['severity'] = df_dedup['severity'].astype('category')  # Ensure proper categorical order\\nresponse_by_arm_severity = df_dedup.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\n\\n# Step 4: Compute overall severity distribution\\ntotal_severity_counts = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Step 5: Compute adjusted effect using direct standardisation\\nexpected_treatment = 0.0\\nexpected_control = 0.0\\n\\nfor severity_level in total_severity_counts.index:\\n    prop = total_severity_counts[severity_level]\\n    # Get response rate for this severity level in each arm\\n    resp_treat = response_by_arm_severity[(response_by_arm_severity['arm'] == 'treatment') & (response_by_arm_severity['severity'] == severity_level)]['responded'].iloc[0]\\n    resp_ctrl = response_by_arm_severity[(response_by_arm_severity['arm'] == 'control') & (response_by_arm_severity['severity'] == severity_level)]['responded'].iloc[0]\\n    expected_treatment += prop * resp_treat\\n    expected_control += prop * resp_ctrl\\n\\nadjusted_effect = expected_treatment - expected_control\\n\\n# Print all required numbers\\nprint(f\\\"Number of patients after deduplication: {len(df_dedup)}\\\")\\nprint(f\\\"Raw treatment effect (treatment - control): {raw_effect}\\\")\\nprint(f\\\"Adjusted treatment effect (direct standardisation): {adjusted_effect}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6821,
+  "completion_tokens": 508
+ }
+}

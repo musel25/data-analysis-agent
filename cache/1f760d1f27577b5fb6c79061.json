@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a24d8839d4d7fab4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue == 999999.99)\\ndf_clean = df[df['revenue'] != 999999.99]\\n\\n# Drop refunded orders (only completed orders count toward conversion)\\ncompleted_only = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute conversion rate by customer_segment\\nconversion_rates = completed_only.groupby('customer_segment')['converted'].mean() * 100\\n\\n# Find the segment with the highest conversion rate\\nhighest_segment = conversion_rates.idxmax()\\n\\n# Print the conversion rates for verification\\nconversion_rates\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5665,
+  "completion_tokens": 209
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bf985a2ff3ca008a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load and clean data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders and refunded orders\\ncompleted_only = df[(df['status'] == 'completed') & (df['revenue'] != 999999.99)]\\n\\n# Stratify by customer_segment and compute conversion rate difference within each segment\\nstratified_rates = completed_only.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='channel')\\nstratified_rates['diff'] = stratified_rates['email'] - stratified_rates['paid_search']\\n\\nprint('Stratified conversion rates and differences by segment:\\\\n', stratified_rates)\\n\\n# Compute overall difference, but note that it is confounded\\noverall_diff = stratified_rates['diff'].mean()\\n\\n# Compute weighted difference by segment (to adjust for imbalance)\\nsegment_counts = completed_only.groupby('customer_segment').size()\\nweighted_diff = (stratified_rates['diff'] * segment_counts).sum() / segment_counts.sum()\\n\\nprint('\\\\nWeighted average difference (adjusted for segment distribution):', weighted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7610,
+  "completion_tokens": 302
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5811bccf7736ae7",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load and clean data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep highest sample_seq per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Correct assay_batch B values (divide by 10)\\ndf_dedup.loc[df_dedup['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Exclude rows with biomarker_baseline == -999\\ndf_clean = df_dedup[df_dedup['biomarker_baseline'] != -999]\\n\\n# Group by arm and severity\\ngroups = df_clean.groupby(['arm', 'severity'])\\n\\n# Compute response rates for each stratum\\nresponse_rates = groups['responded'].mean().unstack(fill_value=0)\\n\\n# Compute treatment effect within each stratum (treatment - control)\\nstrata = ['mild', 'moderate', 'severe']\\ntreatment_effect_strata = {}\\nfor s in strata:\\n    trt_rate = response_rates.loc['treatment', s]\\n    ctrl_rate = response_rates.loc['control', s]\\n    treatment_effect_strata[s] = trt_rate - ctrl_rate\\n\\ntreatment_effect_strata = pd.Series(treatment_effect_strata)\\n\\n# Compute overall weighted treatment effect (using stratum sizes as weights)\\nstratum_sizes = groups.size().unstack(fill_value=0)\\ntotal_n = stratum_sizes.sum().sum()\\nweights = stratum_sizes / total_n\\n\\nweighted_effect = (treatment_effect_strata * weights.sum(axis=0)).sum()\\n\\n# Print required values explicitly\\nprint(f'Number of patients after deduplication and QC: {len(df_clean)}')\\nprint(f'Control arm, mild severity: {response_rates.loc[\\\"control\\\", \\\"mild\\\"]}')\\nprint(f'Treatment arm, mild severity: {response_rates.loc[\\\"treatment\\\", \\\"mild\\\"]}')\\nprint(f'Control arm, moderate severity: {response_rates.loc[\\\"control\\\", \\\"moderate\\\"]}')\\nprint(f'Treatment arm, moderate severity: {response_rates.loc[\\\"treatment\\\", \\\"moderate\\\"]}')\\nprint(f'Control arm, severe severity: {response_rates.loc[\\\"control\\\", \\\"severe\\\"]}')\\nprint(f'Treatment arm, severe severity: {response_rates.loc[\\\"treatment\\\", \\\"severe\\\"]}')\\nprint(f'Treatment effect in mild severity: {treatment_effect_strata[\\\"mild\\\"]}')\\nprint(f'Treatment effect in moderate severity: {treatment_effect_strata[\\\"moderate\\\"]}')\\nprint(f'Treatment effect in severe severity: {treatment_effect_strata[\\\"severe\\\"]}')\\nprint(f'Weighted average treatment effect: {weighted_effect}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7429,
+  "completion_tokens": 646
+ }
+}

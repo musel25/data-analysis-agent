@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9f3c8767faa7dd4b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Remove QA orders (revenue == '999999.99')\\ndf_clean = df[df['revenue'] != '999999.99']\\n\\n# Convert revenue to float\\ndf_clean['revenue'] = df_clean['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop refunded orders\\ndf_clean = df_clean[df_clean['status'] == 'completed']\\n\\n# Focus on converted == 1\\nconverted_df = df_clean[df_clean['converted'] == 1]\\n\\n# Now, exclude rows where customer_age == -1 (missing data)\\nconverted_valid = converted_df[converted_df['customer_age'] != -1]\\n\\n# Compute mean age of valid converted customers\\nmean_age_converted = converted_valid['customer_age'].mean()\\n\\n# Print all required values\\nprint(\\\"Number of converted customers (converted == 1):\\\", len(converted_df))\\nprint(\\\"Number of converted customers with age -1:\\\", (converted_df['customer_age'] == -1).sum())\\nprint(\\\"Number of valid converted customers (age != -1):\\\", len(converted_valid))\\nprint(\\\"Mean age of valid converted customers:\\\", mean_age_converted)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5003,
+  "completion_tokens": 313
+ }
+}

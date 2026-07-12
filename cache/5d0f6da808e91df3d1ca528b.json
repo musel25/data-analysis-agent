@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9321ae3d74307c9d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Fix revenue: remove commas and convert to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Check: now revenue is numeric\\nprint('Sample of corrected revenue:')\\nprint(df['revenue_numeric'].head())\\n\\n# Now, filter for completed orders only\\ncompleted_df = df[df['status'] == 'completed']\\n\\n# Check: how many completed orders?\\nprint(f'Number of completed orders: {len(completed_df)}')\\n\\n# Check: are there any QA orders (999999.99) in completed?\\nqa_in_completed = completed_df[completed_df['revenue_numeric'] == 999999.99]\\nprint(f'QA orders in completed: {len(qa_in_completed)}')\\n\\n# Remove QA orders (which are not real)\\n# They are in the full dataset, but we must exclude them from analysis\\n# There are 6 such rows in the full dataset, as per documentation\\n# We\u2019ll remove them from the completed set if present\\nfiltered_df = completed_df[completed_df['revenue_numeric'] != 999999.99]\\n\\n# Check: now how many completed orders?\\nprint(f'Number of completed orders after removing QA: {len(filtered_df)}')\\n\\n# Compute average revenue per completed order\\navg_revenue = filtered_df['revenue_numeric'].mean()\\nprint(f'Average revenue per completed order: {avg_revenue:.2f} USD')\\n\\n# Store this for later\\navg_revenue_value = avg_revenue\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4210,
+  "completion_tokens": 397
+ }
+}

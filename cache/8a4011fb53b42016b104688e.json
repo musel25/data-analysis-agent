@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a48d1b58423ff13c",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\nfrom scipy.stats import chi2_contingency\\n\\n# Create contingency table\\ntable = pd.crosstab(df['arm'], df['responded'])\\nprint(table)\\n\\n# Chi-squared test of independence\\nchi2, p_value, dof, expected = chi2_contingency(table)\\nprint(f\\\"Chi-squared test p-value: {p_value}\\\")\\n\\n# Check for balance on key covariates: age, sex, severity, site, assay_batch\\nbalance_check = {}\\nfor col in ['age', 'sex', 'severity', 'site', 'assay_batch']:\\n    if df[col].dtype == 'object':\\n        # Categorical: use chi-squared\\n        tab = pd.crosstab(df['arm'], df[col])\\n        chi2, p, dof, expected = chi2_contingency(tab)\\n        balance_check[col] = p\\n    else:\\n        # Continuous: use t-test\\n        t_stat, p_val = stats.ttest_ind(\\n            df[df['arm'] == 'treatment'][col],\\n            df[df['arm'] == 'control'][col]\\n        )\\n        balance_check[col] = p_val\\n\\nbalance_check\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3968,
+  "completion_tokens": 288
+ }
+}

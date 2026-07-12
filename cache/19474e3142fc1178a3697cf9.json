@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8c518c7b8b91fd98",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Replace -1 in customer_age with NaN (missing)\\ndf['customer_age'] = df['customer_age'].replace(-1, pd.NA)\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop the six QA orders with revenue 999999.99\\nqa_mask = df['revenue'] == 999999.99\\ndf = df[~qa_mask]\\n\\n# Drop refunded orders (status == 'refunded')\\ncompleted_mask = df['status'] == 'completed'\\ndf = df[completed_mask]\\n\\n# Compute conversion rate within each segment\\nstratified_conv = df.groupby(['customer_segment', 'channel'])['converted'].mean().reset_index()\\n\\n# Extract and print the actual conversion rates for each segment and channel\\nprint(\\\"Actual conversion rates by segment and channel:\\\")\\nprint(stratified_conv)\\n\\n# Compute the differences\\nloyal_diff = stratified_conv.loc[(stratified_conv['customer_segment'] == 'loyal') & (stratified_conv['channel'] == 'email'), 'converted'].iloc[0] - \\\\\\n             stratified_conv.loc[(stratified_conv['customer_segment'] == 'loyal') & (stratified_conv['channel'] == 'paid_search'), 'converted'].iloc[0]\\nnew_diff = stratified_conv.loc[(stratified_conv['customer_segment'] == 'new') & (stratified_conv['channel'] == 'email'), 'converted'].iloc[0] - \\\\\\n           stratified_conv.loc[(stratified_conv['customer_segment'] == 'new') & (stratified_conv['channel'] == 'paid_search'), 'converted'].iloc[0]\\nreturning_diff = stratified_conv.loc[(stratified_conv['customer_segment'] == 'returning') & (stratified_conv['channel'] == 'email'), 'converted'].iloc[0] - \\\\\\n                 stratified_conv.loc[(stratified_conv['customer_segment'] == 'returning') & (stratified_conv['channel'] == 'paid_search'), 'converted'].iloc[0]\\n\\nprint(\\\"\\\\nDifferences (email - paid_search):\\\")\\nprint(f\\\"Loyal: {loyal_diff:.4f}\\\")\\nprint(f\\\"New: {new_diff:.4f}\\\")\\nprint(f\\\"Returning: {returning_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6749,
+  "completion_tokens": 587
+ }
+}

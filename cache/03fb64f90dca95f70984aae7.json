@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-88e86ac6acb94ba5",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, use a manual chi-square test\\n# Compute expected frequencies under independence\\ncontingency_table = pd.crosstab(sales['channel'], sales['customer_segment'])\\n\\n# Total number of observations\\ntotal = contingency_table.sum().sum()\\n\\n# Row totals and column totals\\nrow_totals = contingency_table.sum(axis=1)\\ncol_totals = contingency_table.sum(axis=0)\\n\\n# Expected frequencies\\nexpected = np.outer(row_totals, col_totals) / total\\n\\n# Chi-square statistic\\nchi2 = np.sum((contingency_table - expected) ** 2 / expected)\\n\\n# Degrees of freedom\\ndof = (contingency_table.shape[0] - 1) * (contingency_table.shape[1] - 1)\\n\\n# Approximate p-value using chi2 distribution (we can use np.random for simulation if needed)\\n# But since we only care about significance, we can compare chi2 to critical value\\n# For simplicity, we\u2019ll just report chi2 and dof\\nprint(f'Chi-square statistic: {chi2:.4f}')\\nprint(f'Degrees of freedom: {dof}')\\n\\n# Stratify by customer_segment and compute conversion rates within each segment\\nstratified_rates = sales.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Compute the difference in conversion rates within each segment\\nstratified_diffs = stratified_rates['email'] - stratified_rates['paid_search']\\n\\n# Compute overall difference using weighted average (by segment size)\\nsegment_sizes = sales.groupby('customer_segment').size()\\ntotal_emails = sales[sales['channel'] == 'email'].shape[0]\\ntotal_paid_search = sales[sales['channel'] == 'paid_search'].shape[0]\\n\\n# Weighted average of differences\\nweighted_diff = (stratified_diffs * segment_sizes).sum() / (segment_sizes.sum())\\n\\nprint(f'Stratified differences by segment: {stratified_diffs.to_dict()}')\\nprint(f'Weighted average difference: {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3151,
+  "completion_tokens": 487
+ }
+}

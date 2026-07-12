@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a97df9f29aee92be",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, use numpy to compute t-statistic manually\\ncontrol_change = trial_clean[trial_clean['arm'] == 'control']['biomarker_change']\\ntreatment_change = trial_clean[trial_clean['arm'] == 'treatment']['biomarker_change']\\n\\n# Compute means and variances\\nmean_control = control_change.mean()\\nmean_treatment = treatment_change.mean()\\nvar_control = control_change.var(ddof=1)  # unbiased variance\\nvar_treatment = treatment_change.var(ddof=1)\\n\\nn_control = len(control_change)\\nn_treatment = len(treatment_change)\\n\\n# Welch's t-test (unequal variances)\\nse = np.sqrt(var_control / n_control + var_treatment / n_treatment)\\nt_stat = (mean_treatment - mean_control) / se\\n\\n# Degrees of freedom (approximate)\\ndf_numerator = (var_control / n_control + var_treatment / n_treatment)**2\\ndf_denominator = (var_control / n_control)**2 / (n_control - 1) + (var_treatment / n_treatment)**2 / (n_treatment - 1)\\ndf = df_numerator / df_denominator\\n\\n# Two-tailed p-value\\np_val = 2 * (1 - t.cdf(abs(t_stat), df))\\n\\nprint(f\\\"Unadjusted t-test: t = {t_stat:.4f}, p = {p_val:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4851,
+  "completion_tokens": 341
+ }
+}

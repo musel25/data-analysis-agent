@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aceaf9bace021cbb",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Recompute p-value correctly using the lower tail\\nz_stat = (prop_treatment - prop_control) / se_diff\\n\\n# For one-sided test: H0: p_treatment <= p_control, alternative: p_treatment > p_control\\n# Since z_stat is negative, the p-value is the probability of observing a value as low or lower\\n# p_value = norm.cdf(z_stat)\\n# Using erf: p_value = 0.5 * (1 + erf(z_stat / sqrt(2)))\\n\\nz_scaled = z_stat / np.sqrt(2)\\n# Use the erf approximation\\n# erf(-1.701) \u2248 -0.987\\n# But we can compute it\\nfrom math import erf\\n\\np_value = 0.5 * (1 + erf(z_scaled))\\n\\nprint(f'z-statistic: {z_stat:.4f}')\\nprint(f'One-sided p-value (treatment > control): {p_value:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8285,
+  "completion_tokens": 240
+ }
+}

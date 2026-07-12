@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85014b4af091b6b0",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate on patient_id, keeping the row with the highest sample_seq\\ndf_dedup = df.sort_values(by='sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Compute response rates by arm and severity\\ncrosstab = pd.crosstab(df_dedup['arm'], df_dedup['severity'], values=df_dedup['responded'], aggfunc='mean')\\n\\n# Extract response rates for each arm within each severity stratum\\ncontrol_rates = crosstab.loc['control']\\n treatment_rates = crosstab.loc['treatment']\\n\\n# Compute stratum-specific differences in proportions (treatment - control)\\ndifferences = treatment_rates - control_rates\\n\\n# Compute weights: use control arm sizes in each stratum as weights\\ncontrol_counts = df_dedup[df_dedup['arm'] == 'control']['severity'].value_counts().reindex(['mild', 'moderate', 'severe'], fill_value=0)\\ntotal_control = control_counts.sum()\\nweights = control_counts / total_control\\n\\n# Compute weighted average of stratum-specific differences (Mantel-Haenszel-like)\\nweighted_diff = (differences * weights).sum()\\n\\n# Print results\\nprint('Stratum-specific differences (treatment - control):')\\nprint(differences)\\nprint('\\\\nWeights (based on control arm sizes):')\\nprint(weights)\\nprint(f'\\\\nWeighted average treatment effect (difference in proportions): {weighted_diff}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6748,
+  "completion_tokens": 373
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b2bb0153bb2dbd42",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate on patient_id, keeping the row with the highest sample_seq\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Check for -999 in biomarker_baseline and filter it out (though irrelevant to response rate)\\n# But just to be safe, we'll check\\nprint(f\\\"Number of rows with biomarker_baseline == -999: {(df_dedup['biomarker_baseline'] == -999).sum()}\\\")\\n\\n# Compute response rates by arm, stratified by severity\\n# We will compute the adjusted difference in proportions using stratified analysis\\n\\n# Define strata: severity\\nstrata = df_dedup['severity'].unique()\\n\\n# Initialize lists to store stratum-specific differences\\nstratum_diffs = []\\nstratum_weights = []\\n\\n# Loop over each severity level\\ntotal_n = 0\\nfor severity in strata:\\n    subset = df_dedup[df_dedup['severity'] == severity]\\n    \\n    # Get response rates by arm within this stratum\\n    n_treatment = subset[subset['arm'] == 'treatment'].shape[0]\\n    n_control = subset[subset['arm'] == 'control'].shape[0]\\n    \\n    # Avoid division by zero\\n    if n_treatment == 0 or n_control == 0:\\n        continue\\n    \\n    # Compute response rates\\n    p_treatment = subset[(subset['arm'] == 'treatment') & (subset['responded'] == 1)].shape[0] / n_treatment\\n    p_control = subset[(subset['arm'] == 'control') & (subset['responded'] == 1)].shape[0] / n_control\\n    \\n    # Compute difference\\n    diff = p_treatment - p_control\\n    \\n    # Store\\n    stratum_diffs.append(diff)\\n    stratum_weights.append(n_treatment + n_control)\\n    total_n += n_treatment + n_control\\n\\n# Compute weighted average difference (stratified estimate)\\nif len(stratum_diffs) == 0:\\n    weighted_diff = 0.0\\nelse:\\n    weighted_diff = sum(d * w for d, w in zip(stratum_diffs, stratum_weights)) / total_n\\n\\n# Also compute unadjusted difference for comparison\\nn_treatment_total = df_dedup[df_dedup['arm'] == 'treatment'].shape[0]\\nn_control_total = df_dedup[df_dedup['arm'] == 'control'].shape[0]\\n\\nif n_treatment_total == 0 or n_control_total == 0:\\n    unadjusted_diff = 0.0\\nelse:\\n    p_treatment_total = df_dedup[(df_dedup['arm'] == 'treatment') & (df_dedup['responded'] == 1)].shape[0] / n_treatment_total\\n    p_control_total = df_dedup[(df_dedup['arm'] == 'control') & (df_dedup['responded'] == 1)].shape[0] / n_control_total\\n    unadjusted_diff = p_treatment_total - p_control_total\\n\\n# Print results\\nprint(f\\\"Unadjusted difference in proportions: {unadjusted_diff:.4f}\\\")\\nprint(f\\\"Stratified (adjusted) difference in proportions: {weighted_diff:.4f}\\\")\\n\\n# Confirm the stratified estimate is the correct one per contract\\n# The contract says: the response rate difference must be adjusted for severity to avoid confounding.\\n# So we use the stratified estimate.\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5570,
+  "completion_tokens": 841
+ }
+}

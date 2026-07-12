@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b7040fe43077503e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Drop QA orders and refunded orders, and convert revenue\\nsales_clean = sales[~(sales['revenue'] == '999,999.99')]\\nsales_final = sales_clean[sales_final['status'] == 'completed']\\nsales_final['revenue'] = sales_final['revenue'].str.replace(',', '').astype(float)\\n\\n# Compute overall conversion rate and average revenue (for campaign success)\\n# Use only completed orders, after removing QA and refunded\\noverall_conversion_rate = sales_final['converted'].mean()\\noverall_avg_revenue = sales_final['revenue'].mean()\\n\\nprint(f\\\"Overall conversion rate: {overall_conversion_rate:.4f}\\\")\\nprint(f\\\"Overall average revenue: ${overall_avg_revenue:.2f}\\\")\\n\\n# Also compute conversion rate by channel, weighted by segment size\\nsegment_counts = sales_final['customer_segment'].value_counts()\\nweighted_conversion = {}\\nfor channel in ['email', 'paid_search']:\\n    channel_data = sales_final[sales_final['channel'] == channel]\\n    total_orders = len(channel_data)\\n    weighted_sum = 0\\n    for seg in segment_counts.index:\\n        seg_data = channel_data[channel_data['customer_segment'] == seg]\\n        if len(seg_data) > 0:\\n            rate = seg_data['converted'].mean()\\n            count = len(seg_data)\\n            weighted_sum += rate * count\\n    weighted_avg = weighted_sum / total_orders\\n    weighted_conversion[channel] = round(weighted_avg, 4)\\n\\nprint(\\\"Weighted average conversion rate by channel (adjusted for segment imbalance):\\\")\\nprint(weighted_conversion)\\n\\n# Also compute weighted average revenue\\nweighted_revenue = {}\\nfor channel in ['email', 'paid_search']:\\n    channel_data = sales_final[sales_final['channel'] == channel]\\n    total_orders = len(channel_data)\\n    weighted_sum = 0\\n    for seg in segment_counts.index:\\n        seg_data = channel_data[channel_data['customer_segment'] == seg]\\n        if len(seg_data) > 0:\\n            rev = seg_data['revenue'].mean()\\n            count = len(seg_data)\\n            weighted_sum += rev * count\\n    weighted_avg = weighted_sum / total_orders\\n    weighted_revenue[channel] = round(weighted_avg, 2)\\n\\nprint(\\\"Weighted average revenue by channel (adjusted for segment imbalance):\\\")\\nprint(weighted_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7429,
+  "completion_tokens": 573
+ }
+}

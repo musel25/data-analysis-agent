@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0a25043ac079700",
+    "function": {
+     "arguments": "{\"code\": \"import math\\n\\n# Now use Python's built-in math.comb (available in Python 3.8+)\\nn = positive_count + negative_count\\nk = min(positive_count, negative_count)\\n\\n# Compute P(X <= k) for Binomial(n, 0.5)\\n# Using direct summation with log probabilities to avoid overflow\\nlog_p_cum = 0.0\\n\\n# We'll compute log(P(X = i)) = log(C(n,i)) + i*log(0.5) + (n-i)*log(0.5)\\n# = log(C(n,i)) + n*log(0.5)\\nlog_n_half = n * math.log(0.5)\\n\\n# Accumulate in log space\\nlog_p_cum = -float('inf')\\nfor i in range(k + 1):\\n    # Compute log(C(n,i))\\n    # Use log-gamma: log(C(n,i)) = log_gamma(n+1) - log_gamma(i+1) - log_gamma(n-i+1)\\n    try:\\n        log_comb = math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)\\n    except:\\n        continue\\n    \\n    log_prob_i = log_comb + log_n_half\\n    \\n    if log_p_cum == -float('inf'):\\n        log_p_cum = log_prob_i\\n    else:\\n        log_p_cum = math.logaddexp(log_p_cum, log_prob_i)\\n\\n# Two-sided p-value\\np_val_sign_test = 2 * math.exp(log_p_cum)\\n\\nprint(f\\\"Sign test for median = 0 (manual, math.lgamma):\\\")\\nprint(f\\\"- Positive changes: {positive_count}\\\")\\nprint(f\\\"- Negative changes: {negative_count}\\\")\\nprint(f\\\"- Zero changes: {zero_count}\\\")\\nprint(f\\\"- Total non-zero: {n}\\\")\\nprint(f\\\"- Test statistic (k): {k}\\\")\\nprint(f\\\"- Two-sided p-value: {p_val_sign_test:.6f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5955,
+  "completion_tokens": 481
+ }
+}

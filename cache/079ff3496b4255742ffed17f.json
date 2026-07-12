@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b9c793965c86be5b",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute the overall treatment effect, adjusted for severity using stratified analysis\\n# We'll compute the weighted average response rate for each arm, weighted by the distribution of severity in the control group (standardizing to control's distribution)\\n\\n# Get severity distribution in control group\\ndf_control = df[df['arm'] == 'control']\\ncontrol_sev_dist = df_control['severity'].value_counts(normalize=True)\\n\\n# Compute expected response rate for treatment group if it had control's severity distribution\\n# For each severity level, use treatment's response rate, multiply by control's distribution\\nadjusted_treatment_rate = 0\\nfor sev in control_sev_dist.index:\\n    if sev in treatment_rates_by_sev.index:\\n        adjusted_treatment_rate += treatment_rates_by_sev[sev] * control_sev_dist[sev]\\n    else:\\n        # If no treatment patients in this severity, skip or use 0\\n        adjusted_treatment_rate += 0 * control_sev_dist[sev]\\n\\n# Control rate is just the overall control response rate\\ncontrol_rate = control_rates_by_sev.mean()  # or df[df['arm']=='control']['responded'].mean()\\n\\n# Compute adjusted treatment effect\\nadjusted_effect = adjusted_treatment_rate - control_rate\\n\\n# Print the results\\nprint(f'Adjusted treatment rate (standardized to control severity): {adjusted_treatment_rate:.4f}')\\nprint(f'Control rate: {control_rate:.4f}')\\nprint(f'Adjusted treatment effect: {adjusted_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6044,
+  "completion_tokens": 358
+ }
+}

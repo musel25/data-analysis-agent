@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd3c6c53f4cfb34c",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline is -999 (QC failure)\\ndata = data[data['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping the highest sample_seq per patient\\ndata = data.loc[data.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Stratify response rate by site and severity\\n# Compute response rate within each site-severity combination\\nresponse_rate_stratified = data.groupby(['site', 'severity'])['responded'].mean() * 100\\n\\n# Compute overall response rate per site, adjusted for severity (standardized)\\n# Compute the overall response rate by site using the observed severity distribution within each site\\n# Then apply the overall severity distribution to standardize\\n\\n# Overall severity distribution across all sites\\noverall_severity_dist = data['severity'].value_counts(normalize=True)\\n\\n# For each site, compute weighted average response rate using overall severity distribution\\nstandardized_response_rate = {}\\nfor site in data['site'].unique():\\n    site_data = data[data['site'] == site]\\n    # Compute response rate for each severity level in this site\\n    site_severity_response = site_data.groupby('severity')['responded'].mean()\\n    # Weight by overall severity distribution\\n    weighted_rate = (site_severity_response * overall_severity_dist).sum()\\n    standardized_response_rate[site] = weighted_rate * 100\\n\\n# Convert to Series\\nstandardized_response_rate = pd.Series(standardized_response_rate)\\n\\nprint('\\\\nStratified response rate by site and severity:\\\\n', response_rate_stratified)\\nprint('\\\\nStandardized response rate by site (adjusting for severity):\\\\n', standardized_response_rate)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7827,
+  "completion_tokens": 426
+ }
+}

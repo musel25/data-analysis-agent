@@ -20,9 +20,13 @@ thing is taught in.
 from __future__ import annotations
 
 import io
+import os
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
 
 PREAMBLE = """
 import pandas as pd, numpy as np
@@ -50,15 +54,21 @@ class Result:
 class PyExecutor:
     """A Python session that remembers. ~30 lines, and it is the whole 'code execution' story."""
 
-    def __init__(self, figures_dir="figures"):
+    def __init__(self, figures_dir=None):
         self.ns: dict = {}
-        self.figures_dir = figures_dir
+        # Absolute: figures must land in the repo, not in whatever directory the caller happened
+        # to be in. `run()` restores the CWD before this is used.
+        self.figures_dir = str(figures_dir or (ROOT / "figures"))
         self.n_figures = 0
         self.reset()
 
     def reset(self):
         """Fresh namespace. Called between tasks — otherwise task 2 can see task 1's variables,
-        which is the agent's version of the hidden-notebook-state bug."""
+        which is the agent's version of the hidden-notebook-state bug.
+
+        (The working directory is pinned to the repo root inside `run()`, not here — see the
+        comment there. Doing it here would leak a global `chdir` into the caller's process.)
+        """
         self.ns = {"__name__": "__agent__"}
         exec(PREAMBLE, self.ns)
         self.n_figures = 0
@@ -66,7 +76,20 @@ class PyExecutor:
     def run(self, code: str) -> Result:
         out, err = io.StringIO(), io.StringIO()
         error = None
+        # The agent's code says `pd.read_csv("data/trial.csv")` — repo-relative, so that the prompt
+        # (and therefore the committed cache) is portable across clones (D30). That requires CWD to
+        # be the repo root WHILE the code runs.
+        #
+        # But it must not stay that way. `os.chdir` is process-global, and leaking it out of here
+        # would silently break the caller: a notebook whose CWD is `notebooks/` would find its own
+        # `pd.read_csv("../data/...")` broken by an agent run three cells earlier. I know, because I
+        # did exactly that and three notebooks stopped executing.
+        #
+        # Which is a small, sharp instance of this project's whole thesis: a tool that mutates
+        # global state its caller cannot see is a tool that will be blamed for someone else's bug.
+        prev = os.getcwd()
         try:
+            os.chdir(ROOT)
             with redirect_stdout(out), redirect_stderr(err):
                 self._exec_with_echo(code)
         except Exception:
@@ -74,6 +97,8 @@ class PyExecutor:
             # The final line is the one that names the error, so it is never truncated away.
             tb = traceback.format_exc().splitlines()
             error = "\n".join(tb[-6:])
+        finally:
+            os.chdir(prev)
 
         figures = self._collect_figures()
         stdout = out.getvalue() + err.getvalue()
@@ -148,12 +173,27 @@ class PyExecutor:
 
 def _describe(val) -> str:
     """A one-line shape-aware description. `df: DataFrame(824x11)` tells the model more than
-    `df: <pandas.core.frame.DataFrame object at 0x7f...>` ever could."""
+    `df: <pandas.core.frame.DataFrame object at 0x7f...>` ever could.
+
+    Every line here is wrapped, because THE STATE BANNER MUST NOT BE ABLE TO KILL A RUN.
+
+    It could. The agent once wrote `df = pd.DataFrame` — the class, not an instance — and
+    `pd.DataFrame.shape` is a *property descriptor*, not a tuple. Iterating it raised
+    `TypeError: 'property' object is not iterable`, inside the banner, inside the main loop,
+    and took the entire run down. The eval recorded it as an agent failure. It was mine.
+
+    A crash in the code that *describes* the state is the stupidest possible way to lose a run:
+    the analysis was fine. Introspection is best-effort by definition — anything that only
+    exists to be *shown* to the model gets a bare except and degrades to a type name.
+    """
     t = type(val).__name__
-    shape = getattr(val, "shape", None)
-    if shape is not None:
-        return f"{t}({'x'.join(str(d) for d in shape)})"
+    try:
+        shape = getattr(val, "shape", None)
+        if isinstance(shape, tuple) and all(isinstance(d, int) for d in shape):
+            return f"{t}({'x'.join(str(d) for d in shape)})"
+    except Exception:                                    # noqa: BLE001 — see docstring
+        pass
     try:
         return f"{t}(len={len(val)})"
-    except TypeError:
+    except Exception:                                    # noqa: BLE001
         return t

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85d87713fe0b6814",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Compute conversion rate for each channel, stratified by customer_segment\\n# First, compute overall conversion rates (unadjusted)\\ntotal_email = df[df['channel'] == 'email'].shape[0]\\nconverted_email = df[df['channel'] == 'email']['converted'].sum()\\nrate_email = converted_email / total_email\\n\\ntotal_paid_search = df[df['channel'] == 'paid_search'].shape[0]\\nconverted_paid_search = df[df['channel'] == 'paid_search']['converted'].sum()\\nrate_paid_search = converted_paid_search / total_paid_search\\ndifference_unadjusted = rate_email - rate_paid_search\\n\\n# Now, compute adjusted difference using stratification by customer_segment\\n# Compute conversion rate within each segment\\nsegments = df['customer_segment'].unique()\\nadjusted_difference = 0\\n\\n# We'll compute a weighted average of the differences across segments\\n# Use the overall distribution of segments as weights\\noverall_segment_counts = df['customer_segment'].value_counts(normalize=True)\\n\\n# Loop through each segment\\ndifferences_in_segment = []\\nweights = []\\n\\nfor seg in segments:\\n    # Get data for this segment\\n    seg_data = df[df['customer_segment'] == seg]\\n    \\n    # Compute conversion rates for email and paid_search in this segment\\n    seg_email = seg_data[seg_data['channel'] == 'email']\\n    seg_paid_search = seg_data[seg_data['channel'] == 'paid_search']\\n    \\n    rate_email_seg = seg_email['converted'].sum() / len(seg_email) if len(seg_email) > 0 else 0\\n    rate_paid_search_seg = seg_paid_search['converted'].sum() / len(seg_paid_search) if len(seg_paid_search) > 0 else 0\\n    \\n    # Difference in this segment\\n    diff_seg = rate_email_seg - rate_paid_search_seg\\n    differences_in_segment.append(diff_seg)\\n    \\n    # Weight: proportion of total observations in this segment\\n    weight = overall_segment_counts[seg]\\n    weights.append(weight)\\n\\n# Weighted average of differences\\ndifference_adjusted = sum(d * w for d, w in zip(differences_in_segment, weights))\\n\\n# Print results\\nprint(f'Unadjusted difference: {difference_unadjusted:.4f}')\\nprint(f'Adjusted difference (stratified by customer_segment): {difference_adjusted:.4f}')\\n\\n# Also print the segment-level conversion rates for transparency\\nprint('\\\\nSegment-level conversion rates:')\\nfor seg in segments:\\n    seg_data = df[df['customer_segment'] == seg]\\n    rate_email_seg = seg_data[seg_data['channel'] == 'email']['converted'].mean()\\n    rate_paid_search_seg = seg_data[seg_data['channel'] == 'paid_search']['converted'].mean()\\n    print(f'  {seg}: email={rate_email_seg:.4f}, paid_search={rate_paid_search_seg:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7355,
+  "completion_tokens": 681
+ }
+}

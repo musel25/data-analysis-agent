@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b3be4a15ffb68950",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Exclude rows where biomarker_baseline is -999 (QC failure)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\n# Sort by patient_id and sample_seq (descending) then drop duplicates\\ndf = df.sort_values(['patient_id', 'sample_seq'], ascending=[True, False])\\ndf = df.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 3: Correct assay_batch B values: divide biomarker_final by 10\\n# Batch A is already in ng/mL; Batch B is in \u00b5g/L \u2192 convert to ng/mL\\ndf['biomarker_final'] = df.apply(lambda row: row['biomarker_final'] / 10 if row['assay_batch'] == 'B' else row['biomarker_final'], axis=1)\\n\\n# Now, check confounding: arm and severity are not balanced\\n# Per data dictionary: treatment was assigned by clinician judgement, not randomised, and sicker patients got treatment\\n# So we must stratify by severity or model it\\n\\n# Compute response rates within each severity stratum\\nstratified = df.groupby(['arm', 'severity'])['responded'].mean().unstack(fill_value=0)\\n\\n# Compute weighted average response rate per arm, using severity distribution as weights\\n# Use overall severity distribution as weights\\nseverity_dist = df['severity'].value_counts(normalize=True)\\n\\n# Weighted response rate per arm\\nweighted_control = (stratified.loc['control'] * severity_dist).sum()\\nweighted_treatment = (stratified.loc['treatment'] * severity_dist).sum()\\n\\n# Compute treatment effect (treatment - control) using weighted rates\\ntreatment_effect_weighted = weighted_treatment - weighted_control\\n\\n# Also compute raw difference for comparison\\nraw_response_rate_control = df[df['arm'] == 'control']['responded'].mean()\\nraw_response_rate_treatment = df[df['arm'] == 'treatment']['responded'].mean()\\nraw_treatment_effect = raw_response_rate_treatment - raw_response_rate_control\\n\\nprint(f\\\"Stratified response rates (by severity):\\\\n{stratified}\\\")\\nprint(f\\\"\\\\nWeighted response rate (control): {weighted_control:.4f}\\\")\\nprint(f\\\"Weighted response rate (treatment): {weighted_treatment:.4f}\\\")\\nprint(f\\\"Weighted treatment effect (treatment - control): {treatment_effect_weighted:.4f}\\\")\\nprint(f\\\"\\\\nRaw (unadjusted) treatment effect: {raw_treatment_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4399,
+  "completion_tokens": 630
+ }
+}

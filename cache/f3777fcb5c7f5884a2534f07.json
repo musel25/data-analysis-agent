@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a91ee48815c48abb",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Filter out refunded orders \u2014 only completed orders count for conversion\\ncompleted_orders = sales[sales['status'] == 'completed']\\n\\n# Verify the filter worked\\nprint(f\\\"Number of completed orders: {len(completed_orders)}\\\")\\nprint(f\\\"Number of refunded orders: {len(sales) - len(completed_orders)}\\\")\\n\\n# Calculate conversion rate by customer_segment on completed orders only\\nconversion_rate = completed_orders.groupby('customer_segment')['converted'].agg(['sum', 'count'])\\nconversion_rate['rate'] = conversion_rate['sum'] / conversion_rate['count']\\n\\n# Sort by rate descending\\nconversion_rate_sorted = conversion_rate.sort_values('rate', ascending=False)\\n\\n# Extract the segment with highest conversion rate\\nhighest_segment = conversion_rate_sorted.index[0]\\n\\n# Print the full conversion rate table\\nconversion_rate_sorted\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5857,
+  "completion_tokens": 226
+ }
+}

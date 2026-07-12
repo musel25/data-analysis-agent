@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a7cd9a59e5d43d2d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Compute conversion rates within each segment and channel\\nstratified_conversion = sales_df.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Pivot to get email and paid_search conversion per segment\\npivoted = stratified_conversion.pivot(index='customer_segment', columns='channel', values='converted')\\n\\n# Now extract the columns correctly\\nemail_conv = pivoted['email']\\npaid_search_conv = pivoted['paid_search']\\n\\ndiffs = email_conv - paid_search_conv\\n\\n# Compute segment sizes in email channel\\nemail_segment_sizes = sales_df[sales_df['channel'] == 'email']['customer_segment'].value_counts()\\n\\n# Weighted average difference\\ntotal_email = email_segment_sizes.sum()\\nweighted_diff = (diffs * email_segment_sizes).sum() / total_email\\n\\npivoted, email_conv, paid_search_conv, diffs, weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4982,
+  "completion_tokens": 238
+ }
+}

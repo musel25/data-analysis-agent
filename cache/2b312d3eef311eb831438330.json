@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0112c0175a0e306",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and cast to float\\n# But we don't need revenue for this question, so skip if not needed\\n# However, we must ensure no QA orders are in the data\\nqa_orders = df[df['revenue'] == '999999.99']\\nprint(f\\\"QA orders found: {len(qa_orders)}\\\")\\n\\n# Filter for converted customers\\nconverted_df = df[df['converted'] == 1]\\n\\n# Check for refunded orders in converted group\\nrefunded_in_converted = converted_df[converted_df['status'] == 'refunded']\\nprint(f\\\"Refunded orders in converted group: {len(refunded_in_converted)}\\\")\\n\\n# Drop refunded orders from the converted group as they did not complete checkout\\n# Since `converted` is 1 only if checkout completed, and refund means money returned,\\n# we must exclude any `status == 'refunded'` from the converted group.\\n# The documentation says: 'converted' is 1 if the order completed checkout.\\n# So if `status == 'refunded'`, it was not a true conversion.\\n# Therefore, filter out refunded orders from the converted group.\\n\\ntrue_converted = converted_df[converted_df['status'] != 'refunded']\\nprint(f\\\"True converted (completed, not refunded): {len(true_converted)}\\\")\\n\\n# Now compute mean age, excluding -1 (missing)\\n# Note: -1 is sentinel for missing age, not a real age\\nvalid_ages = true_converted[true_converted['customer_age'] != -1]['customer_age']\\nmean_age = valid_ages.mean()\\n\\nprint(f\\\"Mean age of true converted customers (excluding -1 and refunded): {mean_age}\\\")\\n\\n# Output result\\nmean_age\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3561,
+  "completion_tokens": 437
+ }
+}

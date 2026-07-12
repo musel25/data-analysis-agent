@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ba2fa61a731ddb14",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Final computation: print only the numbers that will be in evidence\\n# We must print each number exactly once, as it appears in the final answer\\n\\n# Raw difference\\nraw_diff = response_rate_treatment - response_rate_control\\nprint(f\\\"raw_diff: {raw_diff:.4f}\\\")\\n\\n# Stratum-specific effects\\nfor severity, group in df.groupby('severity'):\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    print(f\\\"effect_{severity}: {effect:.4f}\\\")\\n\\n# Weighted effect\\ntotal_n = len(df)\\nstratum_counts = df['severity'].value_counts()\\nstratum_weights = stratum_counts / total_n\\n\\nweighted_effect = 0.0\\nfor severity, group in df.groupby('severity'):\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    weight = stratum_weights[severity]\\n    weighted_effect += effect * weight\\n\\nprint(f\\\"weighted_effect: {weighted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6076,
+  "completion_tokens": 311
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-982d0bac37e8cf59",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Remove QA orders (revenue == '999999.99')\\ndf_clean = df[df['revenue'] != '999999.99'].copy()\\n\\n# Parse revenue as float after removing commas\\ndf_clean['revenue'] = df_clean['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders (only completed ones count)\\ndf_final = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute conversion rate and revenue by channel, stratified by customer_segment\\n# We will compute weighted averages by segment size to adjust for confounding\\n\\n# Group by channel and segment\\nstratified = df_final.groupby(['channel', 'customer_segment'])\\n\\n# Compute conversion rate and average revenue per group\\nconversion_by_group = stratified['converted'].mean()\\nrevenue_by_group = stratified['revenue'].mean()\\n\\n# Get total count per channel\\nchannel_counts = df_final['channel'].value_counts()\\n\\n# Compute weighted average conversion rate by channel (weighted by segment size)\\nweighted_conv = []\\nfor channel in ['email', 'paid_search']:\\n    group_data = df_final[df_final['channel'] == channel]\\n    segment_counts = group_data['customer_segment'].value_counts()\\n    total = segment_counts.sum()\\n    weighted_avg = (segment_counts * conversion_by_group[channel]).sum() / total\\n    weighted_conv.append(weighted_avg)\\n\\nweighted_conv = pd.Series(weighted_conv, index=['email', 'paid_search'])\\n\\n# Compute weighted average revenue by channel\\nweighted_rev = []\\nfor channel in ['email', 'paid_search']:\\n    group_data = df_final[df_final['channel'] == channel]\\n    segment_counts = group_data['customer_segment'].value_counts()\\n    total = segment_counts.sum()\\n    weighted_avg = (segment_counts * revenue_by_group[channel]).sum() / total\\n    weighted_rev.append(weighted_avg)\\n\\nweighted_rev = pd.Series(weighted_rev, index=['email', 'paid_search'])\\n\\n# Compute differences\\nconv_diff = weighted_conv['email'] - weighted_conv['paid_search']\\nrev_diff = weighted_rev['email'] - weighted_rev['paid_search']\\n\\n# Print final results\\nprint(f\\\"Weighted conversion rate (email): {weighted_conv['email']:.3f}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {weighted_conv['paid_search']:.3f}\\\")\\nprint(f\\\"Weighted average revenue (email): ${weighted_rev['email']:,.2f}\\\")\\nprint(f\\\"Weighted average revenue (paid_search): ${weighted_rev['paid_search']:,.2f}\\\")\\nprint(f\\\"Difference in weighted conversion rate: {conv_diff:.3f}\\\")\\nprint(f\\\"Difference in weighted average revenue: ${rev_diff:,.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4735,
+  "completion_tokens": 670
+ }
+}

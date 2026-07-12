@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a17af9212c107cbf",
+    "function": {
+     "arguments": "{\"code\": \"from scipy.stats import norm\\n\\n# Recalculate f_response and m_response\\nf_response = trial_clean[trial_clean['sex'] == 'F']['responded']\\nm_response = trial_clean[trial_clean['sex'] == 'M']['responded']\\n\\n# Calculate response rate by sex\\nresponse_by_sex = trial_clean.groupby('sex')['responded'].mean()\\nprint(\\\"Response rate by sex:\\\")\\nprint(response_by_sex)\\n\\n# Manual z-test for difference in proportions\\nn_f = len(f_response)\\nn_m = len(m_response)\\np_f = f_response.mean()\\np_m = m_response.mean()\\n\\n# Pooled proportion\\np_pooled = (f_response.sum() + m_response.sum()) / (n_f + n_m)\\n\\n# Standard error under null hypothesis (p1 = p2)\\nse = np.sqrt(p_pooled * (1 - p_pooled) * (1/n_f + 1/n_m))\\n\\n# Z-statistic\\nz_stat = (p_f - p_m) / se\\n\\n# Two-tailed p-value\\np_val = 2 * (1 - norm.cdf(abs(z_stat)))\\n\\nprint(f\\\"\\\\nZ-test: z = {z_stat:.4f}, p = {p_val:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4372,
+  "completion_tokens": 298
+ }
+}

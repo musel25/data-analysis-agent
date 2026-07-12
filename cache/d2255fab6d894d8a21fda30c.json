@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aaf41f1110e636ae",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float\\ndf['revenue_float'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA and refunded orders\\ndf_clean = df[~((df['revenue_float'] == 999999.99) | (df['status'] == 'refunded'))]\\n\\n# Check that the filter removed the expected rows\\nprint(f'QA orders removed: {len(df[df[\\\"revenue_float\\\"] == 999999.99])}')\\nprint(f'Refunded orders removed: {len(df[df[\\\"status\\\"] == \\\"refunded\\\"])}')\\nprint(f'Orders after filtering: {len(df_clean)}')\\n\\n# Compute conversion rates by channel\\ntable = pd.crosstab(df_clean['channel'], df_clean['converted'], normalize='index')\\n\\n# Extract conversion rates\\nemail_conv_rate = table.loc['email', 1]\\npaid_search_conv_rate = table.loc['paid_search', 1]\\n\\neffect = email_conv_rate - paid_search_conv_rate\\n\\nprint(f'Email conversion rate: {email_conv_rate:.4f}')\\nprint(f'Paid_search conversion rate: {paid_search_conv_rate:.4f}')\\nprint(f'Effect (email - paid_search): {effect:.4f}')\\n\\n# But wait: the groups are not comparable \u2014 email has many more loyal customers\\n# Check if the difference in conversion is due to segment imbalance\\nprint('\\\\nConversion rates by segment:')\\nseg_table = pd.crosstab(df_clean['customer_segment'], df_clean['converted'], normalize='index')\\nprint(seg_table)\\n\\n# Now stratify by segment to compute adjusted effect\\n# Compute conversion rate within each segment, then average\\n# Use weighted average across segments (by channel)\\n\\n# Get segment-level conversion rates\\nseg_conv = df_clean.groupby('customer_segment')['converted'].mean()\\n\\n# Compute weighted conversion rate per channel\\nemail_weighted = (df_clean[df_clean['channel'] == 'email'].groupby('customer_segment')['converted'].mean() * \\n                   df_clean[df_clean['channel'] == 'email'].groupby('customer_segment')['converted'].count() / \\n                   len(df_clean[df_clean['channel'] == 'email'])).sum()\\n\\npaid_search_weighted = (df_clean[df_clean['channel'] == 'paid_search'].groupby('customer_segment')['converted'].mean() * \\n                        df_clean[df_clean['channel'] == 'paid_search'].groupby('customer_segment')['converted'].count() / \\n                        len(df_clean[df_clean['channel'] == 'paid_search'])).sum()\\n\\n# Adjusted effect\\nadjusted_effect = email_weighted - paid_search_weighted\\n\\nprint(f'Email conversion rate (weighted): {email_weighted:.4f}')\\nprint(f'Paid_search conversion rate (weighted): {paid_search_weighted:.4f}')\\nprint(f'Adjusted effect (email - paid_search): {adjusted_effect:.4f}')\\n\\n# Final check: are the groups comparable?\\nprint('\\\\nFinal group comparison:')\\nprint(pd.crosstab(df_clean['channel'], df_clean['customer_segment']))\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4507,
+  "completion_tokens": 733
+ }
+}

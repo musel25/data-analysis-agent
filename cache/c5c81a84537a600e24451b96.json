@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9826507723e94025",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows where biomarker_baseline == -999\\n# This is critical for any baseline analysis, but we are not using baseline in the final estimand directly\\n# However, we must ensure we are not including invalid data in the population\\nprint(\\\"Filtering out rows with biomarker_baseline == -999...\\\")\\ndf_clean = df[df['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping the row with highest sample_seq\\nprint(\\\"Deduplicating on patient_id, keeping highest sample_seq...\\\")\\ndf_dedup = df_clean.loc[df_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Correct assay_batch B values \u2014 divide by 10\\nprint(\\\"Correcting assay_batch B values (convert \u00b5g/L to ng/mL)...\\\")\\ndf_dedup['biomarker_final_corrected'] = df_dedup['biomarker_final']\\ndf_dedup.loc[df_dedup['assay_batch'] == 'B', 'biomarker_final_corrected'] /= 10\\n\\n# Step 4: Verify the population after cleaning\\nprint(\\\"Final number of patients after deduplication:\\\", len(df_dedup))\\nprint(\\\"Final arm distribution:\\\", df_dedup['arm'].value_counts().to_dict())\\nprint(\\\"Final severity distribution:\\\", df_dedup['severity'].value_counts().to_dict())\\n\\n# Step 5: Stratify by severity and compute response rate in each arm\\nprint(\\\"Computing response rates by arm and severity...\\\")\\nresponse_rates = df_dedup.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nresponse_rates = response_rates.pivot(index='arm', columns='severity', values='responded')\\nprint(response_rates)\\n\\n# Step 6: Compute stratified difference in proportions (treatment - control)\\n# We compute the difference within each severity stratum and then average them by weight of stratum in the population\\n# Weighted average of differences\\nstrata_weights = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Compute difference in each stratum\\ndiffs = {}\\ntotal_n = len(df_dedup)\\n\\nfor severity in ['mild', 'moderate', 'severe']:\\n    n_sev = len(df_dedup[df_dedup['severity'] == severity])\\n    p_treat = df_dedup[(df_dedup['arm'] == 'treatment') & (df_dedup['severity'] == severity)]['responded'].mean()\\n    p_control = df_dedup[(df_dedup['arm'] == 'control') & (df_dedup['severity'] == severity)]['responded'].mean()\\n    diff = p_treat - p_control\\n    diffs[severity] = diff\\n    print(f\\\"{severity.capitalize()} severity: treatment - control = {diff:.4f}\\\")\\n\\n# Weighted average of differences\\nweighted_diff = sum(diffs[sev] * strata_weights[sev] for sev in ['mild', 'moderate', 'severe'])\\n\\nprint(f\\\"\\\\nWeighted average difference (treatment - control): {weighted_diff:.4f}\\\")\\n\\n# Final output\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4267,
+  "completion_tokens": 783
+ }
+}

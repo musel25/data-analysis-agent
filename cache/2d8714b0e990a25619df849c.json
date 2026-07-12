@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-95603db8e30fbc91",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify and exclude QA test orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\n\\n# Identify and exclude refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Define the final population: exclude QA and refunded orders\\nvalid_mask = ~(qa_mask | refunded_mask)\\n\\n# Filter to valid population\\ndf_clean = df[valid_mask].copy()\\n\\n# Compute conversion rate by channel and customer segment\\nconversion_rates = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\nconversion_rates.rename(columns={'converted': 'conversion_rate'}, inplace=True)\\n\\n# Pivot to get channel as columns\\nconversion_pivot = conversion_rates.pivot(index='customer_segment', columns='channel', values='conversion_rate')\\n\\n# Compute the difference in conversion rate (email - paid_search) for each segment\\nconversion_pivot['diff'] = conversion_pivot['email'] - conversion_pivot['paid_search']\\n\\n# Compute weighted average difference across segments (weighted by segment size in each channel)\\n# First, compute segment counts per channel\\nsegment_counts = df_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Total count per channel\\nchannel_totals = segment_counts.sum(axis=1)\\n\\n# Weighted difference\\nweighted_diff = 0\\nfor segment in segment_counts.columns:\\n    email_rate = conversion_pivot.loc[segment, 'email']\\n    paid_search_rate = conversion_pivot.loc[segment, 'paid_search']\\n    diff = email_rate - paid_search_rate\\n    # Weight by the proportion of this segment in the email channel\\n    email_weight = segment_counts.loc['email', segment] / channel_totals['email']\\n    weighted_diff += diff * email_weight\\n\\nweighted_diff_percent = weighted_diff * 100\\n\\n# Print the final conversion rates for each channel across segments\\nprint('Conversion rates by channel and segment:')\\nprint(conversion_pivot)\\n\\n# Compute overall conversion rates for each channel (weighted by segment size)\\noverall_email_rate = (segment_counts.loc['email'] * conversion_pivot['email']).sum() / channel_totals['email']\\noverall_paid_search_rate = (segment_counts.loc['paid_search'] * conversion_pivot['paid_search']).sum() / channel_totals['paid_search']\\n\\n# Print the overall conversion rates\\nprint(f'\\\\nOverall conversion rate for email channel: {overall_email_rate * 100:.2f}%')\\nprint(f'Overall conversion rate for paid_search channel: {overall_paid_search_rate * 100:.2f}%')\\n\\n# Print the weighted difference\\nprint(f'\\\\nWeighted difference in conversion rate (email - paid_search): {weighted_diff_percent:.2f}%')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7295,
+  "completion_tokens": 703
+ }
+}

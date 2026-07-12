@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8930cfbf8b18910d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\ndata = pd.read_csv(file_path)\\n\\n# Clean the revenue column: remove commas and convert to float\\ndata['revenue_clean'] = data['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Remove QA orders (revenue == 999999.99) and refunded orders\\ndata_filtered = data[(data['revenue_clean'] != 999999.99) & (data['status'] == 'completed')]\\n\\n# Final confirmation: no QA or refunded orders\\nassert (data_filtered['revenue_clean'] == 999999.99).sum() == 0\\nassert (data_filtered['status'] == 'refunded').sum() == 0\\n\\n# Check for confounding: is `channel` associated with `customer_segment`?\\nprint(\\\"Cross-tabulation of channel vs customer_segment:\\\")\\nprint(pd.crosstab(data_filtered['channel'], data_filtered['customer_segment']))\\n\\n# Compute stratum-specific conversion rates by channel and segment\\nstratified_conversion = data_filtered.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Weighted average conversion rate by channel, weighted by segment size\\nsegment_counts = data_filtered['customer_segment'].value_counts()\\n\\ne_email = (stratified_conversion[stratified_conversion['channel'] == 'email'].groupby('customer_segment')['converted'].sum() * segment_counts).sum() / segment_counts.sum()\\ne_paid = (stratified_conversion[stratified_conversion['channel'] == 'paid_search'].groupby('customer_segment')['converted'].sum() * segment_counts).sum() / segment_counts.sum()\\n\\ndiff_weighted_conv = e_email - e_paid\\n\\n# Compute weighted average revenue by channel\\nstratified_revenue = data_filtered.groupby(['channel', 'customer_segment'])['revenue_clean'].mean().reset_index()\\n\\ne_rev_email = (stratified_revenue[stratified_revenue['channel'] == 'email'].groupby('customer_segment')['revenue_clean'].sum() * segment_counts).sum() / segment_counts.sum()\\ne_rev_paid = (stratified_revenue[stratified_revenue['channel'] == 'paid_search'].groupby('customer_segment')['revenue_clean'].sum() * segment_counts).sum() / segment_counts.sum()\\n\\ndiff_weighted_rev = e_rev_email - e_rev_paid\\n\\n# Print final results\\nprint(f\\\"Weighted conversion rate (email): {e_email}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {e_paid}\\\")\\nprint(f\\\"Weighted difference in conversion: {diff_weighted_conv}\\\")\\n\\nprint(f\\\"Weighted average revenue (email): {e_rev_email}\\\")\\nprint(f\\\"Weighted average revenue (paid_search): {e_rev_paid}\\\")\\nprint(f\\\"Weighted difference in revenue: {diff_weighted_rev}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9900,
+  "completion_tokens": 669
+ }
+}

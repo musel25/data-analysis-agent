@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9d43c6e2e57e301a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue == 999999.99)\\nqa_mask = df['revenue'] == 999999.99\\n\\n# Identify refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Filter out refunded orders and QA orders\\ndf_filtered = df[~refunded_mask & ~qa_mask]\\n\\n# Calculate conversion rate by channel and customer segment\\ndf_grouped = df_filtered.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum'])\\ndf_grouped['conversion_rate'] = df_grouped['sum'] / df_grouped['count']\\n\\n# Pivot to get conversion rate by channel and segment\\ndf_pivot = df_grouped.reset_index().pivot(index='channel', columns='customer_segment', values='conversion_rate')\\n\\n# Compute overall conversion rate by channel (unadjusted)\\nconv_rate_email = df_filtered[df_filtered['channel'] == 'email']['converted'].mean()\\nconv_rate_paid_search = df_filtered[df_filtered['channel'] == 'paid_search']['converted'].mean()\\n\\n# Compute adjusted conversion rate difference using stratification\\n# We'll compute the difference in conversion rate between channels, stratified by segment\\n# This is a difference-in-means, adjusted for segment\\n\\n# Compute the overall conversion rate difference\\nconversion_diff_unadjusted = conv_rate_email - conv_rate_paid_search\\n\\n# Compute the adjusted difference using weighted average (by segment)\\n# Weight each segment's difference by its proportion in the data\\nsegment_counts = df_filtered['customer_segment'].value_counts()\\ntotal_n = len(df_filtered)\\n\\n# Compute segment weights\\nsegment_weights = segment_counts / total_n\\n\\n# Compute segment-specific conversion rate differences\\n# We need to compute the difference in conversion rate between email and paid_search, per segment\\nsegment_diffs = []\\nfor seg in df_pivot.columns:\\n    email_conv = df_pivot.loc['email', seg]\\n    paid_conv = df_pivot.loc['paid_search', seg]\\n    diff = email_conv - paid_conv\\n    segment_diffs.append(diff)\\n\\n# Compute weighted average difference\\nweighted_diff = sum(d * w for d, w in zip(segment_diffs, segment_weights))\\n\\n# Output the results\\nprint(f'Unadjusted conversion rate difference (email - paid_search): {conversion_diff_unadjusted:.4f}')\\nprint(f'Adjusted conversion rate difference (email - paid_search): {weighted_diff:.4f}')\\nprint(f'\\nSegment-level conversion rates:')\\nprint(df_pivot)\\n\\n# Return the final adjusted difference\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7773,
+  "completion_tokens": 645
+ }
+}

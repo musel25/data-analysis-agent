@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aedd23e6e6ec6a60",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, stripping commas\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Check for QA orders again (now that revenue is numeric)\\nqa_orders = sales[sales['revenue'] == 999999.99]\\nprint(f\\\"Found {len(qa_orders)} QA orders with revenue = 999999.99\\\")\\n\\n# But we are only interested in 'converted' customers and their age\\n# So we filter to converted customers\\nconverted_customers = sales[sales['converted'] == 1]\\n\\n# Now, check the age of converted customers\\n# We must exclude -1 as missing, not a real age\\nconverted_customers_with_age = converted_customers[converted_customers['customer_age'] != -1]\\n\\n# Compute the mean age of converted customers, excluding -1\\nmean_age_converted = converted_customers_with_age['customer_age'].mean()\\n\\nprint(f\\\"Number of converted customers: {len(converted_customers)}\\\")\\nprint(f\\\"Number of converted customers with valid age (not -1): {len(converted_customers_with_age)}\\\")\\nprint(f\\\"Mean age of converted customers (excluding -1): {mean_age_converted:.2f} years\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3567,
+  "completion_tokens": 327
+ }
+}

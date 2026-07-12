@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-808c2a4460693100",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, removing non-numeric characters\\nsales_df['revenue'] = sales_df['revenue'].str.replace('[^0-9.]', '', regex=True).astype(float)\\n\\n# Filter for completed orders\\ncompleted_orders = sales_df[sales_df['status'] == 'completed']\\n\\n# Check if any completed orders have zero revenue\\nzero_revenue_completed = completed_orders[completed_orders['revenue'] == 0.0]\\n\\n# Total revenue from completed orders\\ntotal_revenue_completed = completed_orders['revenue'].sum()\\n\\n# Check for test orders: look for order_id containing 'TEST'\\ntest_orders = sales_df[sales_df['order_id'].str.contains('TEST', na=False)]\\n\\n# Exclude test orders from completed orders\\ncompleted_non_test = completed_orders[~completed_orders['order_id'].str.contains('TEST', na=False)]\\n\\n# Recalculate total revenue excluding test orders\\ntotal_revenue_completed_non_test = completed_non_test['revenue'].sum()\\n\\n# Print results\\ntotal_revenue_completed, total_revenue_completed_non_test, len(test_orders), len(zero_revenue_completed)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2159,
+  "completion_tokens": 295
+ }
+}

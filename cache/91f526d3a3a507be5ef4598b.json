@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ab05b167d0c54a14",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Replace sentinel values\\ntrial_df['biomarker_baseline'] = trial_df['biomarker_baseline'].replace(-999.0, pd.NA)\\ntrial_df['biomarker_final'] = trial_df['biomarker_final'].replace(-999.0, pd.NA)\\n\\n# Drop rows with missing biomarker_baseline (since we need it for analysis)\\ndf_clean = trial_df.dropna(subset=['biomarker_baseline'])\\n\\n# Calculate change in biomarker (final - baseline)\\ndf_clean['biomarker_change'] = df_clean['biomarker_final'] - df_clean['biomarker_baseline']\\n\\n# Stratify by severity and calculate mean change and response rate\\nstratified_change = df_clean.groupby(['arm', 'severity'])['biomarker_change'].mean().unstack(level='severity')\\nstratified_response = df_clean.groupby(['arm', 'severity'])['responded'].mean().unstack(level='severity')\\n\\n# Calculate adjusted mean biomarker change using weighted average by severity\\nseverity_counts = df_clean.groupby('arm')['severity'].value_counts().unstack(fill_value=0)\\nseverity_total = severity_counts.sum(axis=1)\\nseverity_weights = severity_counts.divide(severity_total, axis=0)\\n\\n# Compute weighted mean biomarker change by arm\\nweighted_change = (stratified_change.multiply(severity_weights)).sum(axis=1)\\n\\n# Compute weighted response rate by arm\\nweighted_response = (stratified_response.multiply(severity_weights)).sum(axis=1)\\n\\n# Compare adjusted and raw estimates\\nraw_change = df_clean.groupby('arm')['biomarker_change'].mean()\\nraw_response = df_clean.groupby('arm')['responded'].mean()\\n\\nweighted_change, raw_change, weighted_response, raw_response\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4411,
+  "completion_tokens": 430
+ }
+}

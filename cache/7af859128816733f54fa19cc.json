@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-889f2f468f2874d6",
+    "function": {
+     "arguments": "{\"code\": \"# Compute conversion rate within each segment for each channel\\nsegment_channel_conv = sales_df.groupby(['customer_segment', 'channel'])['converted'].mean().unstack(fill_value=0)\\nprint(segment_channel_conv)\\n\\n# Get overall segment proportions (weights)\\noverall_segment_prop = sales_df['customer_segment'].value_counts(normalize=True)\\nprint(f\\\"\\\\nOverall segment proportions:\\\\n{overall_segment_prop}\\\")\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_conv_email = (segment_channel_conv.loc['loyal', 'email'] * overall_segment_prop['loyal'] + \\n                        segment_channel_conv.loc['new', 'email'] * overall_segment_prop['new'] + \\n                        segment_channel_conv.loc['returning', 'email'] * overall_segment_prop['returning'])\\n\\nweighted_conv_paid_search = (segment_channel_conv.loc['loyal', 'paid_search'] * overall_segment_prop['loyal'] + \\n                             segment_channel_conv.loc['new', 'paid_search'] * overall_segment_prop['new'] + \\n                             segment_channel_conv.loc['returning', 'paid_search'] * overall_segment_prop['returning'])\\n\\n# Compute the difference in weighted conversion rates\\ndifference = weighted_conv_email - weighted_conv_paid_search\\n\\nprint(f\\\"\\\\nWeighted conversion rate (email): {weighted_conv_email}\\\")\\nprint(f\\\"\\\\nWeighted conversion rate (paid_search): {weighted_conv_paid_search}\\\")\\nprint(f\\\"\\\\nDifference (email - paid_search): {difference}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3876,
+  "completion_tokens": 344
+ }
+}

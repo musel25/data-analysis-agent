@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-96451ce46195e21a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows with biomarker_baseline == -999\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping the row with highest sample_seq\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Check the distribution of arm and severity to confirm confounding\\ndf_cross = pd.crosstab(df['arm'], df['severity'])\\nprint('Cross-tab of arm vs severity:')\\nprint(df_cross)\\n\\n# Step 4: Stratify by severity and compute response rate in each arm\\nstrata = df.groupby('severity')\\n\\n# Compute response rate (proportion responded) in each arm within each stratum\\nresults = []\\nfor severity, group in strata:\\n    n_treatment = group[group['arm'] == 'treatment'].shape[0]\\n    n_control = group[group['arm'] == 'control'].shape[0]\\n    responded_treatment = group[(group['arm'] == 'treatment') & (group['responded'] == 1)].shape[0]\\n    responded_control = group[(group['arm'] == 'control') & (group['responded'] == 1)].shape[0]\\n    \\n    prop_treatment = responded_treatment / n_treatment\\n    prop_control = responded_control / n_control\\n    diff = prop_treatment - prop_control\\n    \\n    results.append({\\n        'severity': severity,\\n        'n_treatment': n_treatment,\\n        'n_control': n_control,\\n        'responded_treatment': responded_treatment,\\n        'responded_control': responded_control,\\n        'prop_treatment': prop_treatment,\\n        'prop_control': prop_control,\\n        'diff': diff\\n    })\\n\\nresults_df = pd.DataFrame(results)\\nprint('\\\\nStratified response rates and differences:')\\nprint(results_df)\\n\\n# Step 5: Compute Mantel-Haenszel adjusted difference in proportions\\n# Formula: MH = sum(w_i * diff_i) / sum(w_i), where w_i = (n_ti * n_ci) / (n_ti + n_ci)\\n# But for difference in proportions, we can use the standard Mantel-Haenszel estimator for risk difference\\n\\nMH_diff = 0\\nMH_weight_sum = 0\\n\\nfor idx, row in results_df.iterrows():\\n    n_t = row['n_treatment']\\n    n_c = row['n_control']\\n    w = (n_t * n_c) / (n_t + n_c)\\n    MH_diff += w * row['diff']\\n    MH_weight_sum += w\\n\\nMH_adjusted_diff = MH_diff / MH_weight_sum\\n\\nprint(f'\\\\nMantel-Haenszel adjusted difference in proportions: {MH_adjusted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6741,
+  "completion_tokens": 684
+ }
+}

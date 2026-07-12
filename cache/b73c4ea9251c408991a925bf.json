@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bc494f0e7838fb19",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\n# This is required by the population definition\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Check if the treatment arm is associated with higher severity (premise)\\nseverity_by_arm = df_dedup.groupby('arm')['severity'].value_counts(normalize=True).unstack(fill_value=0)\\nprint(\\\"Severity distribution by arm (normalized):\\\")\\nprint(severity_by_arm)\\n\\n# Step 3: Compute response rates by arm, stratified by severity\\n# We need to adjust for severity to avoid confounding\\nresponse_by_arm_severity = df_dedup.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nprint(\\\"\\\\nResponse rate by arm and severity:\\\")\\nprint(response_by_arm_severity)\\n\\n# Step 4: Compute marginal response rates (raw)\\ntreatment_rate = df_dedup[df_dedup['arm'] == 'treatment']['responded'].mean()\\ncontrol_rate = df_dedup[df_dedup['arm'] == 'control']['responded'].mean()\\nraw_effect = treatment_rate - control_rate\\n\\n# Step 5: Compute adjusted effect using stratified standardisation (direct standardisation)\\n# Use overall severity distribution as reference\\noverall_severity_dist = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Calculate expected response rate in each arm under overall severity distribution\\nexpected_treatment = 0.0\\nexpected_control = 0.0\\n\\nfor severity_level in overall_severity_dist.index:\\n    prop = overall_severity_dist[severity_level]\\n    # Get response rate for this severity level in each arm\\n    resp_treat = response_by_arm_severity[(response_by_arm_severity['arm'] == 'treatment') & (response_by_arm_severity['severity'] == severity_level)]['responded'].iloc[0]\\n    resp_ctrl = response_by_arm_severity[(response_by_arm_severity['arm'] == 'control') & (response_by_arm_severity['severity'] == severity_level)]['responded'].iloc[0]\\n    expected_treatment += prop * resp_treat\\n    expected_control += prop * resp_ctrl\\n\\nadjusted_effect = expected_treatment - expected_control\\n\\nprint(f\\\"\\\\nRaw treatment effect (treatment - control): {raw_effect}\\\")\\nprint(f\\\"Adjusted treatment effect (direct standardisation): {adjusted_effect}\\\")\\n\\n# Final report\\nfinal_effect = adjusted_effect  # This is the valid estimate\\nprint(f\\\"\\\\nFinal adjusted effect: {final_effect}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5274,
+  "completion_tokens": 619
+ }
+}

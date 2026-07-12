@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a00314c128b141a8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Check for QA orders: revenue = 999999.99\\nqa_count = (df['revenue'] == 999999.99).sum()\\nprint(f'Number of QA orders (revenue == 999999.99): {qa_count}')\\n\\n# Confirm they are exactly 6\\nassert qa_count == 6, 'Expected exactly 6 QA orders'\\n\\n# Drop QA orders\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Verify status is only 'completed' or 'refunded'\\nprint(f'Unique values in status: {df[\\\"status\\\"].unique()}')\\n\\n# Only keep completed orders\\ndf = df[df['status'] == 'completed']\\n\\n# Confirm data is cleaned\\ndf.info()\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4326,
+  "completion_tokens": 268
+ }
+}

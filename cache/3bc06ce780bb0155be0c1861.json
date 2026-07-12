@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-89a43efb1b67ac1c",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows with biomarker_baseline == -999\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping the row with highest sample_seq\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Verify the number of unique patients and total rows\\nn_unique_patients = df['patient_id'].nunique()\\nn_total_rows = len(df)\\nprint(f'Number of unique patients after filtering and deduplication: {n_unique_patients}')\\nprint(f'Total rows after filtering and deduplication: {n_total_rows}')\\n\\n# Step 4: Stratify by severity and compute response rates\\nstrata = df.groupby('severity')\\nresults = []\\nfor severity, group in strata:\\n    n_treatment = group[group['arm'] == 'treatment'].shape[0]\\n    n_control = group[group['arm'] == 'control'].shape[0]\\n    responded_treatment = group[(group['arm'] == 'treatment') & (group['responded'] == 1)].shape[0]\\n    responded_control = group[(group['arm'] == 'control') & (group['responded'] == 1)].shape[0]\\n    \\n    prop_treatment = responded_treatment / n_treatment\\n    prop_control = responded_control / n_control\\n    diff = prop_treatment - prop_control\\n    \\n    results.append({\\n        'severity': severity,\\n        'n_treatment': n_treatment,\\n        'n_control': n_control,\\n        'responded_treatment': responded_treatment,\\n        'responded_control': responded_control,\\n        'prop_treatment': prop_treatment,\\n        'prop_control': prop_control,\\n        'diff': diff\\n    })\\n\\nresults_df = pd.DataFrame(results)\\nprint('\\\\nStratified response rates and differences:')\\nprint(results_df)\\n\\n# Step 5: Compute Mantel-Haenszel adjusted difference in proportions\\nMH_diff = 0\\nMH_weight_sum = 0\\n\\nfor idx, row in results_df.iterrows():\\n    n_t = row['n_treatment']\\n    n_c = row['n_control']\\n    w = (n_t * n_c) / (n_t + n_c)\\n    MH_diff += w * row['diff']\\n    MH_weight_sum += w\\n\\nMH_adjusted_diff = MH_diff / MH_weight_sum\\nprint(f'\\\\nMantel-Haenszel adjusted difference in proportions: {MH_adjusted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8529,
+  "completion_tokens": 627
+ }
+}

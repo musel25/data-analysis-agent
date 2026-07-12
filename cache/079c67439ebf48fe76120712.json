@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a915b6dcbb953708",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter out all QA orders\\ndf_clean = df[~(df['revenue_clean'] == 999999.99)].copy()\\n\\n# Now extract loyal customers from clean data\\nloyal_clean_mask = df_clean['customer_segment'] == 'loyal'\\nconverted_loyal_clean = df_clean[loyal_clean_mask]['converted']\\n\\n# Compute conversion rate\\nconversion_rate = converted_loyal_clean.mean()\\n\\n# Print results\\ntotal_loyal_clean = len(converted_loyal_clean)\\nconverted_count = converted_loyal_clean.sum()\\n\\nprint(f\\\"Total loyal customers (after removing QA): {total_loyal_clean}\\\")\\nprint(f\\\"Converted loyal customers: {converted_count}\\\")\\nprint(f\\\"Conversion rate: {conversion_rate}\\\")\\n\\n# Return the conversion rate as a float\\nconversion_rate\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8938,
+  "completion_tokens": 267
+ }
+}

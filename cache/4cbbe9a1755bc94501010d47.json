@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aaccbbae7cfa6e0a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float\\nsales_df['revenue'] = pd.to_numeric(sales_df['revenue'], errors='coerce')\\n\\n# Filter for completed orders only (exclude refunded)\\ncompleted_orders = sales_df[sales_df['status'] == 'completed']\\n\\n# Stratify by customer_segment and compute conversion rates within each segment\\nstratified_rates = completed_orders.groupby(['channel', 'customer_segment'])['converted'].agg(['mean', 'count']).reset_index()\\n\\n# Compute weighted average conversion rates by channel, weighted by segment size\\nchannel_totals = completed_orders.groupby('channel')['customer_segment'].value_counts().groupby('channel').sum()\\n\\nweighted_email = 0\\nweighted_paid_search = 0\\n\\nfor segment in ['loyal', 'new', 'returning']:\\n    email_rate = stratified_rates[(stratified_rates['channel'] == 'email') & (stratified_rates['customer_segment'] == segment)]['mean'].values[0]\\n    paid_search_rate = stratified_rates[(stratified_rates['channel'] == 'paid_search') & (stratified_rates['customer_segment'] == segment)]['mean'].values[0]\\n    \\n    email_weight = stratified_rates[(stratified_rates['channel'] == 'email') & (stratified_rates['customer_segment'] == segment)]['count'].values[0] / channel_totals['email']\\n    paid_search_weight = stratified_rates[(stratified_rates['channel'] == 'paid_search') & (stratified_rates['customer_segment'] == segment)]['count'].values[0] / channel_totals['paid_search']\\n    \\n    weighted_email += email_rate * email_weight\\n    weighted_paid_search += paid_search_rate * paid_search_weight\\n\\n# Compute the adjusted effect\\nadjusted_effect = weighted_email - weighted_paid_search\\n\\nprint(f\\\"Stratified conversion rates by channel and segment:\\\")\\nprint(stratified_rates)\\nprint(f\\\"\\\\nWeighted average email conversion rate: {weighted_email:.4f}\\\")\\nprint(f\\\"Weighted average paid search conversion rate: {weighted_paid_search:.4f}\\\")\\nprint(f\\\"Adjusted effect (email - paid_search): {adjusted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3091,
+  "completion_tokens": 531
+ }
+}

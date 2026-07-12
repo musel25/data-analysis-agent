@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ab4cd839e64fac43",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Remove the 6 QA rows with revenue = 999999.99\\ndf_clean = df[df['revenue'] != '999999.99']\\n\\n# Convert revenue to float\\ndf_clean['revenue_float'] = df_clean['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove refunded orders\\ndf_final = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute conversion rate by channel\\nconv_rate_channel = df_final.groupby('channel')['converted'].mean()\\n\\n# Compute conversion rate by customer_segment\\nconv_rate_segment = df_final.groupby('customer_segment')['converted'].mean()\\n\\n# Stratify by customer_segment to get a fair comparison\\nconv_rate_by_channel_segment = df_final.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Compute the raw difference in conversion rates\\nraw_diff = conv_rate_channel['email'] - conv_rate_channel['paid_search']\\n\\n# Compute the adjusted difference (within each segment)\\nsegment_sizes = df_final['customer_segment'].value_counts(normalize=True)\\n\\nadjusted_diff = 0\\nfor seg in ['new', 'returning', 'loyal']:\\n    email_conv = conv_rate_by_channel_segment.loc['email', seg]\\n    paid_search_conv = conv_rate_by_channel_segment.loc['paid_search', seg]\\n    diff_in_seg = email_conv - paid_search_conv\\n    adjusted_diff += diff_in_seg * segment_sizes[seg]\\n\\n# Print all required values\\nprint(\\\"Raw conversion rate difference (email - paid_search):\\\", raw_diff)\\nprint(\\\"Adjusted conversion rate difference (stratified by segment):\\\", adjusted_diff)\\nprint(\\\"Conversion rate by channel:\\\")\\nprint(conv_rate_channel)\\nprint(\\\"Conversion rate by segment:\\\")\\nprint(conv_rate_segment)\\nprint(\\\"Conversion rate by channel and segment:\\\")\\nprint(conv_rate_by_channel_segment)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9617,
+  "completion_tokens": 466
+ }
+}

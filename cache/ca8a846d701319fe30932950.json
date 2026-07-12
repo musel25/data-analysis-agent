@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9638c8d84094ee8a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float (though not used for this question)\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA orders (revenue = 999999.99)\\nreal_orders = sales[sales['revenue_clean'] != 999999.99]\\n\\n# Now, compute mean age of all customers who converted, including refunded ones\\n# The question asks for \\\"customers who CONVERTED\\\", and `converted == 1` means they completed checkout\\n# Refunded orders still count as converted, just with a refund later\\nconverters = real_orders[real_orders['converted'] == 1]\\n\\n# Exclude only the -1 values in customer_age (missing data sentinel)\\nvalid_converters = converters[converters['customer_age'] != -1]\\n\\n# Compute mean age\\nmean_age = valid_converters['customer_age'].mean()\\n\\nprint(f'Mean age of customers who converted (including refunded): {mean_age}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4977,
+  "completion_tokens": 271
+ }
+}

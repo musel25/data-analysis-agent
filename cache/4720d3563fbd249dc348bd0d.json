@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8f91349c6bbceb40",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Exclude rows with biomarker_baseline == -999\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate by keeping highest sample_seq per patient_id\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Stratify by severity and compute response rates in each arm\\n# We'll compute:\\n# - response rate in treatment arm within each severity stratum\\n# - response rate in control arm within each severity stratum\\n# - then compute the difference in each stratum\\n# - then standardise using overall population weights\\n\\n# First, compute response rate by arm and severity\\nresponse_rates = df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\n\\n# Pivot to get a table: arms as columns, severity as rows\\nresponse_pivot = response_rates.pivot(index='severity', columns='arm', values='responded')\\nresponse_pivot.columns = ['control', 'treatment']\\n\\n# Compute stratum-specific differences (treatment - control)\\nresponse_pivot['diff'] = response_pivot['treatment'] - response_pivot['control']\\n\\n# Get overall population proportions by severity (to use as weights)\\npopulation_weights = df['severity'].value_counts(normalize=True)\\n\\n# Compute standardised difference: weighted average of stratum-specific differences\\nstandardised_diff = (response_pivot['diff'] * population_weights).sum()\\n\\n# Output the result\\nstandardised_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5502,
+  "completion_tokens": 380
+ }
+}

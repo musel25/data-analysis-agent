@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8b5c36cc22fdb6fc",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to numeric: remove commas and cast to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter only completed orders\\ndf_completed = df[df['status'] == 'completed']\\n\\n# Check for QA orders (revenue = 999999.99)\\nqa_orders = df_completed[df_completed['revenue_numeric'] == 999999.99]\\n\\n# Remove QA orders for accurate mean\\ndf_clean = df_completed[df_completed['revenue_numeric'] != 999999.99]\\n\\n# Compute final mean revenue of completed orders (excluding QA)\\nmean_revenue_final = df_clean['revenue_numeric'].mean()\\n\\n# Print key outputs\\nprint(f'Number of completed orders after removing QA: {len(df_clean)}')\\nprint(f'Mean revenue: {mean_revenue_final}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6650,
+  "completion_tokens": 249
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9497f9038ee587e3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter: only completed orders\\ncompleted_df = df[df['status'] == 'completed']\\n\\n# Filter: exclude QA orders (revenue == 999999.99)\\nvalid_df = completed_df[completed_df['revenue_clean'] != 999999.99]\\n\\n# Verify that no QA orders remain\\nassert len(valid_df[valid_df['revenue_clean'] == 999999.99]) == 0, \\\"QA orders not filtered out\\\"\\n\\n# Check channel distribution in valid data\\ndf_valid_channel = valid_df[['channel', 'customer_segment']].value_counts().to_frame('count')\\ndf_valid_channel = df_valid_channel.reset_index()\\nprint('Valid (completed, non-QA) channel and customer segment distribution:')\\nprint(df_valid_channel)\\n\\n# Compute average revenue per order by channel\\navg_revenue_by_channel = valid_df.groupby('channel')['revenue_clean'].mean()\\nprint('Average revenue per completed order by channel:')\\nprint(avg_revenue_by_channel)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3931,
+  "completion_tokens": 313
+ }
+}

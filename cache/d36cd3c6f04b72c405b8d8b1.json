@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd9001e54ef83622",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for completed orders only\\ndf_completed = df[df['status'] == 'completed']\\n\\n# Identify and remove QA orders (revenue = 999999.99)\\nqa_orders = df_completed[df_completed['revenue_clean'] == 999999.99]\\nprint(f\\\"Found {len(qa_orders)} QA orders to remove\\\")\\n\\n# Remove QA orders from the completed set\\nfinal_df = df_completed[~df_completed['revenue_clean'].isin([999999.99])]\\n\\n# Final population: completed orders, excluding QA orders\\nprint(f\\\"Final number of completed orders (excluding QA): {len(final_df)}\\\")\\n\\n# Compute average revenue per completed order\\navg_revenue = final_df['revenue_clean'].mean()\\n\\n# Output\\nprint(f\\\"Average revenue per completed order: {avg_revenue:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5049,
+  "completion_tokens": 280
+ }
+}

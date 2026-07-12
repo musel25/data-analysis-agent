@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-823a11b7a9ebb994",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate by patient_id, keeping the row with the highest sample_seq\\n# First, ensure we keep only one row per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Now filter for control arm and moderate severity\\ncontrol_moderate = df_dedup[(df_dedup['arm'] == 'control') & (df_dedup['severity'] == 'moderate')]\\n\\n# Compute fraction of responders\\nn_total = len(control_moderate)\\nn_responded = control_moderate['responded'].sum()\\nfraction_responded = n_responded / n_total\\n\\nprint(f\\\"Number of control-arm, moderate-severity patients (deduplicated): {n_total}\\\")\\nprint(f\\\"Number of responders: {n_responded}\\\")\\nprint(f\\\"Fraction responded: {fraction_responded}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4879,
+  "completion_tokens": 235
+ }
+}

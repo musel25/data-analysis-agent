@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5dade0c651a13b4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the cleaned data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Fix revenue\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders\\ndf = df[df['revenue'] != 999999.99]\\n\\n# Only completed orders\\ndf = df[df['status'] == 'completed']\\n\\n# We will compute the difference in conversion rate between channels, but stratify by customer_segment\\n# First, compute conversion rate within each segment\\nconversion_by_channel_segment = df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='channel')\\n\\n# Compute difference in conversion rate within each segment\\ndiff_by_segment = conversion_by_channel_segment['email'] - conversion_by_channel_segment['paid_search']\\n\\n# Compute weighted average of differences (using segment size as weight)\\n# First, compute segment sizes per channel\\nsegment_sizes = df.groupby(['channel', 'customer_segment']).size().unstack(level='channel')\\n\\n# Total sizes per channel\\nchannel_totals = segment_sizes.sum(axis=1)\\n\\n# Weighted difference: sum of (diff_in_segment * proportion_of_segment_in_channel)\\nweighted_diff = (diff_by_segment * segment_sizes['email'] / channel_totals['email']).sum()\\n\\n# Alternatively, use the standard method: compute overall conversion rate, then compute the difference\\n# But since the groups are imbalanced, we must adjust.\\n# Use stratified analysis: estimate the treatment effect within each segment, then average.\\n# We'll use the average of the within-segment differences as the adjusted estimate.\\n\\n# Compute the difference in conversion rate between channels, adjusted for segment\\n# This is the difference in mean conversion, holding segment constant\\n# We can compute this as the difference in expected conversion if both channels had the same segment distribution\\n# But a simpler and valid method: compare within each segment\\n\\n# Compute overall conversion rate per channel (raw)\\nraw_conv_email = df[df['channel'] == 'email']['converted'].mean()\\nraw_conv_paid = df[df['channel'] == 'paid_search']['converted'].mean()\\nraw_diff = raw_conv_email - raw_conv_paid\\n\\n# Compute adjusted conversion rate using the segment distribution of email as the baseline\\n# For each segment, use the email conversion rate, then average over the paid_search segment distribution\\n# This is a standard method for adjustment\\n\\n# Use the paid_search segment distribution to weight the email conversion rates\\npaid_search_segment_dist = df[df['channel'] == 'paid_search']['customer_segment'].value_counts(normalize=True)\\n\\n# Adjusted conversion rate for email (what it would be if email had paid_search's segment mix)\\nadjusted_conv_email = (conversion_by_channel_segment['email'] * paid_search_segment_dist).sum()\\n\\n# The adjusted difference is:\\nadjusted_diff = adjusted_conv_email - raw_conv_paid\\n\\n# Now, report both raw and adjusted differences\\nprint(f\\\"Raw difference in conversion rate (email - paid_search): {raw_diff:.4f}\\\")\\nprint(f\\\"Adjusted difference (using paid_search segment mix): {adjusted_diff:.4f}\\\")\\n\\n# Also, check if adjusted difference is meaningful\\nprint(f\\\"\\\\nSegment-level conversion rates by channel:\\\")\\nprint(conversion_by_channel_segment)\\n\\n# Final decision: Was the campaign successful?\\n# The campaign is email. We want to know if email performs better than paid_search after adjustment.\\n# If adjusted difference > 0, then yes.\\nprint(f\\\"\\\\nConclusion: The campaign was {'successful' if adjusted_diff > 0 else 'not successful'} after adjusting for customer_segment.\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4736,
+  "completion_tokens": 819
+ }
+}

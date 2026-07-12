@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-97f7117243a3089c",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate \u2014 keep highest sample_seq per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Correct assay_batch B values\\ndf_dedup.loc[df_dedup['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 3: Compute overall severity distribution\\nseverity_dist = df_dedup['severity'].value_counts(normalize=True)\\nprint(\\\"Overall severity distribution:\\\")\\nprint(severity_dist)\\n\\n# Step 4: Compute within-stratum treatment effects\\ncrosstab = pd.crosstab(df_dedup['arm'], df_dedup['severity'], values=df_dedup['responded'], aggfunc='mean')\\ntreatment_rates = crosstab.loc['treatment']\\ncontrol_rates = crosstab.loc['control']\\nwithin_stratum = treatment_rates - control_rates\\nprint(\\\"Within-stratum treatment effects (treatment - control):\\\")\\nprint(within_stratum)\\n\\n# Step 5: Compute adjusted treatment effect\\nadjusted_effect = (within_stratum * severity_dist).sum()\\nprint(f\\\"Weighted within-stratum treatment effect (adjusted): {adjusted_effect}\\\")\\n\\n# Step 6: Crude difference\\ncrude_diff = df_dedup[df_dedup['arm'] == 'treatment']['responded'].mean() - \\\\\\n             df_dedup[df_dedup['arm'] == 'control']['responded'].mean()\\nprint(f\\\"Crude difference (treatment - control): {crude_diff}\\\")\\n\\n# Final answer\\nanswer = adjusted_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 12140,
+  "completion_tokens": 412
+ }
+}

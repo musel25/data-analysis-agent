@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bfa837b01497c1bc",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Remove sentinel values: -999.0 in biomarker_baseline and biomarker_final\\n# Replace -999.0 with NaN\\ntrial_df['biomarker_baseline'] = trial_df['biomarker_baseline'].replace(-999.0, pd.NA)\\ntrial_df['biomarker_final'] = trial_df['biomarker_final'].replace(-999.0, pd.NA)\\n\\n# Drop rows where biomarker_baseline or biomarker_final is missing\\ntrial_df_clean = trial_df.dropna(subset=['biomarker_baseline', 'biomarker_final'])\\n\\n# Keep only the first (lowest sample_seq) for each patient_id\\ntrial_df_clean = trial_df_clean.sort_values('sample_seq').drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Compute change in biomarker (final - baseline) by arm\\ntrial_df_clean['biomarker_change'] = trial_df_clean['biomarker_final'] - trial_df_clean['biomarker_baseline']\\n\\n# Stratify by severity and compute mean change within each severity level\\nprint(\\\"Mean biomarker change by arm and severity:\\\")\\nprint(trial_df_clean.groupby(['arm', 'severity'])['biomarker_change'].mean())\\n\\n# Compute overall mean change by arm (after stratification)\\n# Weighted average by severity within each arm\\nseverity_counts = trial_df_clean.groupby('arm')['severity'].value_counts().unstack(fill_value=0)\\n\\n# Compute weighted mean change per arm\\nweighted_change = {}\\nfor arm in ['control', 'treatment']:\\n    group = trial_df_clean[trial_df_clean['arm'] == arm]\\n    total_n = len(group)\\n    weighted_avg = (group.groupby('severity')['biomarker_change'].mean() * group.groupby('severity').size() / total_n).sum()\\n    weighted_change[arm] = weighted_avg\\n\\nprint(\\\"\\\\nWeighted mean biomarker change by arm (adjusted for severity):\\\")\\nprint(weighted_change)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4350,
+  "completion_tokens": 481
+ }
+}

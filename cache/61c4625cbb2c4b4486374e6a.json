@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-81714e3c5fe14898",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and cast to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify and drop QA rows\\nqa_rows = df[df['revenue_clean'] == 999999.99]\\n\\n# Check: are QA rows converted? (we saw earlier: all 1)\\nprint(f\\\"QA rows converted: {qa_rows['converted'].mean()}\\\")\\n\\n# Drop QA rows\\ndf_clean = df[~(df['revenue_clean'] == 999999.99)].copy()\\n\\n# Now, we must check for confounding: channel vs segment\\n# The data dictionary says: 'The email campaign was deliberately targeted at existing high-value customers.'\\n# So `channel` is not random: email is more likely to go to `loyal` customers, who have higher conversion rates regardless.\\n\\n# Cross-tabulate `channel` and `customer_segment`\\nprint(\\\"\\\\nCross-tabulation of channel and customer_segment:\\\")\\nprint(pd.crosstab(df_clean['channel'], df_clean['customer_segment']))\\n\\n# Compute conversion rates by channel, but stratify by segment\\n# First, compute overall conversion rate by channel\\nconv_by_channel = df_clean.groupby('channel')['converted'].mean()\\nprint(\\\"\\\\nConversion rate by channel (raw):\\\")\\nprint(conv_by_channel)\\n\\n# But because of confounding, this raw difference is not the effect of the campaign \u2014 it's a mix of segment and channel\\n# We must stratify by segment to isolate the campaign effect\\nconv_by_channel_segment = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\nprint(\\\"\\\\nConversion rate by channel and segment:\\\")\\nprint(conv_by_channel_segment)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4277,
+  "completion_tokens": 442
+ }
+}

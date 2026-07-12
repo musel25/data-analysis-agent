@@ -11,6 +11,34 @@ individual runs would treat 10 runs of an easy task as 10 independent successes 
 too tight.
 
 So: resample TASKS with replacement, then resample RUNS within each sampled task.
+
+    ⚠️  AND THEN I FOOLED MYSELF FROM INSIDE THE CONFIDENCE INTERVAL ANYWAY. (D31)
+
+I ran this identical benchmark twice, either side of a change that provably altered nothing (same
+error rate, same step count, same budget-exhaustion rate). The Findings Ledger came back:
+
+    run A:   -1.8%   95% CI [ -8.9%, +4.6%]     ->  "no detectable effect"
+    run B:  -11.1%   95% CI [-18.6%, -4.3%]     ->  "SIGNIFICANT"
+
+Same code, same tasks, opposite verdicts, intervals that barely overlap. At least one of them is
+wrong and I cannot tell which — so as stated, BOTH are worthless.
+
+The bootstrap is not miscoded. It is being asked a question it cannot answer. With 10 runs per cell
+it resamples from the ten outcomes actually observed, so a cell that came back 1/10 has a bootstrap
+distribution centred near 10% and CANNOT REACH the 60% the next run produced. The empirical
+distribution is degenerate near p=0 and p=1 — which is exactly where the hard tasks live.
+
+    A bootstrap gives you the sampling variance of the data you HAVE. It knows nothing about the
+    data you did not collect. At n=10, near the extremes, that gap is enormous — and the interval
+    it hands back is too narrow in a way that FEELS rigorous.
+
+Mitigated (not solved) by doubling to 20 runs per cell. Properly solved by a hierarchical
+beta-binomial that shrinks the extreme cells instead of pretending they are certain — or, cheaper
+and more honest, by running the whole benchmark twice every time and reporting the SPREAD BETWEEN
+RUNS as the error bar. That number cannot lie to you: it is a measurement, not a model.
+
+    An error bar is not automatically an honest number. It is honest only if the error bar is —
+    and mine was computed from too little data to know.
 """
 from __future__ import annotations
 
@@ -105,3 +133,38 @@ def ablation_table(df: pd.DataFrame, baseline: str = "full", col: str = "passed"
                                                         else "no detectable effect"),
         })
     return pd.DataFrame(rows).sort_values("delta_vs_full").set_index("config")
+
+
+def replication(df: pd.DataFrame, baseline: str = "full", col: str = "passed") -> pd.DataFrame:
+    """The error bar I actually trust: split the runs in half and measure the SAME thing twice.
+
+    D31. The bootstrap CI told me the Findings Ledger was "no detectable effect" on one run of this
+    benchmark and "SIGNIFICANT" on the next, with intervals that barely overlapped. A modelled
+    error bar is only as honest as the data it is modelled from, and at 10 runs per cell mine was
+    not honest.
+
+    So: take the 20 runs per cell, split them into the first 10 and the last 10 — two independent
+    replicates of the whole experiment — and compute the ablation on each. The gap between the two
+    columns is not a model of the uncertainty. It IS the uncertainty, observed.
+
+    If a mechanism's verdict flips between these two columns, it is not a finding. It is weather.
+    """
+    half = df.attempt.max() // 2 + 1
+    a, b = df[df.attempt < half], df[df.attempt >= half]
+    rows = []
+    for cfg in sorted(df.config.unique()):
+        if cfg == baseline:
+            continue
+        da, *_ = paired_delta(a, cfg, baseline, col)
+        db, *_ = paired_delta(b, cfg, baseline, col)
+        dd, lo, hi, sig = paired_delta(df, cfg, baseline, col)
+        rows.append({
+            "config": cfg,
+            "delta_first_half": da,
+            "delta_second_half": db,
+            "spread": abs(da - db),          # <- the honest error bar
+            "delta_pooled": dd,
+            "lo95": lo, "hi95": hi,
+            "stable": abs(da - db) < abs(dd) or (da < 0) == (db < 0),
+        })
+    return pd.DataFrame(rows).sort_values("delta_pooled").set_index("config")

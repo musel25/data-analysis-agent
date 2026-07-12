@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-91621f6186b7fc2e",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute response rates by arm and severity\\ntab_responded = pd.crosstab(df_dedup['arm'], df_dedup['severity'], values=df_dedup['responded'], aggfunc='mean', margins=False)\\n\\n# Convert to DataFrame for clarity\\ntab_responded = tab_responded.reset_index().melt(id_vars='arm', var_name='severity', value_name='response_rate')\\nprint('Response rates by arm and severity:')\\nprint(tab_responded)\\n\\n# Compute stratum-specific treatment effect (treatment minus control)\\nstratum_effects = {}\\nfor severity in ['mild', 'moderate', 'severe']:\\n    rate_control = tab_responded.loc[(tab_responded['arm'] == 'control') & (tab_responded['severity'] == severity), 'response_rate'].iloc[0]\\n    rate_treatment = tab_responded.loc[(tab_responded['arm'] == 'treatment') & (tab_responded['severity'] == severity), 'response_rate'].iloc[0]\\n    effect = rate_treatment - rate_control\\n    stratum_effects[severity] = effect\\n\\n# Convert to DataFrame\\nstratum_effects_df = pd.DataFrame(list(stratum_effects.items()), columns=['severity', 'effect'])\\nprint('\\\\nStratum-specific effects (treatment - control):')\\nprint(stratum_effects_df)\\n\\n# Compute overall effect: weighted average of stratum effects\\n# Weight by the proportion of patients in each severity stratum in the full sample\\nn_total = len(df_dedup)\\nweight_mild = (df_dedup['severity'] == 'mild').sum() / n_total\\nweight_moderate = (df_dedup['severity'] == 'moderate').sum() / n_total\\nweight_severe = (df_dedup['severity'] == 'severe').sum() / n_total\\n\\nweights = [weight_mild, weight_moderate, weight_severe]\\n\\n# Weighted average of stratum effects\\noverall_effect = np.average(list(stratum_effects.values()), weights=weights)\\n\\n# Confirm: is this equal to (overall treatment rate - overall control rate)?\\noverall_rate_treatment = df_dedup.loc[df_dedup['arm'] == 'treatment', 'responded'].mean()\\noverall_rate_control = df_dedup.loc[df_dedup['arm'] == 'control', 'responded'].mean()\\nraw_difference = overall_rate_treatment - overall_rate_control\\n\\nprint(f'\\\\nOverall response rate - treatment: {overall_rate_treatment:.4f}')\\nprint(f'Overall response rate - control: {overall_rate_control:.4f}')\\nprint(f'Raw difference (treatment - control): {raw_difference:.4f}')\\nprint(f'Weighted stratum-specific difference: {overall_effect:.4f}')\\nprint(f'Are they equal? {np.isclose(overall_effect, raw_difference)}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5883,
+  "completion_tokens": 671
+ }
+}

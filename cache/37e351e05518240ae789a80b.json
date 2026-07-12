@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b8601da2e8ab965b",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute adjusted treatment effect using stratification by severity\\n# We will compute the average response rate difference across severity levels\\n# Weighted by the number of patients in each severity level within each sex\\n\\n# Define severity levels in order for consistent weighting\\nseverity_order = ['mild', 'moderate', 'severe']\\n\\n# Compute weighted average response rate for each sex and arm, stratified by severity\\n# For each sex, compute average response rate across severity levels\\n# Weighted by the number of patients in each severity level\\n\\ndef compute_weighted_response(df, sex):\\n    df_sex = df[df['sex'] == sex]\\n    # Get counts per severity level\\n    counts = df_sex['severity'].value_counts().reindex(severity_order, fill_value=0)\\n    # Get response rates per severity level\\n    rates = df_sex.groupby('severity')['responded'].mean().reindex(severity_order, fill_value=0)\\n    # Compute weighted average\\n    weighted_avg = (counts * rates).sum() / counts.sum()\\n    return weighted_avg\\n\\n# Compute weighted average response for each sex and arm\\nweighted_response = {}\\nfor sex in ['F', 'M']:\\n    for arm in ['control', 'treatment']:\\n        df_subset = trial_df[(trial_df['sex'] == sex) & (trial_df['arm'] == arm)]\\n        if len(df_subset) == 0:\\n            weighted_response[(sex, arm)] = np.nan\\n        else:\\n            counts = df_subset['severity'].value_counts().reindex(severity_order, fill_value=0)\\n            rates = df_subset.groupby('severity')['responded'].mean().reindex(severity_order, fill_value=0)\\n            weighted_avg = (counts * rates).sum() / counts.sum()\\n            weighted_response[(sex, arm)] = weighted_avg\\n\\n# Convert to DataFrame\\nweighted_response_df = pd.DataFrame(\\n    [[weighted_response[('F', 'control')], weighted_response[('F', 'treatment')]],\\n     [weighted_response[('M', 'control')], weighted_response[('M', 'treatment')]]],\\n    index=['F', 'M'],\\n    columns=['control', 'treatment']\\n)\\n\\nprint(\\\"Weighted average response rates by sex and arm (stratified by severity):\\\")\\nprint(weighted_response_df)\\n\\n# Compute adjusted difference in response rates (treatment - control) for each sex\\nadjusted_diff = weighted_response_df['treatment'] - weighted_response_df['control']\\nprint(\\\"\\\\nAdjusted difference in response rates (treatment - control) by sex:\\\")\\nprint(adjusted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4408,
+  "completion_tokens": 606
+ }
+}

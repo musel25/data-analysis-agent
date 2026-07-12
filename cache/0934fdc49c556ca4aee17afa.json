@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a9944c345727a3dc",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Final cleaned dataset: no QA orders, no refunded orders\\ndf_final = df[~(df['revenue'] == '999999.99') & (df['status'] != 'refunded')].copy()\\n\\n# Convert revenue to float (though not used in this analysis)\\ndf_final['revenue_float'] = df_final['revenue'].str.replace(',', '').astype(float)\\n\\n# Compute conversion rate per channel within each segment\\nstratified_rates = df_final.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='channel')\\nstratified_rates.columns = ['email_rate', 'paid_search_rate']\\nstratified_rates['diff'] = stratified_rates['email_rate'] - stratified_rates['paid_search_rate']\\n\\n# Compute the number of observations in each segment\\nn_segment = df_final['customer_segment'].value_counts()\\n\\n# Compute the difference in conversion rates within each segment\\n# We can only compute differences for segments present in both channels\\n# 'new' is only in paid_search, so we skip it\\n# Compute differences for 'loyal' and 'returning'\\ndiff_by_segment = []\\nfor seg in ['loyal', 'returning']:\\n    if seg in stratified_rates.index:\\n        email_rate = stratified_rates.loc[seg, 'email_rate']\\n        paid_search_rate = stratified_rates.loc[seg, 'paid_search_rate']\\n        diff = email_rate - paid_search_rate\\n        n = n_segment[seg]\\n        diff_by_segment.append({'segment': seg, 'diff': diff, 'n': n})\\n\\n# Convert to DataFrame\\ndiff_by_segment = pd.DataFrame(diff_by_segment)\\n\\n# Compute weighted average of differences (weighted by segment size)\\nweighted_diff = (diff_by_segment['diff'] * diff_by_segment['n']).sum() / diff_by_segment['n'].sum()\\n\\n# Also compute overall conversion rates for comparison\\noverall_email_rate = df_final[df_final['channel'] == 'email']['converted'].mean()\\noverall_paid_search_rate = df_final[df_final['channel'] == 'paid_search']['converted'].mean()\\noverall_diff = overall_email_rate - overall_paid_search_rate\\n\\n# Print all required numbers explicitly\\nprint('Stratified conversion rates by segment:')\\nprint(stratified_rates)\\n\\nprint('\\\\nSegment-specific differences:')\\nprint(diff_by_segment)\\n\\nprint(f'\\\\nWeighted average difference (stratified): {weighted_diff:.4f}')\\nprint(f'Overall difference (unadjusted): {overall_diff:.4f}')\\n\\n# Now print the values used in evidence\\nprint('\\\\nEVIDENCE:')\\nprint(f'Email conversion rate (loyal): {stratified_rates.loc[\\\"loyal\\\", \\\"email_rate\\\"]:.4f}')\\nprint(f'Paid search conversion rate (loyal): {stratified_rates.loc[\\\"loyal\\\", \\\"paid_search_rate\\\"]:.4f}')\\nprint(f'Email conversion rate (returning): {stratified_rates.loc[\\\"returning\\\", \\\"email_rate\\\"]:.4f}')\\nprint(f'Paid search conversion rate (returning): {stratified_rates.loc[\\\"returning\\\", \\\"paid_search_rate\\\"]:.4f}')\\nprint(f'Segment size (loyal): {n_segment[\\\"loyal\\\"]}')\\nprint(f'Segment size (returning): {n_segment[\\\"returning\\\"]}')\\nprint(f'Stratified difference (weighted): {weighted_diff:.4f}')\\nprint(f'Overall difference (unadjusted): {overall_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7471,
+  "completion_tokens": 814
+ }
+}

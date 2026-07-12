@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a19b19fd6bf9e00a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Filter out refunded orders\\nfiltered_df = df[df['status'] == 'completed']\\n\\n# Step 2: Remove QA test orders (revenue = 999999.99)\\nfinal_df = filtered_df[filtered_df['revenue'] != '999999.99']\\n\\n# Step 3: Convert revenue to float (not needed for conversion, but good hygiene)\\nfinal_df['revenue'] = final_df['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 4: Compute conversion rate by channel, stratified by customer_segment\\n# First, compute conversion rate within each stratum (channel \u00d7 segment)\\nstrata = final_df.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum'])\\nstrata['conversion_rate'] = strata['sum'] / strata['count']\\n\\n# Display stratum-level conversion rates\\nprint('Stratum-level conversion rates:')\\nprint(strata[['count', 'conversion_rate']])\\n\\n# Step 5: Compute overall conversion rates by channel (raw, unadjusted)\\nraw_conversion_by_channel = final_df.groupby('channel')['converted'].mean()\\nprint('\\\\nRaw conversion rate by channel:')\\nprint(raw_conversion_by_channel)\\n\\n# Step 6: Compute adjusted conversion rate using stratified method (weighted average)\\n# Weight by the number of orders in each stratum\\nstrata_counts = final_df.groupby(['channel', 'customer_segment'])['converted'].count()\\n\\n# Total number of orders per channel\\nchannel_totals = final_df.groupby('channel')['converted'].count()\\n\\n# Weighted average conversion rate per channel\\nadjusted_conversion = {}\\nfor channel in ['email', 'paid_search']:\\n    total_converted = 0\\n    total_orders = 0\\n    for segment in ['new', 'returning', 'loyal']:\\n        count = strata_counts.get((channel, segment), 0)\\n        rate = strata['conversion_rate'].get((channel, segment), 0)\\n        total_converted += count * rate\\n        total_orders += count\\n    adjusted_conversion[channel] = total_converted / total_orders\\n\\n# Convert to DataFrame\\nadjusted_df = pd.Series(adjusted_conversion).rename('adjusted_conversion_rate')\\nprint('\\\\nAdjusted conversion rates (stratified):')\\nprint(adjusted_df)\\n\\n# Step 7: Compute difference in adjusted conversion rates\\neffect = adjusted_df['email'] - adjusted_df['paid_search']\\nprint(f'\\\\nEffect of email campaign (adjusted): {effect:.4f} (percentage points)')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4866,
+  "completion_tokens": 618
+ }
+}

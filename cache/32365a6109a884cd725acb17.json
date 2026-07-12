@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3c2afb414eccb89",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# We have already filtered and deduplicated the data\\n# Now compute the response rate within each severity stratum, by arm\\n\\n# Create a summary table: response rate by severity and arm\\ntable = pd.crosstab(df[\\\"severity\\\"], df[\\\"arm\\\"], values=df[\\\"responded\\\"], aggfunc=\\\"mean\\\", margins=True)\\nprint(\\\"Response rate by severity and arm:\\\")\\nprint(table)\\n\\n# Extract stratum-specific response rates\\ntreatment_mild = table.loc[\\\"mild\\\", \\\"treatment\\\"]\\ntreatment_moderate = table.loc[\\\"moderate\\\", \\\"treatment\\\"]\\ntreatment_severe = table.loc[\\\"severe\\\", \\\"treatment\\\"]\\n\\ncontrol_mild = table.loc[\\\"mild\\\", \\\"control\\\"]\\ncontrol_moderate = table.loc[\\\"moderate\\\", \\\"control\\\"]\\ncontrol_severe = table.loc[\\\"severe\\\", \\\"control\\\"]\\n\\n# Compute stratum-specific differences (treatment - control)\\ndiff_mild = treatment_mild - control_mild\\ndiff_moderate = treatment_moderate - control_moderate\\ndiff_severe = treatment_severe - control_severe\\n\\nprint(f\\\"\\\\nStratum-specific differences (treatment - control):\\\")\\nprint(f\\\"mild: {diff_mild:.4f}\\\")\\nprint(f\\\"moderate: {diff_moderate:.4f}\\\")\\nprint(f\\\"severe: {diff_severe:.4f}\\\")\\n\\n# Now compute the overall difference using standardisation (direct adjustment)\\n# Use the overall severity distribution as the reference\\n\\n# Proportion of patients in each severity stratum in the total population\\np_mild = table.loc[\\\"All\\\", \\\"mild\\\"] / table.loc[\\\"All\\\", \\\"All\\\"]\\np_moderate = table.loc[\\\"All\\\", \\\"moderate\\\"] / table.loc[\\\"All\\\", \\\"All\\\"]\\np_severe = table.loc[\\\"All\\\", \\\"severe\\\"] / table.loc[\\\"All\\\", \\\"All\\\"]\\n\\n# Standardised response rate under treatment (using overall severity distribution)\\nstandardised_treatment = (p_mild * treatment_mild) + (p_moderate * treatment_moderate) + (p_severe * treatment_severe)\\n\\n# Standardised response rate under control\\nstandardised_control = (p_mild * control_mild) + (p_moderate * control_moderate) + (p_severe * control_severe)\\n\\n# Standardised treatment effect (difference in proportions)\\ntreatment_effect = standardised_treatment - standardised_control\\n\\nprint(f\\\"\\\\nStandardised treatment effect (treatment - control): {treatment_effect:.4f}\\\")\\n\\n# Also compute the raw difference for comparison\\nraw_treatment_rate = table.loc[\\\"All\\\", \\\"treatment\\\"]\\nraw_control_rate = table.loc[\\\"All\\\", \\\"control\\\"]\\nraw_effect = raw_treatment_rate - raw_control_rate\\nprint(f\\\"Raw difference (treatment - control): {raw_effect:.4f}\\\")\\n\\n# Print the full table again to verify\\nprint(\\\"\\\\nFinal table:\\\")\\nprint(table)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7503,
+  "completion_tokens": 724
+ }
+}

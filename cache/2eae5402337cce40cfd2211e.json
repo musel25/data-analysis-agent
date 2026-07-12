@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a1272afd21bad26a",
+    "function": {
+     "arguments": "{\"code\": \"sales_df['revenue'] = pd.to_numeric(sales_df['revenue'], errors='coerce')\\n\\n# Drop invalid revenue entries\\nsales_df = sales_df.dropna(subset=['revenue'])\\n\\n# Verify clean data\\nassert sales_df.isnull().sum().sum() == 0, \\\"Still missing values\\\"\\nassert sales_df.duplicated().sum() == 0, \\\"Still duplicates\\\"\\n\\n# Compute overall conversion rate\\noverall_conversion = sales_df['converted'].mean()\\n\\n# Compute total revenue\\ntotal_revenue = sales_df['revenue'].sum()\\n\\n# Compute average revenue per order\\navg_revenue = sales_df['revenue'].mean()\\n\\n# Check conversion by channel\\nconversion_by_channel = sales_df.groupby('channel')['converted'].mean()\\n\\n# Check conversion by segment\\nconversion_by_segment = sales_df.groupby('customer_segment')['converted'].mean()\\n\\n# Stratify by customer segment to compute adjusted conversion rate\\n# Compute weighted average conversion rate by channel, weighted by segment distribution\\n\\n# Get segment distribution in each channel\\nsegment_dist_by_channel = pd.crosstab(sales_df['channel'], sales_df['customer_segment'], normalize='index')\\n\\n# Apply segment-level conversion rates to each channel's segment mix\\nadjusted_conversion_by_channel = (segment_dist_by_channel * conversion_by_segment).sum(axis=1)\\n\\n# Compare raw vs adjusted conversion rates\\nprint(\\\"Raw conversion rates by channel:\\\")\\nprint(conversion_by_channel)\\n\\nprint(\\\"Adjusted conversion rates by channel (stratified by segment):\\\")\\nprint(adjusted_conversion_by_channel)\\n\\n# Compute overall campaign metrics\\nprint(\\\"Overall conversion rate:\\\", overall_conversion)\\nprint(\\\"Total revenue:\\\", total_revenue)\\nprint(\\\"Average revenue per order:\\\", avg_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4206,
+  "completion_tokens": 404
+ }
+}

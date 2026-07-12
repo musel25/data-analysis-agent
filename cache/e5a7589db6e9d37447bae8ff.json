@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a71829e907011b22",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Final check: compute the raw vs adjusted response rates\\nraw_response = trial_df.groupby(['sex', 'arm'])['responded'].mean().reset_index()\\nprint(\\\"Raw response rates by sex and arm:\\\")\\nprint(raw_response)\\n\\n# Adjusted response rates using control arm severity distribution\\ncontrol_severity_dist = trial_df[trial_df['arm'] == 'control']['severity'].value_counts(normalize=True)\\nadjusted_response = []\\nfor sex in ['F', 'M']:\\n    for arm in ['treatment', 'control']:\\n        data = trial_df[(trial_df['sex'] == sex) & (trial_df['arm'] == arm)]\\n        if data.empty:\\n            continue\\n        # Get response rate by severity\\n        rates = data.groupby('severity')['responded'].mean()\\n        # Weight by control severity distribution\\n        weighted_rate = 0\\n        for severity, rate in rates.items():\\n            if severity in control_severity_dist:\\n                weighted_rate += rate * control_severity_dist[severity]\\n        adjusted_response.append({'sex': sex, 'arm': arm, 'adjusted_response_rate': weighted_rate})\\n\\nadjusted_response_df = pd.DataFrame(adjusted_response)\\npivoted = adjusted_response_df.pivot(index='sex', columns='arm', values='adjusted_response_rate')\\ndifference = pivoted['treatment'] - pivoted['control']\\n\\nprint(\\\"\\\\nAdjusted response rates (control arm severity as reference):\\\")\\nprint(pivoted)\\nprint(\\\"\\\\nDifference (treatment - control) by sex (adjusted):\\\")\\nprint(difference)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5395,
+  "completion_tokens": 394
+ }
+}

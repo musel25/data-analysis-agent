@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ba31cdf4eec4ebba",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Fix revenue\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders\\nqa_mask = df['revenue'] == 999999.99\\ndf_clean = df[~qa_mask].copy()\\n\\n# Only completed orders\\ncompleted_mask = df_clean['status'] == 'completed'\\ndf_completed = df_clean[completed_mask].copy()\\n\\n# Stratify by customer_segment and compute conversion rate within each segment\\n# This controls for the confounding by segment\\nconv_by_channel_segment = df_completed.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\nprint(\\\"Conversion rate by channel and customer_segment:\\\")\\nprint(conv_by_channel_segment)\\n\\n# Compute the difference in conversion rate due to channel, within each segment\\n# Use difference-in-differences approach: (email - paid_search) within each segment\\nchannel_diff = conv_by_channel_segment['email'] - conv_by_channel_segment['paid_search']\\nprint(\\\"\\\\nDifference in conversion rate (email - paid_search) by segment:\\\")\\nprint(channel_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4511,
+  "completion_tokens": 291
+ }
+}

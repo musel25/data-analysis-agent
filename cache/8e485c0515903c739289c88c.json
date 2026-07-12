@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-95e800c2e3aa92ab",
+    "function": {
+     "arguments": "{\"code\": \"print(\\\"Given the confounding by customer_segment, we use direct stratification to compute the adjusted effect.\\\")\\n\\n# Compute the weighted average conversion rate for each channel, weighted by segment size\\n# This is the standard method for adjusting for confounding\\n\\n# Get the total number of observations per channel and segment\\ntotal_counts = sales_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Compute the proportion of each segment within each channel\\ntotal_channel_counts = total_counts.sum(axis=1)\\nproportions = total_counts.divide(total_channel_counts, axis=0)\\n\\n# Compute the weighted average conversion rate for each channel\\nweighted_email = (proportions.loc['email'] * stratified_rates.loc['email']).sum()\\nweighted_paid_search = (proportions.loc['paid_search'] * stratified_rates.loc['paid_search']).sum()\\n\\n# Compute the adjusted difference\\nadjusted_diff = weighted_email - weighted_paid_search\\n\\nprint(f'Weighted conversion rate (email): {weighted_email:.6f}')\\nprint(f'Weighted conversion rate (paid_search): {weighted_paid_search:.6f}')\\nprint(f'Adjusted difference (email - paid_search): {adjusted_diff:.6f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5670,
+  "completion_tokens": 285
+ }
+}

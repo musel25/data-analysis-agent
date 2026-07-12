@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5ea740940925f68",
+    "function": {
+     "arguments": "{\"code\": \"# Correct the method: use the overall severity distribution as the common reference for weighting\\n\\n# We have df_clean: treatment arm, deduplicated, QC passed\\n# We have stratified: response rates by (sex, severity) and counts\\n\\n# Step 1: Get the overall severity distribution in the population (this is the common reference)\\noverall_severity_dist = df_clean['severity'].value_counts(normalize=True).sort_index()\\nprint(\\\"Overall severity distribution (common reference):\\\")\\nprint(overall_severity_dist)\\n\\n# Step 2: For each sex, compute the adjusted response rate using the common reference weights\\n# That is: for each sex, compute sum( response_rate_{sex, severity} * overall_severity_dist[severity] )\\n# But note: this is a *weighted average*, not by counts, but by the population's severity distribution\\n\\n# Create a dictionary to store adjusted rates\\nadjusted_response_rate_common = {}\\n\\nfor sex in ['F', 'M']:\\n    group = stratified[stratified['sex'] == sex]\\n    # We need to align with overall_severity_dist\\n    # For each severity level, multiply response rate by the overall proportion\\n    weighted_sum = 0.0\\n    for severity in ['mild', 'moderate', 'severe']:\\n        if severity in group['severity'].values:\\n            rate = group[group['severity'] == severity]['response_rate'].values[0]\\n        else:\\n            rate = 0.0  # if no data, skip (but shouldn't happen)\\n        weight = overall_severity_dist[severity]\\n        weighted_sum += rate * weight\\n    adjusted_response_rate_common[sex] = weighted_sum\\n\\n# Now compute the difference\\nadjusted_diff_common = adjusted_response_rate_common['F'] - adjusted_response_rate_common['M']\\nadjusted_diff_pct_common = adjusted_diff_common * 100\\n\\n# Print results\\nprint(f\\\"\\\\nAdjusted response rate (F) using common severity weights: {adjusted_response_rate_common['F']:.3f}\\\")\\nprint(f\\\"Adjusted response rate (M) using common severity weights: {adjusted_response_rate_common['M']:.3f}\\\")\\nprint(f\\\"Difference (F - M): {adjusted_diff_common:.3f} ({adjusted_diff_pct_common:.1f} percentage points)\\\")\\n\\n# Store\\nfinal_diff_pct_common = adjusted_diff_pct_common\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7290,
+  "completion_tokens": 539
+ }
+}

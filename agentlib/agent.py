@@ -39,20 +39,25 @@ THE RULES THAT MATTER
    CHANGES. If it changes nothing, say that, and dismiss it.
    You cannot submit an answer while any finding is still open.
 
-4. BEFORE COMPARING TWO GROUPS, CHECK THAT THEY ARE COMPARABLE.
-   If the groups were not randomly assigned, a raw comparison between them is not a treatment
-   effect — it is a comparison of two different populations. Cross-tabulate the group against
-   the other variables. If they are imbalanced, that is a finding, and you must adjust for it
-   (stratify, standardise, or model it) rather than reporting the raw difference.
+4. BEFORE COMPARING ANY TWO GROUPS, CHECK THAT THEY ARE COMPARABLE.
+   This applies to EVERY grouped comparison — arm vs arm, channel vs channel, segment vs segment,
+   site vs site. Cross-tabulate the grouping column against the other columns first. If the
+   groups differ systematically in some OTHER variable, then the raw difference between them is
+   not the effect of the grouping — it is that other variable wearing the grouping's clothes.
+   You must adjust for it (stratify, standardise, or model it) rather than reporting the raw
+   difference.
    A confounded comparison can give you the OPPOSITE SIGN to the truth.
 
 5. A QUESTION CAN BE WRONG. CHECK ITS PREMISES BEFORE YOU ANSWER IT.
-   Questions smuggle in assumptions: "which of the FOUR sites...", "WHY do women respond better?"
-   Put those assumptions in the contract's `premises` field and VERIFY each one against the data.
-   If a premise turns out to be false — there are only three sites; women do not in fact respond
-   better — then the correct answer is to SAY SO, plainly, and not to answer the question as
-   asked. An answer to a false question is worse than no answer, because it launders the false
-   premise into a fact.
+   Questions smuggle in assumptions:
+     "Which of the SIX warehouses has the longest delay?"  <- assumes there are six.
+     "WHY does the night shift outperform the day shift?"  <- assumes that it does.
+     "What is the failure rate of the v3 sensors?"         <- assumes v3 sensors are in here.
+   Put every such assumption in the contract's `premises` field and VERIFY each one against the
+   data before you answer.
+   If a premise turns out to be false, the correct answer is to SAY SO, plainly, and NOT to
+   answer the question as asked. An answer to a false question is worse than no answer, because
+   it launders the false premise into a fact.
    If the question is genuinely ambiguous, state your interpretation explicitly instead of
    silently picking one.
 
@@ -80,10 +85,28 @@ submit_answer."""
 # without being asked. So encode the reflex. That is what "building on top of the base model"
 # means: not a better model, a better *procedure*.
 #
-# Note what rule 4 does NOT do: it does not mention severity, or this dataset, or Simpson's
-# paradox. It states a general principle of causal inference that applies to any two-group
-# comparison. If it named my columns it would be overfitting to my own benchmark, and the
-# held-out tasks in evals/tasks.py exist to catch me doing that.
+# TWO WAYS I OVERFIT THIS PROMPT TO MY OWN BENCHMARK, AND HOW THE EVAL CAUGHT BOTH.
+# (Kept in the code as a scar. See DECISIONS D28 and D29.)
+#
+# 1. Rule 5 used to read: `Questions smuggle in assumptions: "which of the FOUR sites...",
+#    "WHY do women respond better?"` — which are, verbatim, two of the questions in
+#    evals/tasks.py. It went further and gave the ANSWERS ("there are only three sites; women
+#    do not in fact respond better"). The same two examples were in the `premises` field of the
+#    tool schema and in the verifier's rubric. Three channels, straight into the model's context.
+#    Those two tasks scored 100% and 90%. Of course they did — I had told it the answers.
+#    My `test_leak` guard did not catch this because it only checks NUMERIC ground truth against
+#    the question string. A leak guard only guards the channel you pointed it at.
+#
+# 2. Rule 4 never named a column, so I told myself it was general. It wasn't. It used to say
+#    "if the groups were not RANDOMLY ASSIGNED... that is not a TREATMENT EFFECT" — the language
+#    of a clinical trial. On trial.csv (arm x severity) the reflex fired. On sales.csv
+#    (channel x segment) nothing is "randomly assigned" and there is no "treatment", so it did
+#    not fire at all: the agent landed on the naive, confounded answer in 9 of 10 runs.
+#    The rule generalised in its WORDING and not in its EFFECT, which is the kind of overfitting
+#    you cannot see by reading your own prompt. Only a held-out domain shows it to you.
+#
+# Both rules are now written to name no dataset, no column, and no benchmark question. This is
+# what the held-out domain is FOR — not to produce a reassuring number, but to catch the author.
 
 
 TOOLS = [
@@ -148,6 +171,7 @@ class Config:
     use_grounding: bool = True       # Ledger 3
     use_verifier: bool = True        # Gate 4
     use_briefing: bool = True
+    use_confound_detector: bool = True   # D33 — the detector the eval asked for
     use_truncation: bool = True
     use_state_banner: bool = True
     model: str | None = None
@@ -179,11 +203,39 @@ class Run:
         return self.report.get("value") if self.report else None
 
 
+def _portable(path: str) -> str:
+    """Repo-relative, always. Nothing machine-specific may enter the prompt.
+
+    D30. An absolute path in the prompt is an absolute path in the *cache key* — and in the code
+    the model writes back. The README promises the notebooks replay offline from the committed
+    cache with no API key; with absolute paths that promise held on exactly one machine.
+
+    Callers hand us paths in all three shapes (the notebooks alone use two), so accept any and
+    always emit the repo-relative one. `PyExecutor.run` pins CWD to the repo root while the agent's
+    code executes, so that is the form that resolves on every clone.
+    """
+    from pathlib import Path
+
+    from .executor import ROOT
+
+    p = Path(path)
+    candidates = [p] if p.is_absolute() else [Path.cwd() / p, ROOT / p]
+    for c in candidates:
+        c = c.resolve()
+        if c.exists():
+            try:
+                return str(c.relative_to(ROOT))
+            except ValueError:
+                return str(c)             # a real file outside the repo: keep it, warts and all
+    return str(path)                      # doesn't exist — let the briefing report that honestly
+
+
 def run_agent(question: str, files: list[str], cfg: Config | None = None,
               executor: PyExecutor | None = None) -> Run:
     cfg = cfg or Config()
     ex = executor or PyExecutor()
-    ex.reset()
+    ex.reset()                            # also pins CWD to the repo root — see _portable
+    files = [_portable(f) for f in files]
     run = Run(question=question)
     run.trace = Trace(question)
     # A per-run meter. The global METER is shared, and the eval runs agents CONCURRENTLY — so
@@ -191,7 +243,7 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
     # this run. Each run counts its own.
     run_meter = Meter()
 
-    brief = observe.briefing(files) if cfg.use_briefing else "(no briefing — files: %s)" % files
+    brief = observe.briefing(files, confounds=cfg.use_confound_detector) if cfg.use_briefing else "(no briefing — files: %s)" % files
     code_log: list[str] = []          # what ran + what it printed. the grounding gate reads this.
     all_stdout: list[str] = []
 
@@ -203,7 +255,8 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
     # exactly as designed: it forces you to act on what you noticed. It cannot make you notice.
     # So: don't hope. Seed.
     if cfg.use_ledger and cfg.use_briefing:
-        for obs_text, implication in observe.seed_findings(files):
+        for obs_text, implication in observe.seed_findings(
+                files, confounds=cfg.use_confound_detector):
             run.ledger.note(obs_text, implication, step=0)
 
     messages = [

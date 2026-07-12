@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bbfa0bbca69af56e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to numeric: remove commas and cast to float\\ndf['revenue_numeric'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter for completed orders\\ndf_completed = df[df['status'] == 'completed']\\n\\n# Identify internal test orders: revenue = 999999.99\\ntest_orders = df_completed[df_completed['revenue_numeric'] == 999999.99]\\n\\n# Exclude them from the population\\nfinal_df = df_completed[df_completed['revenue_numeric'] != 999999.99]\\n\\n# Compute total revenue\\ntotal_revenue = final_df['revenue_numeric'].sum()\\n\\n# Print results\\nprint(f\\\"Number of completed orders: {len(df_completed)}\\\")\\nprint(f\\\"Internal test orders in completed set: {len(test_orders)}\\\")\\nprint(f\\\"Total revenue from completed orders (excluding test orders): {total_revenue:,.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5119,
+  "completion_tokens": 266
+ }
+}

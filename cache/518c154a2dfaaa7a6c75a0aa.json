@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9b0f97aa0761db7f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows with biomarker_baseline == -999\\ntrial_clean = trial[trial['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\ntrial_dedup = trial_clean.loc[trial_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Compute stratified response rates by severity and arm\\nstratified_rates = trial_dedup.groupby(['severity', 'arm'])['responded'].mean().unstack(level='arm')\\n\\n# Step 4: Compute weights (overall severity distribution)\\nseverity_weights = trial_dedup['severity'].value_counts(normalize=True)\\n\\n# Step 5: Compute adjusted response rates by arm (standardisation to overall severity distribution)\\nadjusted_response_treatment = (stratified_rates['treatment'] * severity_weights).sum()\\nadjusted_response_control = (stratified_rates['control'] * severity_weights).sum()\\n\\n# Step 6: Compute adjusted difference in proportions\\nadjusted_diff = adjusted_response_treatment - adjusted_response_control\\n\\n# Print all required numbers for evidence \u2014 including the final adjusted difference\\nprint(f\\\"adjusted_response_treatment: {adjusted_response_treatment}\\\")\\nprint(f\\\"adjusted_response_control: {adjusted_response_control}\\\")\\nprint(f\\\"adjusted_diff: {adjusted_diff}\\\")\\n\\n# Also print the stratified rates and weights for traceability\\nprint(\\\"stratified_rates:\\\")\\nprint(stratified_rates)\\nprint(\\\"severity_weights:\\\")\\nprint(severity_weights)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 12503,
+  "completion_tokens": 390
+ }
+}

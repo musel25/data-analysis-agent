@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-941a700969d1da4b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float\\nsales_df['revenue'] = sales_df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders\\ncompleted_only = sales_df[sales_df['status'] == 'completed']\\n\\n# Stratify by customer segment and compute conversion rates\\nconversion_by_segment = completed_only.groupby('customer_segment')['converted'].mean()\\n\\n# Compute weighted average conversion rate for each channel, using segment distribution as weights\\nemail_segment_dist = completed_only[completed_only['channel'] == 'email'].groupby('customer_segment').size() / len(completed_only[completed_only['channel'] == 'email'])\\npaid_search_segment_dist = completed_only[completed_only['channel'] == 'paid_search'].groupby('customer_segment').size() / len(completed_only[completed_only['channel'] == 'paid_search'])\\n\\n# Compute weighted conversion rates\\nweighted_conv_email = (email_segment_dist * conversion_by_segment).sum()\\nweighted_conv_paid_search = (paid_search_segment_dist * conversion_by_segment).sum()\\n\\n# Compute difference\\ndifference = weighted_conv_email - weighted_conv_paid_search\\n\\nprint(f\\\"Weighted conversion rate (email): {weighted_conv_email:.4f}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {weighted_conv_paid_search:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3410,
+  "completion_tokens": 347
+ }
+}

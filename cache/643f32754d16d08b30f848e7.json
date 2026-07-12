@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ae1875da777956a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We have already cleaned the data: valid_data\\n# Now compute response rates within each severity stratum\\n\\n# Compute response rates by arm and severity\\nresponse_rates = valid_data.groupby(['arm', 'severity'])['responded'].mean().unstack(level='arm')\\nresponse_rates.columns = ['control_rate', 'treatment_rate']\\nresponse_rates['diff'] = response_rates['treatment_rate'] - response_rates['control_rate']\\n\\n# Also compute number of patients in each stratum\\nstratum_counts = valid_data.groupby(['severity'])['arm'].count().to_dict()\\nstratum_n = {s: stratum_counts.get(s, 0) for s in ['mild', 'moderate', 'severe']}\\n\\n# Compute weighted average of differences in proportions\\n# Weight by number of patients in each stratum\\nweighted_diff = 0\\ntotal_n = 0\\nfor s in ['mild', 'moderate', 'severe']:\\n    n = stratum_n[s]\\n    diff = response_rates.loc[s, 'diff']\\n    weighted_diff += n * diff\\n    total_n += n\\nweighted_diff /= total_n\\n\\n# Final report\\nprint(f'Per-stratum response rates and differences:')\\nprint(response_rates)\\nprint(f'\\\\nStratum weights (n): {stratum_n}')\\nprint(f'\\\\nWeighted average difference in proportions (treatment - control): {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5750,
+  "completion_tokens": 341
+ }
+}

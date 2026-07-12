@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-902289ca17232f07",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Drop duplicates on patient_id, keeping the one with highest sample_seq\\ndf = df.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Calculate response rate by arm, stratified by severity\\nresponse_rates = df.groupby(['arm', 'severity'])['responded'].mean().unstack(level='severity')\\n\\n# Calculate overall response rates\\noverall_response_rates = df.groupby('arm')['responded'].mean()\\n\\n# Print results\\nprint(\\\"Overall response rates by arm:\\\")\\nprint(overall_response_rates)\\n\\n# Compute treatment effect (treatment minus control) as difference in proportions\\n# But first, confirm if we can use raw difference or need adjustment\\n# Since severity is imbalanced between arms (especially severe), we must adjust\\n\\n# Compute adjusted treatment effect using stratified average\\nstratified_control = (df[df['arm'] == 'control'].groupby('severity')['responded'].mean() * \\n                      df[df['arm'] == 'control'].groupby('severity').size() / \\n                      len(df[df['arm'] == 'control'])).sum()\\n\\nstratified_treatment = (df[df['arm'] == 'treatment'].groupby('severity')['responded'].mean() * \\n                        df[df['arm'] == 'treatment'].groupby('severity').size() / \\n                        len(df[df['arm'] == 'treatment'])).sum()\\n\\n# Compute difference in proportions\\ntreatment_effect = stratified_treatment - stratified_control\\n\\nprint(f\\\"\\\\nStratified response rate (control): {stratified_control:.4f}\\\")\\nprint(f\\\"Stratified response rate (treatment): {stratified_treatment:.4f}\\\")\\nprint(f\\\"Treatment effect (difference in proportions): {treatment_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2720,
+  "completion_tokens": 449
+ }
+}

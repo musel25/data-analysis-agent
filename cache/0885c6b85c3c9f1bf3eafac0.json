@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be0aaa6ed9c73ac4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Check for QA orders: revenue = '999999.99'\\nqa_filter = df['revenue'] == '999999.99'\\nqa_count = df[qa_filter].shape[0]\\nprint(f'Number of QA orders (revenue = 999999.99): {qa_count}')\\n\\n# Check for refunded orders\\nrefunded_filter = df['status'] == 'refunded'\\nrefunded_count = df[refunded_filter].shape[0]\\nprint(f'Number of refunded orders: {refunded_count}')\\n\\n# Exclude QA orders and refunded orders\\nfiltered_df = df[~qa_filter & ~refunded_filter]\\n\\n# Calculate conversion rate by customer_segment\\nconversion_rate_by_segment = filtered_df.groupby('customer_segment')['converted'].mean() * 100\\n\\n# Find the segment with the highest conversion rate\\nbest_segment = conversion_rate_by_segment.idxmax()\\nbest_rate = conversion_rate_by_segment.max()\\n\\n# Print results\\nprint('Conversion rates by segment (percent):')\\nprint(conversion_rate_by_segment)\\nprint(f'Best segment: {best_segment} with {best_rate:.2f}%')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7690,
+  "completion_tokens": 309
+ }
+}

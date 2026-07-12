@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-89268750824dab30",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Create a mask for valid baseline biomarker values\\nvalid_baseline = df['biomarker_baseline'] != -999.0\\n\\n# Filter the data to exclude rows with sentinel values\\ndf_valid = df[valid_baseline]\\n\\n# Compute the change in biomarker from baseline to final\\n# (final - baseline)\\ndf_valid['biomarker_change'] = df_valid['biomarker_final'] - df_valid['biomarker_baseline']\\n\\n# Stratify by severity and compute the mean change within each severity level for each arm\\nchange_by_severity_arm = df_valid.groupby(['severity', 'arm'])['biomarker_change'].agg(['mean', 'count'])\\n\\n# Get control arm counts per severity level\\ncntl_counts = df_valid[df_valid['arm'] == 'control'].groupby('severity').size()\\n\\n# Compute weighted average for treatment arm (standardized to control severity distribution)\\ntreatment_weighted_mean = 0.0\\ntotal_weight = 0.0\\n\\nfor severity in cntl_counts.index:\\n    if severity in change_by_severity_arm.index:\\n        # Get treatment mean for this severity\\n        treat_mean = change_by_severity_arm.loc[(severity, 'treatment'), 'mean']\\n        # Get weight (proportion of control arm in this severity)\\n        weight = cntl_counts[severity] / cntl_counts.sum()\\n        treatment_weighted_mean += treat_mean * weight\\n        total_weight += weight\\n\\n# Normalize if needed (should be 1.0)\\ntreatment_weighted_mean /= total_weight\\n\\n# Control arm mean, stratified by its own distribution\\ncontrol_weighted_mean = 0.0\\nfor severity in cntl_counts.index:\\n    if severity in change_by_severity_arm.index:\\n        cntl_mean = change_by_severity_arm.loc[(severity, 'control'), 'mean']\\n        weight = cntl_counts[severity] / cntl_counts.sum()\\n        control_weighted_mean += cntl_mean * weight\\n\\n# Compute the adjusted difference\\nadjusted_diff = treatment_weighted_mean - control_weighted_mean\\n\\n# Print all key results\\nprint(f\\\"Control arm mean change (standardized): {control_weighted_mean:.3f}\\\")\\nprint(f\\\"Treatment arm mean change (standardized): {treatment_weighted_mean:.3f}\\\")\\nprint(f\\\"Adjusted difference (treatment - control): {adjusted_diff:.3f}\\\")\\n\\n# Also print the raw means for comparison\\nraw_control_mean = df_valid[df_valid['arm'] == 'control']['biomarker_change'].mean()\\nraw_treatment_mean = df_valid[df_valid['arm'] == 'treatment']['biomarker_change'].mean()\\nprint(f\\\"Raw control mean change: {raw_control_mean:.3f}\\\")\\nprint(f\\\"Raw treatment mean change: {raw_treatment_mean:.3f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7983,
+  "completion_tokens": 669
+ }
+}

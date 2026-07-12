@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b6ec3b3a18f165a6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, stripping commas\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify and exclude QA orders (revenue = 999999.99)\\nqa_orders = sales[sales['revenue'] == 999999.99]\\nprint(f\\\"QA orders found: {len(qa_orders)}\\\")\\n\\n# Filter to converted customers\\nconverted_customers = sales[sales['converted'] == 1]\\n\\n# Now, check: do any of the QA orders have converted == 1?\\nqa_converted = qa_orders[qa_orders['converted'] == 1]\\nprint(f\\\"QA orders that were converted: {len(qa_converted)}\\\")\\n\\n# Since QA orders are not real, we must exclude them from the analysis\\n# even if they were converted\\nconverted_customers_clean = converted_customers[~converted_customers.index.isin(qa_orders.index)]\\n\\n# Now, handle the -1 in customer_age: it's a sentinel for missing\\n# We must exclude these from the mean computation\\nconverted_customers_clean_with_age = converted_customers_clean[converted_customers_clean['customer_age'] != -1]\\n\\n# Compute the mean age of converted customers with valid age\\nmean_age_converted = converted_customers_clean_with_age['customer_age'].mean()\\n\\nprint(f\\\"Number of converted customers after removing QA orders: {len(converted_customers_clean)}\\\")\\nprint(f\\\"Number of converted customers with valid age (after removing QA): {len(converted_customers_clean_with_age)}\\\")\\nprint(f\\\"Mean age of converted customers (excluding QA and -1): {mean_age_converted:.2f} years\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4219,
+  "completion_tokens": 423
+ }
+}

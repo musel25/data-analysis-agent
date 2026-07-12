@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9225520e0a4245cd",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq per patient\\ndf = df.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999 (QC failure)\\ndf_clean = df[df['biomarker_baseline'] != -999]\\n\\n# Count how many rows were excluded\\nn_excluded = len(df) - len(df_clean)\\nprint(f\\\"Number of rows excluded due to biomarker_baseline == -999: {n_excluded}\\\")\\n\\n# Step 3: Verify that the population is now one-per-patient and clean\\nprint(f\\\"Final shape after deduplication and QC: {df_clean.shape}\\\")\\nprint(f\\\"Unique patient_id: {df_clean['patient_id'].nunique()}\\\")\\n\\n# Step 4: Compute response rate within each severity stratum by arm\\ndf_response = df_clean.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\ndf_response = df_response.rename(columns={'responded': 'response_rate'})\\n\\n# Step 5: Compute stratum-specific differences (treatment - control)\\nstratum_diffs = []\\nfor severity in ['mild', 'moderate', 'severe']:\\n    trt_rate = df_response.loc[(df_response['arm'] == 'treatment') & (df_response['severity'] == severity), 'response_rate'].values[0]\\n    ctl_rate = df_response.loc[(df_response['arm'] == 'control') & (df_response['severity'] == severity), 'response_rate'].values[0]\\n    diff = trt_rate - ctl_rate\\n    stratum_diffs.append(diff)\\n    print(f\\\"Stratum-specific difference (treatment - control) for {severity}: {diff:.4f}\\\")\\n\\n# Step 6: Compute standardised difference using overall severity distribution as weights\\nseverity_dist = df_clean['severity'].value_counts(normalize=True)\\nprint(f\\\"Overall severity distribution:\\\\n{severity_dist}\\\")\\n\\nweighted_diff = sum(d * severity_dist[severity] for d, severity in zip(stratum_diffs, ['mild', 'moderate', 'severe']))\\nprint(f\\\"Standardised difference (weighted by severity distribution): {weighted_diff:.4f}\\\")\\n\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7514,
+  "completion_tokens": 567
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3eb672fbf49a315",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Filter out refunded orders\\nfiltered_df = df[df['status'] == 'completed']\\n\\n# Step 2: Remove QA test orders (revenue = 999999.99)\\nfinal_df = filtered_df[filtered_df['revenue'] != '999999.99']\\n\\n# Step 3: Convert revenue to float (cleaning)\\nfinal_df['revenue'] = final_df['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 4: Compute stratum-specific conversion rates\\nstrata = final_df.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum'])\\nstrata['conversion_rate'] = strata['sum'] / strata['count']\\n\\n# Print stratum-level counts and rates\\nprint('Stratum-level counts and conversion rates:')\\nprint(strata)\\n\\n# Step 5: Compute raw conversion rate by channel\\nraw_conversion = final_df.groupby('channel')['converted'].mean()\\nprint('\\\\nRaw conversion rates by channel:')\\nprint(raw_conversion)\\n\\n# Step 6: Compute within-stratum differences in conversion rate (email - paid_search)\\n# Extract stratum rates\\nemail_loyal = strata.loc[('email', 'loyal'), 'conversion_rate']\\npaid_search_loyal = strata.loc[('paid_search', 'loyal'), 'conversion_rate']\\nemail_returning = strata.loc[('email', 'returning'), 'conversion_rate']\\npaid_search_returning = strata.loc[('paid_search', 'returning'), 'conversion_rate']\\nemail_new = strata.loc[('email', 'new'), 'conversion_rate']\\npaid_search_new = strata.loc[('paid_search', 'new'), 'conversion_rate']\\n\\n# Compute within-stratum differences\\ndiff_loyal = email_loyal - paid_search_loyal\\ndiff_returning = email_returning - paid_search_returning\\ndiff_new = email_new - paid_search_new\\n\\n# Print within-stratum differences\\nprint('\\\\nWithin-stratum differences in conversion rate (email - paid_search):')\\nprint(f'loyal: {diff_loyal:.4f}')\\nprint(f'returning: {diff_returning:.4f}')\\nprint(f'new: {diff_new:.4f}')\\n\\n# Step 7: Compute overall segment distribution as reference\\nsegment_dist = final_df['customer_segment'].value_counts(normalize=True)\\nprint('\\\\nOverall segment distribution (reference):')\\nprint(segment_dist)\\n\\n# Step 8: Compute IPW-adjusted effect\\nweighted_diff = (diff_loyal * segment_dist['loyal'] + \\n                  diff_returning * segment_dist['returning'] + \\n                  diff_new * segment_dist['new'])\\nprint(f'\\\\nIPW-adjusted effect (using overall segment distribution as reference): {weighted_diff:.4f} (percentage points)')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 11100,
+  "completion_tokens": 698
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ab1468256d5595fa",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Manually compute chi-squared test without scipy\\n# Contingency table\\ntreatment_responded = df[df['arm'] == 'treatment']['responded'].sum()\\ntreatment_not_responded = df[df['arm'] == 'treatment'].shape[0] - treatment_responded\\ncontrol_responded = df[df['arm'] == 'control']['responded'].sum()\\ncontrol_not_responded = df[df['arm'] == 'control'].shape[0] - control_responded\\n\\n# Contingency table\\ntable = np.array([[treatment_responded, treatment_not_responded],\\n                   [control_responded, control_not_responded]])\\n\\n# Expected frequencies\\nrow_sums = table.sum(axis=1)\\ncol_sums = table.sum(axis=0)\\ntotal = table.sum()\\nexpected = np.outer(row_sums, col_sums) / total\\n\\n# Chi-squared statistic\\nchi2 = np.sum((table - expected)**2 / expected)\\n\\n# Degrees of freedom\\ndf = (table.shape[0] - 1) * (table.shape[1] - 1)\\n\\n# Approximate p-value using chi2 distribution\\n# Use a lookup table or approximation\\n# For df=1, chi2=6.4, p \u2248 0.011\\n# We can use a simple approximation\\nif df == 1:\\n    # For df=1, we can use the fact that chi2 ~ Z^2\\n    # But we'll use a rough approximation\\n    # Use a known chi2 table: chi2(1, 0.05) = 3.84, chi2(1, 0.01) = 6.63\\n    if chi2 >= 6.63:\\n        p_value = 0.01\\n    elif chi2 >= 3.84:\\n        p_value = 0.05\\n    else:\\n        p_value = 0.10\\nelse:\\n    # Default fallback\\n    p_value = 0.05  # placeholder\\n\\nprint(f\\\"Chi-squared statistic: {chi2}\\\")\\nprint(f\\\"P-value approximation: {p_value}\\\")\\n\\n# Check balance: age, sex, severity, site, assay_batch\\nbalance_check = {}\\nfor col in ['age', 'sex', 'severity', 'site', 'assay_batch']:\\n    if df[col].dtype == 'object':\\n        # Categorical: use chi-squared\\n        tab = pd.crosstab(df['arm'], df[col])\\n        # Expected frequencies\\n        row_sums = tab.sum(axis=1)\\n        col_sums = tab.sum(axis=0)\\n        total = tab.sum()\\n        expected = np.outer(row_sums, col_sums) / total\\n        chi2 = np.sum((tab - expected)**2 / expected)\\n        df = (tab.shape[0] - 1) * (tab.shape[1] - 1)\\n        # Approximate p-value\\n        if df == 1:\\n            if chi2 >= 6.63:\\n                p_val = 0.01\\n            elif chi2 >= 3.84:\\n                p_val = 0.05\\n            else:\\n                p_val = 0.10\\n        else:\\n            p_val = 0.05\\n        balance_check[col] = p_val\\n    else:\\n        # Continuous: use t-test\\n        t1 = df[df['arm'] == 'treatment'][col]\\n        t2 = df[df['arm'] == 'control'][col]\\n        n1, n2 = len(t1), len(t2)\\n        mean1, mean2 = t1.mean(), t2.mean()\\n        var1, var2 = t1.var(), t2.var()\\n        pooled_var = ((n1-1)*var1 + (n2-1)*var2) / (n1 + n2 - 2)\\n        se = np.sqrt(pooled_var * (1/n1 + 1/n2))\\n        t_stat = (mean1 - mean2) / se\\n        # Approximate p-value using t-distribution\\n        # Use degrees of freedom\\n        df = n1 + n2 - 2\\n        # Use a simple approximation\\n        # For large df, t \u2248 normal\\n        # For small df, use critical values\\n        if abs(t_stat) >= 2.0:\\n            p_val = 0.05\\n        elif abs(t_stat) >= 1.6:\\n            p_val = 0.10\\n        else:\\n            p_val = 0.20\\n        balance_check[col] = p_val\\n\\nbalance_check\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6553,
+  "completion_tokens": 1081
+ }
+}

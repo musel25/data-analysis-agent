@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0c2e831cc1f6409",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, we can manually check for imbalance and use stratification.\\n# We'll compute conversion rates within each customer segment and then compute a weighted average\\n# to compare the two channels.\\n\\n# Compute conversion rate by channel and segment\\nconversion_by_channel_segment = sales_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Compute the overall conversion rate for each channel, stratified by segment\\n# We'll compute the weighted average conversion rate using the segment proportions in each channel\\nchannel_segment_proportions = sales_df.groupby('channel')['customer_segment'].value_counts(normalize=True).unstack(fill_value=0)\\n\\n# Weighted conversion rate per channel\\nweighted_conversion_email = (conversion_by_channel_segment.loc['email'] * channel_segment_proportions.loc['email']).sum()\\nweighted_conversion_paid_search = (conversion_by_channel_segment.loc['paid_search'] * channel_segment_proportions.loc['paid_search']).sum()\\n\\n# Compute the difference in weighted conversion rates\\nrate_difference = weighted_conversion_email - weighted_conversion_paid_search\\n\\nprint(f\\\"Weighted conversion rate (email): {weighted_conversion_email:.4f}\\\")\\nprint(f\\\"Weighted conversion rate (paid_search): {weighted_conversion_paid_search:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {rate_difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3167,
+  "completion_tokens": 318
+ }
+}

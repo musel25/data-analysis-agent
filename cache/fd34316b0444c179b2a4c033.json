@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-83c78155e7c2bece",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute conversion rates stratified by customer segment\\nsegment_rates = df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Compute overall conversion rates per channel\\nemail_rate = df[df['channel'] == 'email']['converted'].mean()\\npaid_search_rate = df[df['channel'] == 'paid_search']['converted'].mean()\\n\\n# Compute the raw difference\\ndifference_raw = email_rate - paid_search_rate\\n\\n# Compute the adjusted difference using stratification (weighted average)\\n# First, get the overall segment proportions\\nsegment_counts = df['customer_segment'].value_counts(normalize=True)\\n\\n# Compute weighted conversion rate per channel\\nemail_weighted = (segment_rates.loc['email'] * segment_counts).sum()\\npaid_search_weighted = (segment_rates.loc['paid_search'] * segment_counts).sum()\\n\\n# Adjusted difference\\nadjusted_difference = email_weighted - paid_search_weighted\\n\\n# Print results\\nprint(f'Raw conversion rate - email: {email_rate:.4f}')\\nprint(f'Raw conversion rate - paid_search: {paid_search_rate:.4f}')\\nprint(f'Raw difference (email - paid_search): {difference_raw:.4f}')\\nprint(f'Adjusted difference (stratified by segment): {adjusted_difference:.4f}')\\n\\n# Check if the adjustment changes the sign or magnitude substantially\\nprint(f'\\\\nIs the adjustment substantial? {abs(difference_raw - adjusted_difference) > 0.05}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4206,
+  "completion_tokens": 349
+ }
+}

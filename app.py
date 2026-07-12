@@ -8,7 +8,7 @@ Two tabs, and they are the two halves of the argument:
                    "the model said 0.15" but "the model saw the confounding, said so, adjusted
                    for it, and here is the step where it did."
 
-  THE EVIDENCE   — 360 runs, 8 ablations, and the result that inverted my own thesis.
+  THE EVIDENCE   — 4,480 runs, 8 ablations, and the run where my own confidence interval lied.
 """
 from __future__ import annotations
 

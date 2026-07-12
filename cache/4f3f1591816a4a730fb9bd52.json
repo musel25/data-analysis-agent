@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ae3272738ec8cc9b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\nsales = pd.read_csv(file_path)\\n\\n# Parse revenue: remove commas and convert to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders with revenue 999999.99\\nsales_clean = sales[~sales['revenue'].isin([999999.99])]\\n\\n# Drop refunded orders (only completed orders count)\\nsales_final = sales_clean[sales_clean['status'] == 'completed']\\n\\n# Now compute conversion rate and average revenue by channel\\n# But first: check if `channel` is confounded by `customer_segment`\\nct = pd.crosstab(sales_final['channel'], sales_final['customer_segment'])\\nprint(ct)\\n\\n# Compute conversion rate by channel (raw)\\nconversion_by_channel = sales_final.groupby('channel')['converted'].mean()\\n\\n# But we must adjust for confounding: the email campaign was targeted at loyal customers\\n# So we compute conversion rate within each segment\\nconversion_by_channel_segment = sales_final.groupby(['channel', 'customer_segment'])['converted'].mean().unstack()\\n\\n# Compute average revenue by channel\\navg_revenue_by_channel = sales_final.groupby('channel')['revenue'].mean()\\n\\n# Now compute overall conversion rate for each channel (adjusted for segment imbalance)\\n# Weighted average of conversion rates by segment, weighted by segment size in each channel\\n# First, get segment counts per channel\\nsegment_counts = sales_final.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Then compute weighted average conversion rate per channel\\nweighted_conv = (conversion_by_channel_segment * segment_counts).sum(axis=1) / segment_counts.sum(axis=1)\\n\\n# Results\\nconversion_by_channel, weighted_conv, avg_revenue_by_channel\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5229,
+  "completion_tokens": 431
+ }
+}

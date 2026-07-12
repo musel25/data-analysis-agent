@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-82d53c852a519dc1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for completed orders only (exclude refunded)\\ndf_completed = df[df['status'] == 'completed']\\n\\n# Check for QA test orders (revenue = 999999.99)\\nqa_test_orders = df_completed[df_completed['revenue'] == 999999.99]\\nprint(f'Number of QA test orders: {len(qa_test_orders)}')\\n\\n# Remove QA test orders\\ndf_clean = df_completed[df_completed['revenue'] != 999999.99]\\n\\n# Compute average revenue per order by channel\\ngrouped = df_clean.groupby('channel')['revenue'].mean().round(2)\\n\\n# Print results\\nprint(grouped)\\n\\n# Also compute total revenue by channel for verification\\ntotal_revenue = df_clean.groupby('channel')['revenue'].sum().round(2)\\nprint(total_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5140,
+  "completion_tokens": 279
+ }
+}

@@ -17,17 +17,23 @@ BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
 
 # --- Model choice -----------------------------------------------------------------------
 #
-# A $20 budget makes model choice a *cost* decision — and that turns out to serve the argument
-# rather than compromise it. The thesis of this design is that reliability comes from the
-# scaffolding, not from a bigger base model. So the strongest possible demonstration is also
-# the cheapest one: run a SMALL model with the guardrails, and show it beats a model 14x its
-# price running without them. Notebook 07 does exactly that.
+# DrugDiscoveryBench benchmarked the open models, and Token Factory hosts almost exactly their
+# leaderboard: GLM 5.2 (37.8%), Kimi K2.7 Code (35.3%), DeepSeek V4 Pro (31.7%), MiniMax M3
+# (23.2%) — DDB Figure 7, p.22. So "which model" did not have to be a vibe.
 #
-# A whole agent run on the hardest task costs $0.007 here. On GLM-5.2 it would cost $0.10.
+# And then I deliberately did not pick the winner.
 #
-# See docs/DECISIONS.md D18. Every candidate was smoke-tested on the exact two-round
-# tool-calling loop this agent needs (notebooks/00_setup.ipynb) before being chosen — all six
-# handled the protocol correctly, so the choice rests on cost, not on plumbing.
+# The thesis of this design is that reliability comes from the scaffolding, not from a bigger
+# base model. Picking the strongest available model would have made that thesis untestable —
+# any success could be credited to the model. So the agent runs on Qwen3-30B-A3B, which is 14x
+# CHEAPER than GLM-5.2 per token, and the claim becomes falsifiable: if the scaffolding is doing
+# the work, a small model with it should hold up.
+#
+# A whole agent run on the hardest task costs $0.007 here. On GLM-5.2 it would cost ~$0.10.
+#
+# What this does NOT yet show: that the small+scaffolded agent beats a BIG model with NO
+# scaffolding. That is the direct test of the thesis and I have not run it — see DECISIONS D18
+# ("what I would spend the next $20 on"). Saying so is cheaper than implying otherwise.
 
 AGENT_MODEL = os.getenv("AGENT_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507")   # $0.10/$0.30
 
@@ -35,17 +41,17 @@ AGENT_MODEL = os.getenv("AGENT_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507")   # $
 # self-preference bias (Zheng et al. 2023), which would make the review worthless.
 VERIFIER_MODEL = os.getenv("VERIFIER_MODEL", "openai/gpt-oss-120b")          # $0.15/$0.60
 
-# The heavyweight, for the "would a bigger model just fix this?" comparison in notebook 07.
+# The heavyweight. Not used by default — it is here so the big-model-no-guardrails baseline is
+# one flag away: `uv run python -m evals.run_eval --config no_guardrails --model zai-org/GLM-5.2`
 BIG_MODEL = os.getenv("BIG_MODEL", "zai-org/GLM-5.2")                        # $1.40/$4.40
 
 # --- Prices, USD per 1M tokens ------------------------------------------------------------
 # Used by the cost meter so every run prints what it actually cost. Knowing your own numbers
 # cold is the difference between saying "it's cheap" and saying "$0.0073".
 #
-# Note the spread: the large models are 10-25x the small ones per token. That is precisely why
-# the design bets on scaffolding rather than on model size — and notebook 07 tests whether that
-# bet pays off, by running the *big* model with *no* guardrails against the *small* model with
-# all of them.
+# Note the spread: the large models are 10-25x the small ones per token. That spread is the whole
+# reason the design bets on scaffolding rather than on model size — and it is why the agent runs
+# on the cheapest capable model rather than the best one.
 PRICES = {
     #                                            input, output
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B":    (0.06, 0.24),

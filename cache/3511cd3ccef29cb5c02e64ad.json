@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1ab7e563ec48d10",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders\\ncompleted_only = df[df['status'] == 'completed']\\n\\n# Remove QA orders (revenue = 999999.99)\\nreal_orders = completed_only[completed_only['revenue'] != 999999.99]\\n\\n# Filter for converted orders only\\nconverted_only = real_orders[real_orders['converted'] == 1]\\n\\n# Compute average revenue per converted order by channel and segment\\navg_revenue_by_channel_segment = converted_only.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\n# Pivot to make comparison easier\\npivot_table = avg_revenue_by_channel_segment.pivot(index='customer_segment', columns='channel', values='revenue')\\n\\n# Compute the difference: email - paid_search\\npivot_table['diff'] = pivot_table['email'] - pivot_table['paid_search']\\n\\n# Now, extract and print the exact numbers from the pivot table\\n# Only those that appear in the evidence\\n\\n# For loyal customers\\nloyal_email = pivot_table.loc['loyal', 'email']\\nloyal_paid_search = pivot_table.loc['loyal', 'paid_search']\\ndiff_loyal = pivot_table.loc['loyal', 'diff']\\n\\n# For new customers\\nnew_email = pivot_table.loc['new', 'email']\\nnew_paid_search = pivot_table.loc['new', 'paid_search']\\ndiff_new = pivot_table.loc['new', 'diff']\\n\\n# For returning customers\\nreturning_email = pivot_table.loc['returning', 'email']\\nreturning_paid_search = pivot_table.loc['returning', 'paid_search']\\ndiff_returning = pivot_table.loc['returning', 'diff']\\n\\n# Print all required values explicitly\\nprint(loyal_email)\\nprint(loyal_paid_search)\\nprint(diff_loyal)\\nprint(new_email)\\nprint(new_paid_search)\\nprint(diff_new)\\nprint(returning_email)\\nprint(returning_paid_search)\\nprint(diff_returning)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10841,
+  "completion_tokens": 523
+ }
+}

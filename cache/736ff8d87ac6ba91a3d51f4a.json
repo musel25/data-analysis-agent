@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ae2fd04f7f16d667",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the cleaned data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Remove QA orders\\nqa_mask = sales['revenue'] == '999,999.99'\\nsales_clean = sales[~qa_mask].copy()\\n\\n# Check for refunded orders\\nrefunded_mask = sales_clean['status'] == 'refunded'\\nprint(f\\\"Number of refunded orders: {refunded_mask.sum()}\\\")\\n\\n# Since `converted` is 1 only for completed orders, and the question is about conversion, we can proceed.\\n# But we must check: is `converted` correctly defined?\\n# According to the dictionary: `converted` = 1 if the order completed checkout.\\n# So `converted` is already 1 only for completed orders, and 0 otherwise.\\n# Therefore, we do not need to filter by status.\\n\\n# Calculate conversion rates by channel and customer_segment\\nconversion_by_group = sales_clean.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Display the conversion rates by group\\nprint(\\\"Conversion rates by channel and customer_segment:\\\")\\nprint(conversion_by_group)\\n\\n# Compute the difference in conversion rates within each segment\\n# We want to estimate the campaign effect: email vs paid_search, controlling for segment\\n# Use stratified analysis: compute difference within each segment and average\\n\\n# Extract rates\\nemail_loyal = conversion_by_group.loc['email', 'loyal']\\npaid_search_loyal = conversion_by_group.loc['paid_search', 'loyal']\\nemail_returning = conversion_by_group.loc['email', 'returning']\\npaid_search_returning = conversion_by_group.loc['paid_search', 'returning']\\nemail_new = conversion_by_group.loc['email', 'new']\\npaid_search_new = conversion_by_group.loc['paid_search', 'new']\\n\\n# Compute within-segment differences\\ndiff_loyal = email_loyal - paid_search_loyal\\ndiff_returning = email_returning - paid_search_returning\\ndiff_new = email_new - paid_search_new\\n\\n# Compute weighted average difference (by number of orders in each segment)\\n# First, get the count of orders in each segment by channel\\nsegment_counts = sales_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Total counts per segment across both channels\\nsegment_totals = segment_counts.sum(axis=0)\\n\\n# Weight each difference by the total segment size\\nweighted_diff = (diff_loyal * segment_totals['loyal'] + \\n                 diff_returning * segment_totals['returning'] + \\n                 diff_new * segment_totals['new']) / segment_totals.sum()\\n\\nprint(f\\\"\\\\nWithin-segment differences:\\\")\\nprint(f\\\"Loyal: {diff_loyal:.4f}\\\")\\nprint(f\\\"Returning: {diff_returning:.4f}\\\")\\nprint(f\\\"New: {diff_new:.4f}\\\")\\nprint(f\\\"Weighted average difference (email - paid_search): {weighted_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5715,
+  "completion_tokens": 703
+ }
+}

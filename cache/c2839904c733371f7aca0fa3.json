@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5a04adc595968dc",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and cast to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for completed orders\\ncompleted_orders = sales[sales['status'] == 'completed'].copy()  # Ensure independent copy\\n\\n# Now create QA mask on the completed_orders subset\\nqa_mask = completed_orders['revenue'] == 999999.99\\nnum_qa = qa_mask.sum()\\n\\n# Remove QA orders from completed set\\ncompleted_orders_clean = completed_orders[~qa_mask]\\n\\n# Confirm the count\\nnum_completed_clean = len(completed_orders_clean)\\n\\n# Compute mean revenue\\nmean_revenue_clean = completed_orders_clean['revenue'].mean()\\n\\nprint(f\\\"Number of QA orders found in completed set: {num_qa}\\\")\\nprint(f\\\"Number of completed orders after removing QA orders: {num_completed_clean}\\\")\\nprint(f\\\"Mean revenue of completed orders (cleaned): {mean_revenue_clean:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4926,
+  "completion_tokens": 266
+ }
+}

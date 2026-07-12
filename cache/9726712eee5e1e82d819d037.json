@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-87697c40db2b5cdf",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-read data to ensure clean state\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep highest sample_seq per patient_id\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Stratify by severity: compute response rate within each severity level\\nresponse_rates = df_dedup.groupby(['arm', 'severity'])['responded'].mean().unstack(level='severity')\\n\\n# Compute within-severity differences in response rate: treatment - control\\nwithin_severity_diff = response_rates.loc['treatment'] - response_rates.loc['control']\\n\\n# Print response rates by arm and severity\\nprint('Response rates by arm and severity:')\\nprint(response_rates)\\nprint('\\\\nWithin-severity treatment effect (treatment - control):')\\nprint(within_severity_diff)\\n\\n# Compute overall treatment effect using standardisation (weighted average of stratum-specific effects)\\n# Use control group as reference for weights\\nn_control = df_dedup[df_dedup['arm'] == 'control'].groupby('severity').size()\\nn_total = df_dedup.groupby('severity').size()\\nweights = n_control / n_total  # weights based on control distribution\\n\\n# Standardised treatment effect: weighted average of within-severity differences\\nstandardised_effect = (within_severity_diff * weights).sum()\\n\\nprint(f'\\\\nStandardised treatment effect (weighted by control severity distribution): {standardised_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5980,
+  "completion_tokens": 350
+ }
+}

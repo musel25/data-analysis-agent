@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd622901682da28b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float after removing commas\\ndf['revenue_float'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Exclude QA orders (revenue == 999999.99)\\nqa_mask = (df['revenue_float'] == 999999.99)\\ndf_clean = df[~qa_mask].copy()\\n\\n# Exclude refunded orders\\nrefunded_mask = (df_clean['status'] == 'refunded')\\ndf_clean = df_clean[~refunded_mask].copy()\\n\\n# Compute average revenue per order by channel, stratified by customer_segment\\n# We must compute within each segment to avoid confounding\\n# Then compute overall channel average (unweighted across segments)\\n\\n# Group by channel and customer_segment, compute mean revenue\\ngrouped = df_clean.groupby(['channel', 'customer_segment'], as_index=False)['revenue_float'].mean()\\n\\n# Compute overall average revenue per order per channel (unweighted across segments)\\nchannel_avg = grouped.groupby('channel', as_index=False)['revenue_float'].mean()\\n\\n# Extract the average revenue for each channel\\nemail_avg = channel_avg[channel_avg['channel'] == 'email']['revenue_float'].iloc[0]\\npaid_search_avg = channel_avg[channel_avg['channel'] == 'paid_search']['revenue_float'].iloc[0]\\n\\n# Difference in average revenue between channels\\ndiff = paid_search_avg - email_avg\\n\\n# Print results\\nprint(f'Email channel average revenue: {email_avg:.4f}')\\nprint(f'Paid search channel average revenue: {paid_search_avg:.4f}')\\nprint(f'Difference (paid_search - email): {diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6438,
+  "completion_tokens": 416
+ }
+}

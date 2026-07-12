@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-939f3d09d533b809",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Use numpy's built-in functions to compute binomial CDF\\nn = positive_count + negative_count\\nk = min(positive_count, negative_count)\\n\\n# Use np.sum and np.arange to compute the cumulative probability\\n# P(X <= k) where X ~ Binomial(n, 0.5)\\n# We can compute this directly using the binomial CDF\\n# But since we don't have scipy, we use the fact that:\\n# P(X <= k) = sum_{i=0}^k C(n,i) * (0.5)^n\\n\\n# Use logarithms to avoid overflow\\nlog_prob = lambda i: np.log(np.math.comb(n, i)) + i * np.log(0.5) + (n - i) * np.log(0.5)\\n\\nlog_p_cum = -np.inf\\nfor i in range(k + 1):\\n    log_p_i = log_prob(i)\\n    if log_p_i == -np.inf:\\n        continue\\n    if log_p_cum == -np.inf:\\n        log_p_cum = log_p_i\\n    else:\\n        log_p_cum = np.logaddexp(log_p_cum, log_p_i)\\n\\np_val_sign_test = 2 * np.exp(log_p_cum)\\n\\nprint(f\\\"Sign test for median = 0 (manual, numpy):\\\")\\nprint(f\\\"- Positive changes: {positive_count}\\\")\\nprint(f\\\"- Negative changes: {negative_count}\\\")\\nprint(f\\\"- Zero changes: {zero_count}\\\")\\nprint(f\\\"- Total non-zero: {n}\\\")\\nprint(f\\\"- Test statistic (k): {k}\\\")\\nprint(f\\\"- Two-sided p-value: {p_val_sign_test:.6f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5419,
+  "completion_tokens": 407
+ }
+}

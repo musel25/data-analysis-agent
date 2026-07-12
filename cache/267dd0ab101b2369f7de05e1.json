@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b6bafc7d02e5345d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\nsales = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue == 999999.99)\\nqa_orders = sales[sales['revenue_clean'] == 999999.99]\\n\\n# Identify refunded orders\\nrefunded = sales[sales['status'] == 'refunded']\\n\\n# Identify missing age\\nmissing_age = sales[sales['customer_age'] == -1]\\n\\n# Total rows\\nn_total = len(sales)\\n\\n# We are to compute mean age of customers in the sales data.\\n# The data includes:\\n#   - Real customers (completed or refunded)\\n#   - QA test orders (not real)\\n#   - Missing age (not valid)\\n\\n# According to documentation, QA orders are not real. They must be excluded.\\n# Refunded orders are real customers. Their age is valid.\\n# Missing age (-1) is not valid. Must be excluded.\\n\\n# So: include all rows except:\\n#   - QA orders (revenue_clean == 999999.99)\\n#   - Rows with customer_age == -1\\n\\n# But include refunded orders\\nvalid_customers = sales[\\n    (sales['revenue_clean'] != 999999.99) &\\n    (sales['customer_age'] != -1)\\n]\\n\\n# Compute mean age\\nmean_age = valid_customers['customer_age'].mean()\\n\\n# Print all necessary values\\nprint(f\\\"Total rows: {n_total}\\\")\\nprint(f\\\"QA orders (revenue == 999999.99): {len(qa_orders)}\\\")\\nprint(f\\\"Refunded orders (status == 'refunded'): {len(refunded)}\\\")\\nprint(f\\\"Rows with missing age (customer_age == -1): {len(missing_age)}\\\")\\nprint(f\\\"Valid customers (excl. QA and missing age): {len(valid_customers)}\\\")\\nprint(f\\\"Mean age of valid customers: {mean_age}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7065,
+  "completion_tokens": 526
+ }
+}

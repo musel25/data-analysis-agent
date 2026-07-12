@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bb56790f8f83e503",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float, coercing errors to NaN\\nsales['revenue'] = pd.to_numeric(sales['revenue'], errors='coerce')\\n\\n# Filter for completed orders\\ncompleted = sales[sales['status'] == 'completed']\\n\\n# Now, identify potential test orders: zero-revenue completed orders\\n# Since no 'order_type' column exists, and zero revenue is the only clue,\\n# we treat zero-revenue completed orders as internal test orders\\n# This is a strong assumption, but the question requires exclusion\\n# of internal test orders, and no other identifier exists.\\n# So we exclude all zero-revenue completed orders\\nnon_test_completed = completed[completed['revenue'] > 0]\\n\\n# Compute total revenue from non-test completed orders\\ntotal_revenue = non_test_completed['revenue'].sum()\\n\\n# Output the result\\nprint(f\\\"Total revenue from non-test completed orders: {total_revenue}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7099,
+  "completion_tokens": 247
+ }
+}

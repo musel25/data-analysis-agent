@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aa89b8fbb9fd9a8e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\ndf_sorted = df.sort_values(by=['patient_id', 'sample_seq'], ascending=[True, False])\\ndf_dedup = df_sorted.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999\\ndf_cleaned = df_dedup[df_dedup['biomarker_baseline'] != -999]\\n\\n# Step 3: Correct assay_batch B values: divide biomarker_final by 10\\ndf_cleaned.loc[df_cleaned['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 4: Compute response rate by arm\\ntreatment_responded = df_cleaned[df_cleaned['arm'] == 'treatment']['responded'].mean()\\ncontrol_responded = df_cleaned[df_cleaned['arm'] == 'control']['responded'].mean()\\n\\n# Step 5: Compute raw difference\\ntreatment_effect_raw = treatment_responded - control_responded\\n\\n# Step 6: Compute stratum-specific effects and standardised effect\\n# Stratify by severity\\nresponse_by_arm_severity = df_cleaned.groupby(['arm', 'severity'])['responded'].mean().unstack(level='severity')\\nstratum_effects = response_by_arm_severity['treatment'] - response_by_arm_severity['control']\\n\\n# Weight by treatment arm's severity distribution\\ntreatment_severity_dist = df_cleaned[df_cleaned['arm'] == 'treatment']['severity'].value_counts(normalize=True)\\nstandardised_effect = (stratum_effects * treatment_severity_dist).sum()\\n\\n# Print all required numbers\\nprint(f'treatment_responded: {treatment_responded}')\\nprint(f'control_responded: {control_responded}')\\nprint(f'treatment_effect_raw: {treatment_effect_raw}')\\nprint(f'standardised_effect: {standardised_effect}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7051,
+  "completion_tokens": 486
+ }
+}

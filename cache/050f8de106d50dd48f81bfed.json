@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-83a34f503b54efd6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders\\ncompleted_only = df[df['status'] == 'completed']\\n\\n# Remove QA orders (revenue = 999999.99)\\nreal_orders = completed_only[completed_only['revenue'] != 999999.99]\\n\\n# Filter for converted orders only\\nconverted_only = real_orders[real_orders['converted'] == 1]\\n\\n# Compute average revenue per converted order by channel and segment\\navg_revenue_by_channel_segment = converted_only.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\n# Pivot to make comparison easier\\npivot_table = avg_revenue_by_channel_segment.pivot(index='customer_segment', columns='channel', values='revenue')\\n\\n# Compute the difference: email - paid_search\\npivot_table['diff'] = pivot_table['email'] - pivot_table['paid_search']\\n\\n# Print all required numbers explicitly\\nprint(\\\"Average revenue per converted order in email channel (loyal):\\\", pivot_table.loc['loyal', 'email'])\\nprint(\\\"Average revenue per converted order in paid_search channel (loyal):\\\", pivot_table.loc['loyal', 'paid_search'])\\nprint(\\\"Difference (email - paid_search) for loyal customers:\\\", pivot_table.loc['loyal', 'diff'])\\n\\nprint(\\\"Average revenue per converted order in email channel (new):\\\", pivot_table.loc['new', 'email'])\\nprint(\\\"Average revenue per converted order in paid_search channel (new):\\\", pivot_table.loc['new', 'paid_search'])\\nprint(\\\"Difference (email - paid_search) for new customers:\\\", pivot_table.loc['new', 'diff'])\\n\\nprint(\\\"Average revenue per converted order in email channel (returning):\\\", pivot_table.loc['returning', 'email'])\\nprint(\\\"Average revenue per converted order in paid_search channel (returning):\\\", pivot_table.loc['returning', 'paid_search'])\\nprint(\\\"Difference (email - paid_search) for returning customers:\\\", pivot_table.loc['returning', 'diff'])\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6558,
+  "completion_tokens": 521
+ }
+}

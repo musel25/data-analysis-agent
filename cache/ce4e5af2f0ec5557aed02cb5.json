@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9abad1ceb78366fe",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline == -999 (invalid QC)\\ndf_clean = df[df[\\\"biomarker_baseline\\\"] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping the highest sample_seq for each patient\\ndf_dedup = df_clean.loc[df_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Check if severity is balanced between arms\\nseverity_by_arm = pd.crosstab(df_dedup['arm'], df_dedup['severity'])\\nprint('Severity distribution by arm:')\\nprint(severity_by_arm)\\n\\n# Step 4: Stratify by severity and compute stratum-specific response rates\\ndef compute_stratified_effect(df):\\n    results = []\\n    for sev in df['severity'].unique():\\n        df_sev = df[df['severity'] == sev]\\n        trt_rate = df_sev[df_sev['arm'] == 'treatment']['responded'].mean()\\n        ctrl_rate = df_sev[df_sev['arm'] == 'control']['responded'].mean()\\n        diff = trt_rate - ctrl_rate\\n        results.append({\\n            'severity': sev,\\n            'treatment_rate': trt_rate,\\n            'control_rate': ctrl_rate,\\n            'difference': diff\\n        })\\n    return pd.DataFrame(results)\\n\\nstratified = compute_stratified_effect(df_dedup)\\nprint('\\\\nStratified response rates by severity:')\\nprint(stratified)\\n\\n# Step 5: Compute overall difference (raw) and weighted average (adjusted)\\noverall_diff = df_dedup[df_dedup['arm'] == 'treatment']['responded'].mean() - \\\\\\n               df_dedup[df_dedup['arm'] == 'control']['responded'].mean()\\n\\n# Weighted average difference using severity distribution as weights\\n# Use control arm severity distribution as reference (common practice in observational studies)\\ncontrol_sev_dist = df_dedup[df_dedup['arm'] == 'control']['severity'].value_counts(normalize=True)\\n\\nweighted_diff = 0\\nfor sev in control_sev_dist.index:\\n    trt_rate = stratified[stratified['severity'] == sev]['treatment_rate'].iloc[0]\\n    ctrl_rate = stratified[stratified['severity'] == sev]['control_rate'].iloc[0]\\n    weight = control_sev_dist[sev]\\n    weighted_diff += weight * (trt_rate - ctrl_rate)\\n\\nprint(f'\\\\nOverall raw difference (treatment - control): {overall_diff:.4f}')\\nprint(f'Weighted difference (adjusted for severity): {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5908,
+  "completion_tokens": 649
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-96a3bb9cc239ecdf",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Filter to only completed orders\\ndf_clean = df[df['status'] == 'completed']\\n\\n# Compute stratified conversion rates by channel and customer_segment\\nstratified_clean = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Compute segment counts per channel\\nsegment_counts = df_clean.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Compute total count per channel\\nchannel_totals = df_clean.groupby('channel').size()\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_email = (stratified_clean[stratified_clean['channel'] == 'email'].set_index('customer_segment')['converted'] * \\n                  segment_counts.loc['email'] / channel_totals['email']).sum()\\nweighted_paid_search = (stratified_clean[stratified_clean['channel'] == 'paid_search'].set_index('customer_segment')['converted'] * \\n                        segment_counts.loc['paid_search'] / channel_totals['paid_search']).sum()\\n\\n# Compute the difference\\ndifference = weighted_email - weighted_paid_search\\n\\n# Print all required numbers\\nprint(f\\\"Number of completed orders: {len(df_clean)}\\\")\\nprint(f\\\"Weighted average conversion rate (email): {weighted_email}\\\")\\nprint(f\\\"Weighted average conversion rate (paid_search): {weighted_paid_search}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference}\\\")\\n\\n# Final value to report (rounded to 4 decimals)\\nfinal_value = round(difference, 4)\\nprint(f\\\"Final value (rounded): {final_value}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8945,
+  "completion_tokens": 393
+ }
+}

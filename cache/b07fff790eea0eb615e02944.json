@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8f7b3aeef1c0d1ac",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, stripping commas\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_orders = sales[sales['revenue'] == 999999.99]\\n\\n# Filter to converted customers\\nconverted_customers = sales[sales['converted'] == 1]\\n\\n# Check if QA orders were marked as converted\\nqa_converted = qa_orders[qa_orders['converted'] == 1]\\n\\n# Exclude QA orders from the converted group\\nconverted_customers_clean = converted_customers[~converted_customers.index.isin(qa_orders.index)]\\n\\n# Exclude -1 values in customer_age (sentinel for missing)\\nconverted_customers_clean_with_age = converted_customers_clean[converted_customers_clean['customer_age'] != -1]\\n\\n# Compute the mean age of valid converted customers\\nmean_age_converted = converted_customers_clean_with_age['customer_age'].mean()\\n\\n# Final numbers\\nn_converted_total = len(converted_customers)\\nn_converted_clean = len(converted_customers_clean)\\nn_converted_with_age = len(converted_customers_clean_with_age)\\n\\nprint(f\\\"Total converted customers (including QA): {n_converted_total}\\\")\\nprint(f\\\"Converted customers after removing QA orders: {n_converted_clean}\\\")\\nprint(f\\\"Converted customers with valid age: {n_converted_with_age}\\\")\\nprint(f\\\"Mean age of converted customers (excluding QA and -1): {mean_age_converted:.2f} years\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5134,
+  "completion_tokens": 399
+ }
+}

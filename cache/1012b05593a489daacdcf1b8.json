@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bbc5cf16b63136b4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue = 999999.99)\\ndf_clean = df[df['revenue'] != 999999.99]\\n\\n# Drop refunded orders (status == 'refunded')\\ndf_final = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute raw conversion rates by channel\\nraw_conversion_rates = df_final.groupby('channel')['converted'].mean()\\nraw_difference = raw_conversion_rates['email'] - raw_conversion_rates['paid_search']\\n\\n# Print raw difference\\nprint(f'Raw conversion rate (email): {raw_conversion_rates[\\\"email\\\"]}')\\nprint(f'Raw conversion rate (paid_search): {raw_conversion_rates[\\\"paid_search\\\"]}')\\nprint(f'Raw difference (email - paid_search): {raw_difference}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6569,
+  "completion_tokens": 257
+ }
+}

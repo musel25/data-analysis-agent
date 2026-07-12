@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9f04dc7464f69a88",
+    "function": {
+     "arguments": "{\"code\": \"print('Recomputing without scipy. Using manual chi-squared calculation for arm vs severity:')\\n\\n# Compute expected frequencies under independence\\nexpected = severity_by_arm.copy()\\nfor i in expected.index:\\n    for j in expected.columns:\\n        expected.loc[i, j] = (severity_by_arm.loc[i, :].sum() * severity_by_arm.loc[:, j].sum()) / severity_by_arm.sum().sum()\\n\\n# Compute chi-squared statistic\\nchi2 = ((severity_by_arm - expected) ** 2 / expected).sum().sum()\\nprint(f'Chi-squared statistic: {chi2:.3f}')\\n\\n# Degrees of freedom = (rows - 1) * (cols - 1)\\ndof = (2 - 1) * (3 - 1)\\nprint(f'Degrees of freedom: {dof}')\\n\\n# Approximate p-value using chi-squared distribution\\nimport numpy as np\\np_value = 1 - np.sum([np.exp(-0.5 * chi2) * (chi2 ** k) / np.math.factorial(k) for k in range(100)])\\nprint(f'Approximate p-value: {p_value:.3e}')\\n\\n# Compute odds ratios manually within each severity level\\nprint('\\\\nOdds ratios (control vs treatment) within each severity level:')\\n\\nodds_ratios = {}\\nfor severity_level in ['mild', 'moderate', 'severe']:\\n    # Create 2x2 table for this severity level\\n    table = pd.crosstab(trial_df[trial_df['severity'] == severity_level]['arm'], \\n                        trial_df[trial_df['severity'] == severity_level]['responded'])\\n    # Compute odds ratio\\n    a, b = table.loc['control', 1], table.loc['control', 0]\\n    c, d = table.loc['treatment', 1], table.loc['treatment', 0]\\n    # Avoid division by zero\\n    if b == 0 or c == 0:\\n        odds_ratio = np.inf\\n    else:\\n        odds_ratio = (a * d) / (b * c)\\n    odds_ratios[severity_level] = odds_ratio\\n    print(f'{severity_level}: {odds_ratio:.3f}')\\n\\n# Compute the overall odds ratio (unadjusted)\\ntotal_control = len(trial_df[trial_df['arm'] == 'control'])\\ntotal_treatment = len(trial_df[trial_df['arm'] == 'treatment'])\\ncontrol_responded = trial_df[trial_df['arm'] == 'control']['responded'].sum()\\ntreatment_responded = trial_df[trial_df['arm'] == 'treatment']['responded'].sum()\\n\\na = control_responded\\nb = total_control - control_responded\\nc = treatment_responded\\nd = total_treatment - treatment_responded\\noverall_odds_ratio = (a * d) / (b * c)\\nprint(f'\\\\nOverall odds ratio (control vs treatment): {overall_odds_ratio:.3f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5831,
+  "completion_tokens": 695
+ }
+}

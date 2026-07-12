@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0edae7ecbf88fdf",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the stratified analysis and explicitly print all required numbers\\n\\n# We have df_final: 253 patients in treatment arm, deduplicated, no -999\\n\\n# Compute response rates by sex and severity\\ndef compute_response_rate(df, sex, severity):\\n    subset = df[(df['sex'] == sex) & (df['severity'] == severity)]\\n    if len(subset) == 0:\\n        return 0.0\\n    return subset['responded'].mean()\\n\\n# Compute for each combination\\nresults = []\\nfor sex in ['F', 'M']:\\n    for severity in ['mild', 'moderate', 'severe']:\\n        rate = compute_response_rate(df_final, sex, severity)\\n        n = len(df_final[(df_final['sex'] == sex) & (df_final['severity'] == severity)])\\n        results.append({'sex': sex, 'severity': severity, 'response_rate': rate, 'n': n})\\n\\n# Convert to DataFrame\\nresponse_rates = pd.DataFrame(results)\\nprint(\\\"Response rates by sex and severity:\\\")\\nprint(response_rates)\\n\\n# Compute stratum-specific differences\\nstratum_diffs = []\\nfor severity in ['mild', 'moderate', 'severe']:\\n    rate_f = compute_response_rate(df_final, 'F', severity)\\n    rate_m = compute_response_rate(df_final, 'M', severity)\\n    diff = rate_f - rate_m\\n    stratum_diffs.append(diff)\\n    print(f\\\"Difference in {severity}: {diff:.4f}\\\")\\n\\n# Compute weights by stratum size\\nstratum_sizes = df_final['severity'].value_counts().sort_index()\\ntotal_n = len(df_final)\\nweights = stratum_sizes / total_n\\n\\nprint(\\\"Stratum weights:\\\")\\nfor s, w in weights.items():\\n    print(f\\\"{s}: {w:.4f}\\\")\\n\\n# Compute weighted average difference\\nweighted_diff = sum(w * d for w, d in zip(weights, stratum_diffs))\\nprint(f\\\"Weighted average (adjusted) difference: {weighted_diff:.4f}\\\")\\n\\n# Compute crude difference\\ncrude_females = df_final[df_final['sex'] == 'F']['responded'].mean()\\ncrude_males = df_final[df_final['sex'] == 'M']['responded'].mean()\\ncrude_diff = crude_females - crude_males\\nprint(f\\\"Crude difference: {crude_diff:.4f}\\\")\\n\\n# Return these values for evidence\\n{'stratum_diffs': stratum_diffs, 'weights': weights.to_dict(), 'crude_diff': crude_diff, 'adjusted_diff': weighted_diff}\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7465,
+  "completion_tokens": 625
+ }
+}

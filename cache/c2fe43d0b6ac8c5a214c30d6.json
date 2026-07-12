@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9847c68314bf6afa",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# We have already computed the regression coefficients and statistics\\n# Let's extract and report the key numbers\\n\\n# From previous run:\\ntreatment_effect = 2.498888439821263\\nse_treatment = 2.9982602041440217\\nn = 755\\np = 3\\n\\n# Compute t-statistic\\nt_stat = treatment_effect / se_treatment\\n\\n# Compute p-value using normal approximation\\n# P(|Z| > |t_stat|) = 2 * (1 - \u03a6(|t_stat|))\\n# Use the fact that \u03a6(x) \u2248 0.5 * (1 + erf(x / sqrt(2)))\\n# But we can't use erf, so use a lookup-like approximation\\n# For |t_stat| < 3, we can use:\\n# \u03a6(x) \u2248 0.5 * (1 + x * (0.196854 + x * (0.115194 + x * (0.000344 + x * 0.019527))))\\n# But simpler: use the rule of thumb or known values\\n\\n# |t_stat| = |2.498 / 2.998| \u2248 0.833\\n# For |z| = 0.833, P(|Z| > 0.833) \u2248 2 * (1 - 0.797) = 2 * 0.203 = 0.406\\n# More accurately, use:\\n# P(|Z| > 0.833) = 2 * (1 - norm.cdf(0.833))\\n# From tables: norm.cdf(0.833) \u2248 0.797, so p \u2248 0.406\\n\\n# We'll use a simple approximation: if |t_stat| < 1, p \u2248 0.32\\n# But we can compute it as:\\n# p = 2 * (1 - 0.5 * (1 + np.sign(t_stat) * (1 - np.exp(-t_stat**2 / 2))))\\n# That's not accurate.\\n\\n# Instead, use the fact that for a two-tailed test:\\n# p = 2 * (1 - stats.norm.cdf(abs(t_stat)))\\n# But we don't have stats.\\n\\n# Use a lookup: for |z| = 0.833, the cumulative is about 0.797, so p \u2248 2 * (1 - 0.797) = 0.406\\n# So p \u2248 0.406\\n\\n# We'll use 0.406\\np_value = 0.406\\n\\n# Print results\\nprint(f\\\"Treatment effect (adjusted for baseline): {treatment_effect}\\\")\\nprint(f\\\"Standard error: {se_treatment}\\\")\\nprint(f\\\"t-statistic: {t_stat}\\\")\\nprint(f\\\"P-value (approx): {p_value}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8178,
+  "completion_tokens": 739
+ }
+}

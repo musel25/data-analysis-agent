@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b82aecb825231d00",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Perform multivariate adjustment: stratify by both severity and assay_batch\\n# Compute response rates within each combination of sex, severity, and assay_batch\\n\\n# Group by sex, severity, and assay_batch\\nresponse_by_sex_severity_batch = df.groupby(['sex', 'severity', 'assay_batch'])['responded'].mean().reset_index()\\nprint(\\\"Response rates by sex, severity, and assay_batch:\\\")\\nprint(response_by_sex_severity_batch)\\n\\n# Compute overall distribution of (severity, assay_batch) to use as weights\\n# This is the joint distribution\\njoint_dist = df.groupby(['severity', 'assay_batch']).size() / len(df)\\nprint(\\\"\\\\nJoint distribution of severity and assay_batch (normalized):\\\")\\nprint(joint_dist)\\n\\n# Compute weighted average response rate for each sex using the joint distribution as weights\\nweighted_response_F = 0.0\\nweighted_response_M = 0.0\\n\\n# Loop over each (severity, assay_batch) combination\\nfor idx, row in joint_dist.items():\\n    severity_level, batch = idx\\n    \\n    # Get response rate for females at this (severity, batch)\\n    rate_F = response_by_sex_severity_batch.loc[\\n        (response_by_sex_severity_batch['sex'] == 'F') &\\n        (response_by_sex_severity_batch['severity'] == severity_level) &\\n        (response_by_sex_severity_batch['assay_batch'] == batch),\\n        'responded'\\n    ].iloc[0]\\n    \\n    # Get response rate for males at this (severity, batch)\\n    rate_M = response_by_sex_severity_batch.loc[\\n        (response_by_sex_severity_batch['sex'] == 'M') &\\n        (response_by_sex_severity_batch['severity'] == severity_level) &\\n        (response_by_sex_severity_batch['assay_batch'] == batch),\\n        'responded'\\n    ].iloc[0]\\n    \\n    # Weight by joint distribution\\n    weight = row\\n    weighted_response_F += rate_F * weight\\n    weighted_response_M += rate_M * weight\\n\\n# Print the computed weighted averages\\nprint(f\\\"\\\\nWeighted average response rate for females: {weighted_response_F:.4f}\\\")\\nprint(f\\\"Weighted average response rate for males: {weighted_response_M:.4f}\\\")\\n\\n# Compute adjusted difference\\nadjusted_diff = weighted_response_F - weighted_response_M\\nprint(f\\\"Adjusted difference (F - M): {adjusted_diff * 100:.2f}%\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8964,
+  "completion_tokens": 582
+ }
+}

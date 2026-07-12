@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85e322cce9ca76ba",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/sales.csv')\\n\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\ndf = df[df['status'] == 'completed']\\n\\ndf = df[df['channel'].isin(['email', 'paid_search'])]\\n\\ndf = df[df['customer_segment'].isin(['new', 'returning', 'loyal'])]\\n\\ndf_grouped = df.groupby(['channel', 'customer_segment'])['converted'].agg(['mean', 'count']).reset_index()\\ndf_grouped = df_grouped.rename(columns={'mean': 'conversion_rate'})\\n\\ndf_channel_total = df_grouped.groupby('channel')['conversion_rate', 'count'].sum().reset_index()\\ndf_channel_total['weighted_conversion_rate'] = df_channel_total['conversion_rate'] * df_channel_total['count']\\ndf_channel_total['weighted_conversion_rate'] = df_channel_total['weighted_conversion_rate'] / df_channel_total['count'].sum()\\n\\ndf_channel_total = df_channel_total[['channel', 'weighted_conversion_rate']]\\n\\ndf_channel_total = df_channel_total.set_index('channel')['weighted_conversion_rate']\\n\\ne_email = df_channel_total['email']\\ne_paid_search = df_channel_total['paid_search']\\ndiff = e_email - e_paid_search\\ndiff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5612,
+  "completion_tokens": 316
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a0b7d11e479b7f77",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Filter out refunded orders and QA orders\\n# QA orders were already checked \u2014 none remain after filtering refunded\\n# So we only remove refunded orders\\ndf_filtered = df[df['status'] == 'completed']\\n\\n# Step 2: Parse revenue to float (though not needed for conversion rate)\\ndf_filtered['revenue_float'] = df_filtered['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 3: Compute overall conversion rate by channel\\n# This is the raw difference: email - paid_search\\nemail_rate = df_filtered[df_filtered['channel'] == 'email']['converted'].mean()\\npaid_search_rate = df_filtered[df_filtered['channel'] == 'paid_search']['converted'].mean()\\ndifference = email_rate - paid_search_rate\\n\\n# Print the key numbers\\nprint(f\\\"Conversion rate (email): {email_rate:.6f}\\\")\\nprint(f\\\"Conversion rate (paid_search): {paid_search_rate:.6f}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference:.6f}\\\")\\n\\n# Final answer: this is what the contract asks for\\nfinal_diff = difference\\nprint(f\\\"\\\\nFinal difference (email - paid_search): {final_diff:.6f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10087,
+  "completion_tokens": 312
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a8241f76c9fd3a6e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Create age groups\\ndf['age_group'] = pd.cut(df['customer_age'], bins=[0, 30, 50, 100], labels=['Young', 'Middle-aged', 'Senior'])\\n\\n# Stratify by customer_segment and age_group\\n# Compute conversion rate within each stratum\\ndf_stratified = df.groupby(['channel', 'customer_segment', 'age_group'])['converted'].mean().reset_index()\\n\\n# Also compute counts per stratum\\ndf_counts = df.groupby(['channel', 'customer_segment', 'age_group']).size().reset_index(name='count')\\n\\n# Merge rates and counts\\ndf_stratified = pd.merge(df_stratified, df_counts, on=['channel', 'customer_segment', 'age_group'])\\n\\n# Filter out strata with very low counts (e.g., < 5) to avoid unstable estimates\\ndf_stratified = df_stratified[df_stratified['count'] >= 5]\\n\\n# Compute weighted average conversion rate for each channel, weighted by stratum size\\ntotal_counts = df_stratified.groupby('channel')['count'].sum()\\n\\ndf_weighted = df_stratified.copy()\\ndf_weighted['weighted_rate'] = df_weighted['converted'] * df_weighted['count']\\n\\ndf_channel_weighted = df_weighted.groupby('channel')['weighted_rate'].sum() / total_counts\\n\\n# Extract rates\\nemail_weighted_rate = df_channel_weighted['email']\\npaid_search_weighted_rate = df_channel_weighted['paid_search']\\n\\n# Compute difference\\ndifference_weighted = email_weighted_rate - paid_search_weighted_rate\\n\\n# Print results\\nemail_weighted_rate, paid_search_weighted_rate, difference_weighted\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5123,
+  "completion_tokens": 428
+ }
+}

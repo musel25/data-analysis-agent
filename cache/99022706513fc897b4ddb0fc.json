@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-96cb5c7728dfc167",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter: completed orders, exclude QA and refunded\\ncompleted_orders = df[(df['status'] == 'completed') & (df['revenue'] != 999999.99)]\\n\\n# Compute raw average revenue per channel (unadjusted)\\nraw_avg = completed_orders.groupby('channel')['revenue'].mean().reset_index()\\nraw_avg = raw_avg.rename(columns={'revenue': 'raw_avg_revenue'})\\n\\n# Stratify by customer_segment and compute average revenue within each group\\nstratified_avg = completed_orders.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\n# Compute the proportion of each segment within each channel\\nchannel_segment_prop = completed_orders.groupby('channel')['customer_segment'].value_counts(normalize=True).reset_index(name='prop')\\n\\n# Merge proportion into stratified averages\\nstratified_avg = stratified_avg.merge(channel_segment_prop, on=['channel', 'customer_segment'])\\n\\n# Compute adjusted average revenue per channel: weighted by segment proportion\\nadjusted_avg = stratified_avg.groupby('channel').apply(\\n    lambda x: (x['revenue'] * x['prop']).sum()\\n).reset_index(name='adjusted_revenue')\\n\\n# Compute the difference: email - paid_search\\nemail_revenue = adjusted_avg[adjusted_avg['channel'] == 'email']['adjusted_revenue'].values[0]\\npaid_search_revenue = adjusted_avg[adjusted_avg['channel'] == 'paid_search']['adjusted_revenue'].values[0]\\ndifference = email_revenue - paid_search_revenue\\n\\n# Compute segment proportions for email and paid_search\\nemail_loyal_returning = channel_segment_prop[(channel_segment_prop['channel'] == 'email') & (channel_segment_prop['customer_segment'].isin(['loyal', 'returning']))]['prop'].sum()\\npaid_search_loyal_returning = channel_segment_prop[(channel_segment_prop['channel'] == 'paid_search') & (channel_segment_prop['customer_segment'].isin(['loyal', 'returning']))]['prop'].sum()\\n\\n# Print all key results\\nprint(\\\"Raw average revenue per channel:\\\")\\nprint(raw_avg)\\n\\nprint(\\\"\\\\nStratified average revenue per channel by customer_segment:\\\")\\nprint(stratified_avg)\\n\\nprint(\\\"\\\\nAdjusted average revenue per channel:\\\")\\nprint(adjusted_avg)\\n\\nprint(f\\\"\\\\nDifference (email - paid_search): {difference:.4f}\\\")\\n\\nprint(f\\\"\\\\nProportion of loyal/returning customers in email channel: {email_loyal_returning:.3f}\\\")\\nprint(f\\\"Proportion of loyal/returning customers in paid_search channel: {paid_search_loyal_returning:.3f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7639,
+  "completion_tokens": 673
+ }
+}

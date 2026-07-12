@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85b9836197d5c838",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify and exclude QA orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\n\\n# Identify and exclude refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Define population: exclude QA and refunded orders\\npopulation_mask = ~(qa_mask | refunded_mask)\\nfiltered_df = df[population_mask]\\n\\n# Compute weighted average conversion rate for paid_search channel\\n# Use overall segment distribution as weights\\noverall_segment_dist = filtered_df['customer_segment'].value_counts(normalize=True)\\n\\n# Filter for paid_search channel\\npaid_search_data = filtered_df[filtered_df['channel'] == 'paid_search']\\n\\n# Compute conversion rate within each segment for paid_search\\nconv_by_segment_paid = paid_search_data.groupby('customer_segment')['converted'].mean()\\n\\n# Compute weighted average for paid_search\\nweighted_rate_paid_search = (conv_by_segment_paid * overall_segment_dist).sum()\\n\\n# Print only the final value for paid_search\\nprint(f\\\"Weighted conversion rate for paid_search: {weighted_rate_paid_search}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 12154,
+  "completion_tokens": 326
+ }
+}

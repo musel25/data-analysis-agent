@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9f130907208e3a6f",
+    "function": {
+     "arguments": "{\"code\": \"print(stratified_rates)\\n\\n# The issue is that the column names are not 'email' and 'paid_search' in the DataFrame\\n# Let's check the actual column names\\nprint(stratified_rates.columns)\\n\\n# The actual columns are the channel values, but they are not in the order we expect\\n# Let's recompute with explicit access\\nemail_rates = sales[sales['channel'] == 'email'].groupby('customer_segment')['converted'].mean()\\npaid_search_rates = sales[sales['channel'] == 'paid_search'].groupby('customer_segment')['converted'].mean()\\n\\n# Compute differences\\nstratified_diffs = email_rates - paid_search_rates\\n\\n# Weighted average difference\\nsegment_sizes = sales.groupby('customer_segment').size()\\nweighted_diff = (stratified_diffs * segment_sizes).sum() / segment_sizes.sum()\\n\\nprint(f'Stratified differences by segment: {stratified_diffs.to_dict()}')\\nprint(f'Weighted average difference: {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3858,
+  "completion_tokens": 241
+ }
+}

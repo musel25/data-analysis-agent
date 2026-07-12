@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9cb5a2f5048fc6e9",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\nsales = pd.read_csv(file_path)\\n\\n# Parse revenue: remove commas and convert to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders: 6 rows with revenue = 999999.99\\nsales_clean = sales[sales['revenue'] != 999999.99]\\n\\n# Now, compute the fraction of converted orders among NEW customers reached by PAID SEARCH\\n# Filter for: channel == 'paid_search', customer_segment == 'new'\\nfiltered = sales_clean[(sales_clean['channel'] == 'paid_search') & (sales_clean['customer_segment'] == 'new')]\\n\\n# Count total and converted\\ntotal_new_paid_search = len(filtered)\\nconverted_new_paid_search = filtered['converted'].sum()\\n\\n# Compute fraction\\nfraction_converted = converted_new_paid_search / total_new_paid_search\\n\\n# Final print\\nprint(fraction_converted)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7254,
+  "completion_tokens": 250
+ }
+}

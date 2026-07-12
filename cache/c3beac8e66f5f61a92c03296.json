@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-adabc3e017e5c771",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Re-run without scipy\\n\\n# Deduplicate: keep highest sample_seq per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Filter to treatment arm\\ndf_treatment = df_dedup[df_dedup['arm'] == 'treatment']\\n\\n# Compute response rate within each sex-severity stratum\\nstratified = df_treatment.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).round(4)\\nprint(\\\"Stratified response rates by sex and severity:\\\")\\nprint(stratified)\\n\\n# Compute stratum-specific risk differences (F - M)\\nstratum_rds = []\\nfor sev in df_treatment['severity'].unique():\\n    sub = df_treatment[df_treatment['severity'] == sev]\\n    p_f = sub[sub['sex'] == 'F']['responded'].mean()\\n    p_m = sub[sub['sex'] == 'M']['responded'].mean()\\n    rd = p_f - p_m\\n    n_f = sub[sub['sex'] == 'F'].shape[0]\\n    n_m = sub[sub['sex'] == 'M'].shape[0]\\n    stratum_rds.append((sev, rd, n_f, n_m))\\n\\n# Convert to DataFrame\\nstratum_rds_df = pd.DataFrame(stratum_rds, columns=['severity', 'rd', 'n_f', 'n_m'])\\nprint(\\\"\\\\nStratum-specific risk differences:\\\")\\nprint(stratum_rds_df)\\n\\n# Weighted average of RDs by stratum total size\\nstratum_rds_df['weight'] = stratum_rds_df['n_f'] + stratum_rds_df['n_m']\\nstratum_rds_df['weighted_rd'] = stratum_rds_df['rd'] * stratum_rds_df['weight']\\n\\n# Total weighted RD\\nadjusted_rd = stratum_rds_df['weighted_rd'].sum() / stratum_rds_df['weight'].sum()\\n\\n# Also compute overall response rates by sex (unadjusted)\\noverall_f = df_treatment[df_treatment['sex'] == 'F']['responded'].mean()\\noverall_m = df_treatment[df_treatment['sex'] == 'M']['responded'].mean()\\nunadjusted_rd = overall_f - overall_m\\n\\nprint(f\\\"\\\\nUnadjusted response rate difference (F - M): {unadjusted_rd:.4f}\\\")\\nprint(f\\\"Adjusted response rate difference (F - M) using stratification: {adjusted_rd:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5527,
+  "completion_tokens": 596
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a49d12d71eda639b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Filter for completed orders\\ncompleted = sales[sales['status'] == 'completed']\\n\\n# Convert revenue to float (remove commas)\\ncompleted['revenue_clean'] = completed['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Check for QA orders in completed group\\nqa_in_completed = completed[completed['revenue_clean'] == 999999.99]\\n\\n# Since no QA orders are in 'completed', we can safely compute mean\\nmean_revenue = completed['revenue_clean'].mean()\\n\\n# Final check: are there any negative revenues in completed?\\nnegative_revenue = completed[completed['revenue_clean'] < 0]\\n\\nprint(f'Number of completed orders: {len(completed)}')\\nprint(f'Mean revenue of completed orders: {mean_revenue:.2f}')\\nprint(f'Number of completed orders with negative revenue: {len(negative_revenue)}')\\n\\n# Output the result\\nmean_revenue\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4771,
+  "completion_tokens": 260
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9b3f7265b6f95c7a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out QC failures in biomarker_baseline\\ndata = data[data['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\ndata = data.sort_values(['patient_id', 'sample_seq'], ascending=[True, False])\\ndata = data.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Step 3: Compute response rates by sex and severity across all patients (both arms)\\nstratified = data.groupby(['sex', 'severity'])['responded'].agg(['count', 'sum'])\\nstratified['response_rate'] = stratified['sum'] / stratified['count']\\n\\n# Step 4: Compute crude difference in response rates by sex (unadjusted)\\nsex_response = data.groupby('sex')['responded'].mean()\\ncrude_diff = sex_response['F'] - sex_response['M']\\n\\n# Step 5: Compute standardised (adjusted) difference using stratification\\n# Use severity distribution in the full population as the reference\\nseverity_total = data['severity'].value_counts(normalize=True)\\n\\n# Weighted average of response rates by sex, stratified by severity\\nadjusted_rate_F = (stratified.loc['F'].groupby('severity')['response_rate'].sum() * severity_total).sum()\\nadjusted_rate_M = (stratified.loc['M'].groupby('severity')['response_rate'].sum() * severity_total).sum()\\n\\nadjusted_diff = adjusted_rate_F - adjusted_rate_M\\n\\n# Output results\\nprint(f'Crude difference (F - M): {crude_diff:.4f}')\\nprint(f'Adjusted difference (F - M): {adjusted_diff:.4f}')\\nprint('\\\\nStratified response rates:')\\nprint(stratified[['response_rate']])\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8188,
+  "completion_tokens": 435
+ }
+}

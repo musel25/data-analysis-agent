@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-96b4a1a4a62148d6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Convert 'revenue' to float\\nsales_df['revenue'] = pd.to_numeric(sales_df['revenue'], errors='coerce')\\n\\n# Define the confounders\\nconfounders = ['customer_segment', 'customer_age', 'status']\\n\\n# Create a stratified analysis: compute conversion rate within each stratum\\n# and then compute a weighted average difference\\n\\n# First, create a combined stratum key\\nsales_df['stratum'] = (sales_df['customer_segment'] + '_' + \\n                       sales_df['status'] + '_' + \\n                       pd.cut(sales_df['customer_age'], \\n                              bins=[0, 29, 39, 49, 59, 100], \\n                              labels=['20s', '30s', '40s', '50s', '60s+'], \\n                              include_lowest=True).astype(str))\\n\\n# Compute conversion rate within each stratum for each channel\\nstratum_rates = sales_df.groupby(['channel', 'stratum'])['converted'].mean().unstack(level='channel')\\nstratum_rates.columns = ['email_rate', 'paid_search_rate']\\n\\n# Compute the difference within each stratum\\nstratum_rates['diff'] = stratum_rates['email_rate'] - stratum_rates['paid_search_rate']\\n\\n# Compute the total number of observations per stratum\\nstratum_counts = sales_df.groupby('stratum').size()\\n\\n# Compute the weighted average difference (using stratum size as weight)\\n# But only for strata that have both channels present\\nvalid_strata = stratum_rates.dropna().index\\n\\n# Compute the weighted average difference\\nweighted_diff = (stratum_rates.loc[valid_strata, 'diff'] * \\n                 stratum_counts.loc[valid_strata]).sum() / \\n                stratum_counts.loc[valid_strata].sum()\\n\\n# Print results\\nprint(\\\"Stratum-level conversion rates and differences:\\\")\\nprint(stratum_rates.loc[valid_strata])\\nprint(f\\\"\\\\nWeighted average difference (email - paid_search): {weighted_diff}\\\")\\n\\n# Also compute the crude difference for comparison\\ncrude_difference = sales_df.groupby('channel')['converted'].mean()['email'] - \\n                   sales_df.groupby('channel')['converted'].mean()['paid_search']\\n\\nprint(f\\\"\\\\nCrude difference (unadjusted): {crude_difference}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5997,
+  "completion_tokens": 583
+ }
+}

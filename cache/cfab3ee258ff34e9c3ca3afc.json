@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-af6bbf5ee8ec6db6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to numeric, removing commas\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders: revenue == 999999.99\\nqa_orders = df[df['revenue'] == 999999.99]\\nnum_qa_orders = len(qa_orders)\\nprint(\\\"Number of QA orders:\\\", num_qa_orders)\\n\\n# Remove QA orders\\ndf_clean = df[df['revenue'] != 999999.99]\\nprint(\\\"Shape after removing QA orders:\\\", df_clean.shape)\\n\\n# Verify QA orders are gone\\nqa_check = df_clean[df_clean['revenue'] == 999999.99]\\nprint(\\\"QA orders still present:\\\", len(qa_check))\\n\\n# Now compute the final stratified difference in conversion rates\\n# Cross-tabulate channel vs customer_segment to verify imbalance\\ncrosstab = pd.crosstab(df_clean['channel'], df_clean['customer_segment'])\\nprint(\\\"Cross-tabulation of channel vs customer_segment:\\\\n\\\", crosstab)\\n\\n# Compute conversion rates by channel and segment\\nconv_rates = df_clean.groupby(['channel', 'customer_segment'])['converted'].agg(['mean', 'count']).round(4)\\nprint(\\\"Conversion rates by channel and segment:\\\\n\\\", conv_rates)\\n\\n# Compute the weighted average difference (stratified)\\nweighted_diff = 0\\nfor segment in df_clean['customer_segment'].unique():\\n    subset = df_clean[df_clean['customer_segment'] == segment]\\n    conv_email = subset[subset['channel'] == 'email']['converted'].mean()\\n    conv_paid_search = subset[subset['channel'] == 'paid_search']['converted'].mean()\\n    diff = conv_email - conv_paid_search\\n    count = len(subset)\\n    weighted_diff += diff * count\\n\\nweighted_diff /= len(df_clean)\\nprint(f\\\"Weighted average difference (stratified): {weighted_diff:.4f}\\\")\\n\\n# Also compute raw difference for comparison\\nraw_diff = df_clean.groupby('channel')['converted'].mean()['email'] - df_clean.groupby('channel')['converted'].mean()['paid_search']\\nprint(f\\\"Raw difference (unadjusted): {raw_diff:.4f}\\\")\\n\\n# Return the stratified difference\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8272,
+  "completion_tokens": 560
+ }
+}

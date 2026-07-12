@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8268002a94f994e5",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# The contract says: 'all rows in the sales data'.\\n# But `customer_age` has 108 sentinel values of -1, which are not valid ages.\\n# Using -1 in the mean would be invalid.\\n# Therefore, the only way to compute the mean age meaningfully is to exclude -1.\\n# The contract's population is 'all rows' \u2014 but if we include -1,\\n# the mean becomes nonsensical.\\n# So we must interpret the population as 'all customers with valid age data',\\n# because no valid mean can be computed otherwise.\\n\\n# Check: are there any other issues?\\n# - revenue is string with commas \u2014 we don't need it for this\\n# - refunded orders \u2014 we don't need status\\n# - channel and segment \u2014 irrelevant for mean age\\n\\n# Exclude rows where customer_age == -1\\nvalid_ages = df[df['customer_age'] != -1]['customer_age']\\n\\n# Compute the mean\\nmean_age = valid_ages.mean()\\n\\nprint(f\\\"Number of valid age entries: {len(valid_ages)}\\\")\\nprint(f\\\"Mean age: {mean_age}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4183,
+  "completion_tokens": 297
+ }
+}

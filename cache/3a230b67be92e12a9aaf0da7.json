@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aa1ec175c23bf727",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq for each patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Stratify by severity and compute response rates within each stratum\\ndef compute_stratum_effect(df_strat):\\n    n_treat = df_strat[df_strat['arm'] == 'treatment'].shape[0]\\n    n_control = df_strat[df_strat['arm'] == 'control'].shape[0]\\n    resp_treat = df_strat[(df_strat['arm'] == 'treatment') & (df_strat['responded'] == 1)].shape[0]\\n    resp_control = df_strat[(df_strat['arm'] == 'control') & (df_strat['responded'] == 1)].shape[0]\\n    rate_treat = resp_treat / n_treat\\n    rate_control = resp_control / n_control\\n    diff = rate_treat - rate_control\\n    return diff, rate_treat, rate_control\\n\\n# Compute stratum-specific effects\\nstratum_effects = {}\\nfor severity in df_dedup['severity'].unique():\\n    df_sev = df_dedup[df_dedup['severity'] == severity]\\n    diff, rate_treat, rate_control = compute_stratum_effect(df_sev)\\n    stratum_effects[severity] = {\\n        'treatment_rate': rate_treat,\\n        'control_rate': rate_control,\\n        'difference': diff\\n    }\\n\\n# Step 3: Standardise using the total sample's severity distribution\\n# Compute overall proportion of each severity in the total sample\\nn_total = len(df_dedup)\\nseverity_weights = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Compute marginal treatment effect via standardisation: weighted average of stratum-specific differences\\nmarginal_diff = 0.0\\nfor severity, weight in severity_weights.items():\\n    marginal_diff += weight * stratum_effects[severity]['difference']\\n\\n# Print results\\nprint(f\\\"Total unique patients after deduplication: {len(df_dedup)}\\\")\\nprint(f\\\"Stratum-specific treatment effects (treatment - control):\\\")\\nfor severity in sorted(stratum_effects.keys()):\\n    eff = stratum_effects[severity]\\n    print(f\\\"  {severity}: {eff['difference']:.4f} (treatment: {eff['treatment_rate']:.4f}, control: {eff['control_rate']:.4f})\\\")\\nprint(f\\\"\\\\nMarginal treatment effect (standardised): {marginal_diff:.4f}\\\")\\n\\n# Return marginal_diff for final answer\\nmarginal_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6894,
+  "completion_tokens": 644
+ }
+}

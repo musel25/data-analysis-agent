@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b7568fc6913c07c5",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Remove sentinel values: -999.0 in biomarker_baseline and biomarker_final\\n# Replace -999.0 with NaN\\ntrial_df['biomarker_baseline'] = trial_df['biomarker_baseline'].replace(-999.0, pd.NA)\\ntrial_df['biomarker_final'] = trial_df['biomarker_final'].replace(-999.0, pd.NA)\\n\\n# Drop rows where biomarker_baseline or biomarker_final is missing\\ntrial_df_clean = trial_df.dropna(subset=['biomarker_baseline', 'biomarker_final'])\\n\\n# Keep only the first (lowest sample_seq) for each patient_id\\ntrial_df_clean = trial_df_clean.sort_values('sample_seq').drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Compute change in biomarker (final - baseline) by arm\\ntrial_df_clean['biomarker_change'] = trial_df_clean['biomarker_final'] - trial_df_clean['biomarker_baseline']\\n\\n# Stratify by severity and compute mean change within each severity level\\nmean_change_by_arm_severity = trial_df_clean.groupby(['arm', 'severity'])['biomarker_change'].mean()\\n\\n# Compute weighted mean change per arm, adjusting for severity imbalance\\nweighted_change = {}\\nfor arm in ['control', 'treatment']:\\n    group = trial_df_clean[trial_df_clean['arm'] == arm]\\n    # Compute the proportion of each severity level in this arm\\n    severity_prop = group['severity'].value_counts(normalize=True)\\n    # Compute weighted average of change across severity levels\\n    weighted_avg = (mean_change_by_arm_severity[arm] * severity_prop).sum()\\n    weighted_change[arm] = weighted_avg\\n\\n# Final weighted mean change by arm\\nprint(\\\"Weighted mean biomarker change by arm (adjusted for severity):\\\")\\nprint(weighted_change)\\n\\n# Compute the difference in weighted change\\ntreatment_effect = weighted_change['treatment'] - weighted_change['control']\\nprint(f\\\"\\\\nEstimated treatment effect (adjusted for severity): {treatment_effect}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5276,
+  "completion_tokens": 502
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bee7341a2b5bed15",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-load data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue: remove commas and cast to float\\ndf['revenue_float'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders: revenue == 999999.99\\nqa_mask = df['revenue_float'] == 999999.99\\nqa_count = qa_mask.sum()\\nprint(f'QA orders found: {qa_count}')\\n\\n# Identify refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\nrefunded_count = refunded_mask.sum()\\nprint(f'Refunded orders found: {refunded_count}')\\n\\n# Filter out QA and refunded orders\\nfiltered_df = df[~refunded_mask & ~qa_mask]\\nprint(f'Rows after filtering: {filtered_df.shape[0]} out of 900')\\n\\n# Raw conversion rate by channel\\nraw_conv = filtered_df.groupby('channel')['converted'].mean()\\nprint('Raw conversion rate by channel:')\\nprint(raw_conv)\\n\\n# Stratified conversion rate: convert to float for clarity\\nstratified_conv = filtered_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\nprint('Stratified conversion rate by channel and segment:')\\nprint(stratified_conv)\\n\\n# Segment sizes in filtered dataset\\nsegment_counts = filtered_df['customer_segment'].value_counts()\\nprint('Segment sizes in filtered dataset:')\\nprint(segment_counts)\\n\\n# Compute weighted conversion rate for each channel\\nweighted_conv = {}\\ntotal_count = segment_counts.sum()\\n\\nfor channel in ['email', 'paid_search']:\\n    weighted_sum = 0\\n    for seg in segment_counts.index:\\n        conv_rate = stratified_conv.loc[channel, seg]\\n        weight = segment_counts[seg] / total_count\\n        weighted_sum += conv_rate * weight\\n    weighted_conv[channel] = weighted_sum\\n\\nweighted_conv_series = pd.Series(weighted_conv)\\nprint('Weighted conversion rate (stratified by segment):')\\nprint(weighted_conv_series)\\n\\n# Compute difference\\ndiff = weighted_conv_series['email'] - weighted_conv_series['paid_search']\\nprint(f'Difference (email - paid_search): {diff:.6f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 11226,
+  "completion_tokens": 537
+ }
+}

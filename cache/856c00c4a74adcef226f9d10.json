@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b6e2100586d6ef1f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the stratified analysis with explicit printing of all required numbers\\n\\n# Stratified response rates by sex and severity\\ntreatment_stratified = df_treatment.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).round(4)\\n\\n# Print the full table\\nprint(\\\"Stratified response rates by sex and severity:\\\")\\nprint(treatment_stratified)\\n\\n# Extract and print response rates for each group\\nprint(\\\"\\\\nResponse rates by sex and severity:\\\")\\nfor sex in ['F', 'M']:\\n    for severity in ['mild', 'moderate', 'severe']:\\n        rate = treatment_stratified.loc[(sex, severity), 'mean']\\n        print(f\\\"{sex}, {severity}: {rate:.4f}\\\")\\n\\n# Compute stratum differences (F - M)\\nstratum_diffs = {}\\nfor severity in ['mild', 'moderate', 'severe']:\\n    f_rate = treatment_stratified.loc[('F', severity), 'mean']\\n    m_rate = treatment_stratified.loc[('M', severity), 'mean']\\n    diff = f_rate - m_rate\\n    stratum_diffs[severity] = diff\\n    print(f\\\"Difference (F - M) in {severity}: {diff:.4f}\\\")\\n\\n# Compute standardised difference using overall severity distribution as weights\\nseverity_counts = df_treatment['severity'].value_counts(normalize=True)\\n\\nprint(\\\"\\\\nOverall severity distribution:\\\")\\nfor sev, p in severity_counts.items():\\n    print(f\\\"{sev}: {p:.4f}\\\")\\n\\n# Weighted average of stratum differences\\ntotal_diff = 0.0\\nweights_sum = 0.0\\n\\nfor severity in ['mild', 'moderate', 'severe']:\\n    weight = severity_counts[severity]\\n    diff = stratum_diffs[severity]\\n    total_diff += diff * weight\\n    weights_sum += weight\\n\\nif weights_sum > 0:\\n    standardized_diff = total_diff / weights_sum\\nelse:\\n    standardized_diff = 0.0\\n\\nprint(f\\\"\\\\nStandardised difference in response rates (F - M): {standardized_diff:.4f}\\\")\\n\\n# Crude difference\\ncrude_diff = treatment_response_by_sex['F'] - treatment_response_by_sex['M']\\nprint(f\\\"Crude difference (F - M): {crude_diff:.4f}\\\")\\n\\n# Return standardized difference\\nstandardized_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8992,
+  "completion_tokens": 590
+ }
+}

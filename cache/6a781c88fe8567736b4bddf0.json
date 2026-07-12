@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a07dc5d10614ac4c",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Verify premises\\nassert (df['status'] == 'completed').sum() + (df['status'] == 'refunded').sum() == len(df), \\\"Status column has unexpected values\\\"\\nassert df['revenue'].str.contains(',').any(), \\\"Revenue should contain commas as per documentation\\\"\\n\\n# Filter completed orders\\ncompleted = df[df['status'] == 'completed']\\n\\n# Convert revenue: remove commas and cast to float\\ncompleted['revenue_clean'] = completed['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = completed['revenue_clean'] == 999999.99\\nn_qa = qa_mask.sum()\\n\\n# Check: are QA orders part of 'completed'? Yes, they are.\\n# But are they real orders? No. They are internal test entries.\\n# The contract says 'all completed orders', but if we include them,\\n# the mean revenue becomes 7393.76, which is dominated by 6 entries\\n# of 999999.99 \u2014 an artifact, not a business signal.\\n\\n# Compute mean with and without QA\\nmean_with_qa = completed['revenue_clean'].mean()\\ncompleted_no_qa = completed[~qa_mask]\\nmean_without_qa = completed_no_qa['revenue_clean'].mean()\\n\\n# Print results\\nprint(f\\\"Number of completed orders: {len(completed)}\\\")\\nprint(f\\\"Number of QA orders in completed set: {n_qa}\\\")\\nprint(f\\\"Mean revenue including QA: {mean_with_qa:.2f}\\\")\\nprint(f\\\"Mean revenue excluding QA: {mean_without_qa:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5415,
+  "completion_tokens": 434
+ }
+}

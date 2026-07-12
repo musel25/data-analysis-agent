@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b982d6e62fe6010a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Check for QA orders: revenue == '999999.99'\\nqa_mask = df['revenue'] == '999999.99'\\nprint(f'Number of QA orders: {qa_mask.sum()}')\\n\\n# Remove QA orders\\nif qa_mask.sum() > 0:\\n    df_clean = df[~qa_mask].copy()\\n    print(f'Removed {qa_mask.sum()} QA orders.')\\nelse:\\n    df_clean = df.copy()\\n    print('No QA orders found.')\\n\\n# Remove refunded orders\\nrefunded_mask = df_clean['status'] == 'refunded'\\nprint(f'Number of refunded orders: {refunded_mask.sum()}')\\n\\ndf_clean = df_clean[~refunded_mask].copy()\\nprint(f'Removed {refunded_mask.sum()} refunded orders.')\\n\\n# Clean revenue: remove commas and cast to float\\ndf_clean['revenue'] = df_clean['revenue'].str.replace(',', '').astype(float)\\n\\n# Now compute conversion rate by customer_segment\\n# Conversion rate = proportion of 'converted' == 1 within each customer_segment\\nconversion_rates = df_clean.groupby('customer_segment')['converted'].agg(['mean', 'count']).round(4)\\n\\n# Display results\\nprint(\\\"\\\\nConversion rates by customer_segment:\\\")\\nprint(conversion_rates)\\n\\n# Find the segment with the highest conversion rate\\nbest_segment = conversion_rates['mean'].idxmax()\\nprint(f\\\"\\\\nSegment with highest conversion rate: {best_segment}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10233,
+  "completion_tokens": 384
+ }
+}

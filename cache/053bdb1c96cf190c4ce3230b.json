@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85a5dc6b5f1829db",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Re-run without scipy\\n# Check for confounding: severity vs response\\nseverity_response = pd.crosstab(trial_df['severity'], trial_df['responded'])\\nprint(\\\"Severity vs response:\\\")\\nprint(severity_response)\\n\\n# Stratify by severity and compute within-stratum response rates\\nstratified = trial_df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nprint(\\\"\\\\nResponse rates by arm and severity:\\\")\\nprint(stratified)\\n\\n# Compute within-stratum treatment effects\\n# For each severity level, compute treatment minus control\\nwithin_stratum = stratified.pivot(index='severity', columns='arm', values='responded')\\nwithin_stratum['diff'] = within_stratum['treatment'] - within_stratum['control']\\nprint(\\\"\\\\nWithin-stratum differences (treatment - control):\\\")\\nprint(within_stratum['diff'])\\n\\n# Compute standardized difference (weighted average)\\n# Weight by proportion of each severity in the total sample\\nn_total = len(trial_df)\\nprop_by_severity = trial_df['severity'].value_counts(normalize=True)\\n\\nweighted_diff = 0\\nfor severity in prop_by_severity.index:\\n    diff = within_stratum.loc[severity, 'diff']\\n    weight = prop_by_severity[severity]\\n    weighted_diff += diff * weight\\n\\nprint(f\\\"\\\\nWeighted average treatment effect: {weighted_diff:.4f}\\\")\\n\\n# Final report\\nfinal_effect = weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3560,
+  "completion_tokens": 357
+ }
+}

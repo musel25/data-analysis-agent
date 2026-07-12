@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a2af770c580ec3e5",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows where biomarker_baseline == -999\\ndf_filtered = df[df['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate by keeping the highest sample_seq per patient\\ndf_dedup = df_filtered.loc[df_filtered.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Compute response rates within each severity stratum\\n# Pivot to get response counts by arm and severity\\nresponse_counts = df_dedup.groupby(['arm', 'severity'])['responded'].agg(['count', 'sum']).reset_index()\\nresponse_counts.columns = ['arm', 'severity', 'n', 'responded_count']\\n\\n# Compute response rate per stratum\\ntreatment_rates = response_counts[response_counts['arm'] == 'treatment']\\ncontrol_rates = response_counts[response_counts['arm'] == 'control']\\n\\n# Merge to get both arms\\nstratified_rates = treatment_rates[['severity', 'responded_count', 'n']].rename(\\n    columns={'responded_count': 'treatment_responded', 'n': 'treatment_n'}\\n)\\nstratified_rates = stratified_rates.merge(\\n    control_rates[['severity', 'responded_count', 'n']].rename(\\n        columns={'responded_count': 'control_responded', 'n': 'control_n'}\\n    ),\\n    on='severity'\\n)\\n\\n# Compute difference in proportions within each stratum\\ndiff_by_stratum = stratified_rates.copy()\\ndiff_by_stratum['diff'] = (\\n    diff_by_stratum['treatment_responded'] / diff_by_stratum['treatment_n'] -\\n    diff_by_stratum['control_responded'] / diff_by_stratum['control_n']\\n)\\n\\n# Compute total sample size per stratum (for weighting)\\ntotal_per_stratum = df_dedup['severity'].value_counts().reindex(['mild', 'moderate', 'severe']).values\\n\\n# Weighted average difference in proportions (using total stratum size as weight)\\nweighted_diff = np.average(diff_by_stratum['diff'], weights=total_per_stratum)\\n\\n# Compute standard error of the weighted difference\\nvar_diffs = []\\nfor _, row in stratified_rates.iterrows():\\n    p1 = row['treatment_responded'] / row['treatment_n']\\n    p2 = row['control_responded'] / row['control_n']\\n    var_p1 = p1 * (1 - p1) / row['treatment_n']\\n    var_p2 = p2 * (1 - p2) / row['control_n']\\n    var_diff = var_p1 + var_p2\\n    var_diffs.append(var_diff)\\n\\nvar_weighted_diff = np.average(var_diffs, weights=total_per_stratum)\\nse_weighted_diff = np.sqrt(var_weighted_diff)\\n\\n# Print all required outputs\\nprint(\\\"Stratum-specific differences in proportions (treatment - control):\\\")\\nprint(diff_by_stratum[['severity', 'diff']])\\nprint(f\\\"\\\\nWeighted average difference in proportions (adjusted): {weighted_diff:.4f}\\\")\\nprint(f\\\"Standard error: {se_weighted_diff:.4f}\\\")\\n\\n# Output the final value\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10982,
+  "completion_tokens": 789
+ }
+}

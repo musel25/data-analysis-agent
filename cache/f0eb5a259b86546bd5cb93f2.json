@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a1ef88f009a44825",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA orders and refunded orders\\nfiltered_df = df[\\n    (df['revenue_clean'] != 999999.99) &\\n    (df['status'] == 'completed')\\n]\\n\\n# Check cross-tabulation: channel vs segment\\n# We see email is heavily skewed toward loyal customers (131 out of 326)\\n# paid_search has more new and returning customers\\n# So we must stratify by segment to avoid confounding\\n\\n# Compute conversion rate by channel, stratified by segment\\n# We compute conversion rate within each segment, then combine\\n\\n# Create a pivot table for conversion rate by channel and segment\\nconversion_by_channel_segment = filtered_df.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\nprint('Conversion rate by channel and segment:')\\nprint(conversion_by_channel_segment)\\n\\n# Compute overall conversion rate by channel (unadjusted)\\noverall_conv_channel = filtered_df.groupby('channel')['converted'].mean().reset_index()\\nprint('\\\\nOverall conversion rate by channel (unadjusted):')\\nprint(overall_conv_channel)\\n\\n# Compute adjusted conversion rate: average of segment-specific rates\\n# Weighted by segment size in each channel\\n\\n# For each channel, compute weighted average of conversion rates\\n# by segment, weighted by segment size in that channel\\n\\n# Get segment counts per channel\\nsegment_counts = filtered_df.groupby(['channel', 'customer_segment']).size().reset_index(name='count')\\n\\n# Merge with conversion rates\\nsegment_counts = segment_counts.merge(conversion_by_channel_segment, on=['channel', 'customer_segment'])\\n\\n# Compute weighted average conversion rate for each channel\\nsegment_counts['weighted_conv'] = segment_counts['count'] * segment_counts['converted']\\n\\n# Sum by channel\\nweighted_conv_by_channel = segment_counts.groupby('channel')['weighted_conv'].sum() / segment_counts.groupby('channel')['count'].sum()\\n\\nprint('\\\\nAdjusted conversion rate by channel (stratified by segment):')\\nprint(weighted_conv_by_channel)\\n\\n# Compute the ratio of email to paid_search conversion rate\\nratio = weighted_conv_by_channel['email'] / weighted_conv_by_channel['paid_search']\\nprint(f'\\\\nRatio of email to paid_search conversion rate (adjusted): {ratio:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5933,
+  "completion_tokens": 569
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a6a31932fb6121c5",
+    "function": {
+     "arguments": "{\"code\": \"# Compute conversion rates stratified by customer_segment\\n# First, compute conversion rate for each segment and channel\\nstratified = sales_df.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum']).reset_index()\\nstratified['conversion_rate'] = stratified['sum'] / stratified['count']\\n\\n# Display stratified conversion rates\\nprint(stratified)\\n\\n# Now, compute the overall conversion rate for each channel, adjusted for segment\\n# We'll use a simple stratified estimate: weighted average by segment size\\n\\n# Get total counts per channel\\nchannel_totals = sales_df.groupby('channel')['converted'].count().reset_index()\\nchannel_totals = channel_totals.rename(columns={'converted': 'total_count'})\\n\\n# Get segment proportions within each channel\\nsegment_proportions = sales_df.groupby(['channel', 'customer_segment']).size().groupby('channel').apply(lambda x: x / x.sum()).reset_index(name='prop')\\n\\n# Merge with conversion rates\\nmerged = pd.merge(stratified, segment_proportions, on=['channel', 'customer_segment'])\\nmerged = pd.merge(merged, channel_totals, on='channel')\\n\\n# Compute weighted conversion rate for each channel\\nmerged['weighted_rate'] = merged['conversion_rate'] * merged['prop']\\n\\n# Sum by channel to get adjusted overall conversion rate\\nadjusted_rates = merged.groupby('channel')['weighted_rate'].sum().reset_index()\\nadjusted_rates = adjusted_rates.rename(columns={'weighted_rate': 'adjusted_conversion_rate'})\\n\\n# Compute the difference (email - paid_search)\\ndifference = adjusted_rates[adjusted_rates['channel'] == 'email']['adjusted_conversion_rate'].values[0] - \\\\\\n            adjusted_rates[adjusted_rates['channel'] == 'paid_search']['adjusted_conversion_rate'].values[0]\\n\\n# Print results\\nprint(\\\\n\\\"\\\\nAdjusted conversion rates (weighted by segment proportions within each channel):\\\\n\\\")\\nprint(adjusted_rates)\\n\\nprint(f\\\"\\\\nDifference in conversion rates (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3112,
+  "completion_tokens": 465
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-98757a454005a5b0",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Create a logistic regression model to estimate the treatment effect, adjusting for site, severity, age, and sex\\n# Use a simple model with interaction terms not needed \u2014 just main effects\\n\\n# Prepare the data: one-hot encode categorical variables\\nX = pd.get_dummies(df[['arm', 'site', 'severity', 'sex']], drop_first=True)\\n# Add age as a continuous variable\\nX['age'] = df['age']\\n# Target\\ny = df['responded']\\n\\n# Fit logistic regression\\nfrom sklearn.linear_model import LogisticRegression\\n\\n# Use a small regularization to avoid convergence issues\\nmodel = LogisticRegression(max_iter=1000, C=10000)\\nmodel.fit(X, y)\\n\\n# Extract coefficients\\ncoef = model.coef_[0]\\nfeature_names = X.columns\\n\\n# Find the coefficient for 'arm_treatment'\\nidx = np.where(feature_names == 'arm_treatment')[0][0]\\ntreatment_effect_adj = coef[idx]\\n\\n# Compute predicted probabilities for treatment and control (average over covariates)\\n# Create a DataFrame for the average patient in each arm\\navg_X = X.mean(axis=0)\\n# Set arm to treatment (1) and control (0), others at average\\nX_treatment = avg_X.copy()\\nX_treatment['arm_treatment'] = 1\\nX_control = avg_X.copy()\\nX_control['arm_treatment'] = 0\\n\\n# Predict probabilities\\np_treatment = model.predict_proba(X_treatment.values.reshape(1, -1))[0, 1]\\np_control = model.predict_proba(X_control.values.reshape(1, -1))[0, 1]\\n\\n# Compute difference in predicted probabilities\\nadjusted_effect = p_treatment - p_control\\n\\n# Print results\\ntreatment_effect_adj, adjusted_effect, p_treatment, p_control\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4731,
+  "completion_tokens": 448
+ }
+}

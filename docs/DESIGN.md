@@ -29,8 +29,9 @@ to drop**:
 Everything else — persistent kernel, observation truncation, data briefing, step budgets, error
 fingerprinting — is table stakes and is treated as such.
 
-The whole agent is ~200 lines of Python. That is a claim about where the difficulty actually lives,
-and it is defended in [DECISIONS.md](DECISIONS.md).
+The whole agent is ~1,000 lines of Python (comments and docstrings excluded — most of the file volume
+is the reasoning behind each choice). That is a claim about where the difficulty actually lives, and
+it is defended in [DECISIONS.md](DECISIONS.md).
 
 ---
 
@@ -80,7 +81,8 @@ Their design table names the resulting failure in one line:
 library; graded by LLM judge against weighted expert rubrics, pass = 100% of outcome criteria.
 Best agent: **51.6%**.
 
-Crucially, they hand-classified **226 failing runs into a taxonomy with frequencies** (Table 3, p. 11):
+Crucially, they classified **226 failing runs into a taxonomy with frequencies** (Table 3, p. 11) —
+assigned via a decision ladder over the trajectories, not by an automated metric:
 
 | Failure mode | Share | Their definition |
 |---|---|---|
@@ -153,7 +155,7 @@ converts a silent omission into a hard stop.
                                         │
                                         ▼
                               ┌───────────────────┐
-                              │   base model      │  GLM-5.2 @ Token Factory
+                              │   base model      │  Qwen3-30B-A3B @ Token Factory
                               └─────────┬─────────┘
                                         │ tool_call
                     ┌───────────────────┼────────────────────┐
@@ -223,8 +225,13 @@ Concretely, four mechanisms keep context honest:
 
 1. **Deterministic data briefing (turn 0).** Before the model is called even once, plain Python
    computes shape, dtypes, `head(3)`, null counts, and cardinality for each file and injects it as
-   the first message. The agent never starts blind, which directly attacks DDB's *Retrieval* failures
-   (16.4% — "failing to read a provided file"). It also saves two or three turns of budget.
+   the first message. The agent never starts blind. It also saves two or three turns of budget.
+   *(I originally justified this with DDB's* Retrieval *bucket — 16.4%, "failing to read a provided
+   file." That is a stretch and I should say so before someone says it to me: both of DDB's worked
+   Retrieval examples are* wrong-source queries *— hitting RCSB instead of NAKB — not unread local
+   files. The briefing attacks a slice of that category, not the bulk of it. Its real justification
+   is the one the ablation later handed me: it is worth **−28%**, which is more than every gate in
+   this design combined.)*
 2. **Head+tail truncation** of every observation (~1,500 chars) with an instructive marker:
    `[... 187,321 chars omitted — do not print whole dataframes; assign and inspect selectively]`.
    Tail is kept because Python puts the exception on the *last* line — head-only truncation would
@@ -278,11 +285,12 @@ asking nicely for it not to happen.**
 
 It is pinned into context **every turn** and it is shown to the verifier at submit time.
 
-Why this earns its place: DDB's melanoma failure is a model that silently stopped applying the
-melanoma qualifier three steps into a ranking task. GBP's DRX1 problem is trapped precisely on the
-denominator (compute over *tested partners* and you get a plausible, wrong answer; the target is the
-*full roster*). In both cases the question itself decayed. Writing it down as structured state, and
-re-showing it, makes decay visible — to the agent, to the verifier, and to me reading the trace.
+Why this earns its place: DDB's melanoma failure is a model that, in the paper's words, *"at some
+point"* silently stopped applying the melanoma qualifier in a ranking task. And **one of the three
+decision points** in GBP's worked DRX1 problem is exactly a denominator trap (compute over *tested
+partners* and you get a plausible, wrong answer; the target is the *full roster*). In both cases the
+question itself decayed. Writing it down as structured state, and re-showing it, makes decay visible
+— to the agent, to the verifier, and to me reading the trace.
 
 The `ambiguities` field does double duty: it is how the agent handles under-specified questions
 (state the interpretation and proceed, rather than guessing silently or stalling), and it is how
@@ -402,8 +410,8 @@ report must have been printed by code you ran.** Estimating is not a permitted o
 
 The verifier is the answer to DDB's *"the last chance to catch the slip is at the final answer…
 none of the failing models caught this."* It is a single call to a **different model family**
-(agent: GLM-5.2; verifier: Qwen3.5 — cross-family, because a model asked to review its own work is
-subject to self-preference bias, Zheng et al. 2023).
+(agent: Qwen3-30B-A3B; verifier: gpt-oss-120b — cross-family, because a model asked to review its
+own work is subject to self-preference bias, Zheng et al. 2023).
 
 The critical design detail: **the verifier does not see the agent's reasoning.** It sees only the
 Question Contract, the data briefing, the executed code and its outputs, and the draft answer. Show
@@ -443,7 +451,7 @@ always carries the audit trail whether the model feels like mentioning it or not
 
 ### 3.6 The unglamorous safety rails
 
-- **Step budget** (max 12). When 3 steps remain, every observation is suffixed with
+- **Step budget** (max 20). When 3 steps remain, every observation is suffixed with
   `(3 steps remaining — converge on an answer)`, so the agent degrades like an anytime algorithm
   instead of getting guillotined mid-thought. On exhaustion it is *forced* to submit with
   `confidence="low"` and the reason in `caveats` — a partial answer with an honest caveat is worth
@@ -467,7 +475,7 @@ directly and says so.
 
 ### 4.1 The benchmark
 
-~14 tasks over two datasets. Ground truth is a pandas callable that only the grader ever invokes.
+28 tasks over three domains. Ground truth is a pandas callable that only the grader ever invokes.
 
 The datasets are the pedagogical spine of the whole series:
 
@@ -508,14 +516,19 @@ GBP defends the strictness and I agree with them:
 > "an agent that executes several intermediate steps correctly but returns the wrong decision-relevant
 > answer has not successfully automated the analysis." (p. 14)
 
-LLM-as-judge is used **only** for the two behavioural tasks that no numeric check can grade (did it
-flag the false premise? did it surface the ambiguity?), with a binary rubric, temperature 0, a
-different model family than the agent, and — following DDB, who validated their judge at κ=1.0
-against two other judges — a small agreement check against my own hand labels before I trust it.
+LLM-as-judge is used **only** for the behavioural tasks that no numeric check can grade (did it flag
+the false premise? did it surface the ambiguity?), with a binary rubric, temperature 0, and a
+different model family than the agent.
+
+**And I did not validate it.** DDB validated theirs against two other judges at κ=1.0 on 200
+responses; I read mine's calls and they looked right, which is worth exactly what it sounds like.
+5 of 28 tasks depend on it. That is the weakest link in this evaluation and I would rather say so
+than let the word "judge" imply a rigour I did not buy.
 
 ### 4.3 What gets measured
 
-Per task, **5 runs** (both papers use 3–10; agent evals are noisy and a single run proves nothing):
+Per task, **10 runs** (GBP uses 10, DDB uses 3; agent evals are noisy and a single run proves
+nothing — see D24 for the version of this I got wrong):
 
 - **pass rate** — the headline, binary, all-or-nothing.
 - **wrong-attractor rate** — *did the agent land on the known naive answer?* This is the metric I am
@@ -549,13 +562,13 @@ semantics, traps of the same species and a different animal (see D26).
 | domain | pass rate | 95% CI | |
 |---|---|---|---|
 | `penguins` | 100% | `[100%, 100%]` | clean data, no traps |
-| `trial` | 82% | `[61%, 97%]` | **designed against** |
-| `sales` | **89%** | `[74%, 99%]` | **🎯 held-out domain — never designed against** |
-| held-out *tasks* | 98% | `[93%, 100%]` | never looked at while tuning the prompt |
+| `trial` | 81% | `[61%, 97%]` | **designed against** |
+| `sales` | **90%** | `[80%, 97%]` | **🎯 held-out domain — never designed against** |
+| held-out *tasks* | 97% | `[92%, 100%]` | never looked at while tuning the prompt |
 
-**The agent does *better* on the domain it was never tuned for than on the one it was.** That is
-the single most reassuring number in this project, and it is the one I would have been most
-embarrassed to be missing.
+**The agent holds up on the domain it was never tuned for.** Which is reassuring — and which is, as
+§4.5 shows, **exactly the wrong number to be reassured by.** An aggregate is an average, and an
+average is where a failure goes to hide.
 
 #### What the evidence supports
 
@@ -564,11 +577,16 @@ unambiguous:
 
 | | pass rate | fell for the *documented* naive answer |
 |---|---|---|
-| **full agent** | **88%** | **8%** |
-| **no guardrails** | **46%** | **38%** |
+| **full agent** | **88%** | **7%** |
+| **no guardrails** | **60%** | **27%** |
 
-Nearly a **5× reduction in the wrong-attractor rate.** That is the notice–act gap, measured on my
-own agent, and it is far larger than the noise.
+A **3.8× reduction in the wrong-attractor rate**, all three domains, like for like. That is the
+notice–act gap, measured on my own agent, and it is far larger than the noise.
+
+*(Both arms are all-domain. An earlier draft of this document reported "nearly 5×" by comparing an
+all-domain `full` against a trial-only `no_guardrails` — two different denominators, which is how
+you accidentally flatter yourself. Every number in this section now comes out of
+`uv run python -m evals.report`, and if the prose and the script disagree, the script is right.)*
 
 The *shape* matters as much as the size: on **clean** data (lookup, aggregation, groupby,
 correlation) both configs score 100%. The guardrails buy nothing where there is nothing to catch,
@@ -576,62 +594,140 @@ which is exactly what a guardrail should do.
 
 #### 🚨 And now the result I did not expect
 
-**2,240 runs · 28 tasks · 3 domains · $8.01.** Each ablation is a *paired* bootstrap against the
-full agent (10,000 hierarchical resamples: tasks, then runs within tasks — GeneBench-Pro's
-protocol). **If the 95% CI crosses zero, I cannot distinguish that mechanism from doing nothing,
-and I say so in those words rather than reporting a point estimate.**
+**4,480 runs · 28 tasks · 3 domains · 20 runs per cell · $16.13 · 0 crashes.** Each ablation is a
+*paired* bootstrap against the full agent (10,000 hierarchical resamples: tasks, then runs within
+tasks — GeneBench-Pro's scheme; they use 20,000).
 
 | remove this | pass rate | Δ vs full | 95% CI | verdict |
 |---|---|---|---|---|
 | *(nothing — the full agent)* | **88%** | — | | |
-| **the deterministic data briefing** | **62%** | **−26%** | `[−40%, −13%]` | **HURTS** |
-| *every guardrail at once* | 69% | −19% | `[−31%, −8%]` | **HURTS** |
-| **the Findings Ledger** — the centrepiece | 83% | **−5%** | `[−11%, +1%]` | no detectable effect |
-| the Question Contract | 87% | −1% | `[−6%, +4%]` | no detectable effect |
-| the numeric grounding gate | 88% | −0% | `[−4%, +4%]` | no detectable effect |
-| the fresh-context verifier | 88% | −0% | `[−5%, +5%]` | no detectable effect |
-| observation truncation | 89% | +1% | `[−2%, +5%]` | no detectable effect |
+| **the deterministic data briefing** | **60%** | **−28%** | `[−41%, −16%]` | **HURTS** |
+| *every guardrail at once* | 67% | **−21%** | `[−32%, −11%]` | **HURTS** |
+| **the Findings Ledger** — the centrepiece | 82% | **−6%** | `[−12%, −1%]` | **HURTS** |
+| the fresh-context verifier | 86% | −1% | `[−6%, +3%]` | no detectable effect |
+| observation truncation | 87% | −1% | `[−4%, +2%]` | no detectable effect |
+| the numeric grounding gate | 87% | −1% | `[−4%, +3%]` | no detectable effect |
+| the Question Contract | 88% | +0% | `[−4%, +4%]` | no detectable effect |
+
+**And do not read that `95% CI` column without reading §4.4.1 first.** It is narrower than the truth,
+and I only found that out by accident.
+
+> ### ⚠️ And one more thing this table is not
+>
+> **It was measured before the confounding detector existed** (D33). I built that detector because
+> this very table told me to, watched it turn the flagship failure into a pass (`t4_simpson`
+> **8/20 → 13/20**; the demo from **−0.087** to **+0.150**), and then **ran out of API budget**
+> before I could re-run the grid with it.
+>
+> So every number here describes the shipped system **minus its newest and, on the evidence, most
+> important component.** They are a lower bound. The detector is on by default; this grid is
+> reproducible with `--no-confound`; closing the gap is one command and about $30.
+>
+> I could have shipped the old code so the table matched. This seemed better.
 
 **Removing the briefing — twenty lines of pandas — is the single largest effect in the study, and
 it is the mechanism I spent the least time on.** I built this design around *gates*. The thing
 carrying it is the *detector*.
 
-#### The eval also corrected me about my own centrepiece
+### 4.4.1 🚨 The instrument lied, and I only caught it by accident
 
-The first version of this benchmark (15 tasks × 3 runs) put the Findings Ledger at **exactly zero**,
-and I wrote in this document that *"the ablation does not show the Findings Ledger paying for
-itself."*
+Everything in the table above carries a `95% CI`, which looks like rigour. Watch what happened when I
+ran **the identical benchmark twice**, either side of a change I had already proved was inert (same
+error rate 0.27 → 0.23, same step count 11.4 → 11.6, same budget-exhaustion rate — the prompt differs
+by one path string):
 
-At 28 tasks × 10 runs it comes back at **Δ −5.0%, CI [−11.1%, +0.7%]** — the point estimate says
-five points, and it is the **only** gate whose interval sits almost entirely on the "it helps" side.
-The upper bound still grazes zero, so I cannot call it at 95%. But:
+| removing the Findings Ledger | Δ | 95% CI | verdict |
+|---|---|---|---|
+| **run A** | **−11.1%** | `[−18.6%, −4.3%]` | ***"SIGNIFICANT"*** |
+| **run B** | **−1.8%** | `[−8.9%, +4.6%]` | *"no detectable effect"* |
 
-> **"The ledger does nothing" was never a finding. It was a twenty-point-wide confidence interval,
-> reported as a point estimate.** More data did not confirm my conclusion — it *corrected* it.
+Same code. Same tasks. Same ten runs per cell. **Opposite conclusions, from 95% intervals that barely
+overlap.** Individual tasks swung 30–50 points between the two runs.
 
-That is the clearest argument in this whole project for building the harness before trusting your
-own design instincts.
+At least one of those intervals is wrong, and I have no way to tell which. **So as stated, both are
+worthless.**
+
+#### Why it lied
+
+Not a coding bug — the hierarchical bootstrap is implemented correctly (D27). It is a bug in what I
+*asked* it.
+
+With **10 runs per cell**, the bootstrap resamples with replacement *from the ten outcomes I happened
+to observe.* A cell that came back `1/10` therefore has a bootstrap distribution centred near 10% —
+and it **cannot reach the 60% the next run produced.** The empirical distribution is degenerate near
+`p=0` and `p=1`, and those are exactly where the hard tasks live.
+
+> **A bootstrap gives you the sampling variance of the data you have.** It knows nothing whatever
+> about the data you did not collect. At n=10, near the extremes, that gap is enormous — and the
+> interval it hands back is too narrow **in a way that feels rigorous.**
+
+#### Why this is the worst bug in the project
+
+`evals/stats.py` opens with a sentence I wrote myself:
+
+> *"Confidence intervals, because a point estimate is how you fool yourself."*
+
+And then I fooled myself **from inside the confidence interval** — twice, in opposite directions, and
+wrote up both as findings. D27 congratulates me for catching a point estimate masquerading as a
+result. This is the same error one level up: **a confidence interval masquerading as a result.**
+
+> An error bar is not automatically an honest number. It is honest only if the error bar is — and
+> mine was computed from too little data to know.
+>
+> The instrument you build to stop yourself believing noise **is itself an instrument**, and it also
+> has to be checked — by the only method that has ever worked here: **run it again and see if it says
+> the same thing.**
+
+#### The error bar I actually report now
+
+Doubled to **20 runs per cell** (4,480 runs, $16). And alongside every CI, the number I trust more:
+split the runs in half, compute the ablation on each, and report **the spread between the two
+halves.** That is not a *model* of the uncertainty. It *is* the uncertainty, observed.
+(`uv run python -m evals.report` prints it.)
+
+| remove this | run A | run B | **spread** | pooled Δ | |
+|---|---|---|---|---|---|
+| **the data briefing** | −31% | −25% | **6 pt** | **−28%** | ✅ **robust** |
+| every guardrail at once | −26% | −16% | 10 pt | −21% | ✅ robust |
+| **the Findings Ledger** | **−11%** | **−1%** | **10 pt** | **−6%** | ⚠️ real, but I would not defend the *size* |
+| the fresh-context verifier | −3% | −0% | 3 pt | −1% | — |
+| observation truncation | −1% | −1% | 0 pt | −1% | — |
+| the grounding gate | −2% | **+0%** | 2 pt | −1% | 🚩 **sign flips** |
+| the Question Contract | −2% | **+3%** | 4 pt | +0% | 🚩 **sign flips** |
+
+**Read the spread column, not the point estimate.** The briefing is the only mechanism in this design
+I would defend without hedging. The Findings Ledger is real — the pooled interval excludes zero — but
+a 10-point swing between two halves of the same experiment means I will not put a number on how much
+it is worth.
+
+And the two gates whose *sign flips* between halves are not weak findings. **They are not findings.**
+
+> If a verdict changes when you run the same experiment again, it was never a verdict.
+> **It was weather.**
 
 #### An oddity I will not overclaim
 
-Removing the briefing alone (**62%**) scores *worse* than removing the briefing **and every gate**
-(**69%**). Removing more made it better, which is impossible if the gates only ever help.
+Removing the briefing alone (**60%**) scores *worse* than removing the briefing **and every gate**
+(**67%**). Removing more made it better, which is impossible if the gates only ever help.
 
-The budget shows a plausible mechanism: strip the detector but keep the gates and the agent still
-has a `note_finding` tool and a blocked exit, but **nothing informative to put in them** — it logs
-what it stumbled onto, spends turns resolving it, and burns budget on ceremony (10.6 steps, 1.5
-findings). Strip the gates too and it just computes (8.6 steps), and does slightly better.
+The process metrics show a plausible mechanism. Strip the detector but keep the gates, and the agent
+still has a `note_finding` tool and a blocked exit — but **nothing informative to put in them.** It
+logs whatever it happens to stumble over, spends turns discharging it, and burns budget on ceremony
+(**11.0 steps, 1.5 findings**). Strip the gates too and it simply computes (**8.7 steps, 0.4
+findings**), and does slightly better. For reference the full agent runs 11.4 steps on 2.8 findings
+— the same ceremony, but with something real to be ceremonious about.
 
 **Gates without a detector may be worse than no gates at all.** But the paired CI is
-`[−18.2%, +3.9%]` — it crosses zero. This is a **hypothesis with a mechanism, not a finding**, and
+`[−16.8%, +5.4%]` — it crosses zero. This is a **hypothesis with a mechanism, not a finding**, and
 it is exactly the kind of story that is fun to tell and would be dishonest to assert. It is the
 first thing I would design an experiment for.
 
 #### What it means
 
-Go back to the papers. GeneBench-Pro says models *"notice the diagnostic clue but treat it as a
-local data cleaning issue rather than as evidence that should change the downstream method."* I read
-that as a failure to **act** — so I built machinery to force action.
+Go back to the papers. GeneBench-Pro observes that models *"notice the relevant local diagnostic clue
+but treat it as a local data cleaning issue rather than as evidence that should change the downstream
+statistical method and QC pipeline."* I read that as a failure to **act** — so I built machinery to
+force action.
 
 The ablation says the leverage is on the **notice** side.
 
@@ -643,22 +739,54 @@ did not need to be forced. It needed to be **informed**.
 >
 > The gates were not wrong. They were **redundant** — the detector in front of them was already
 > doing the job. Remove the detector and the gates have nothing to gate, which is precisely why
-> `no_briefing` collapses to the same score as `no_guardrails`.
+> `no_briefing` collapses to roughly the same score as `no_guardrails`.
+
+#### ⚠️ The obvious objection, which I want to raise before you do
+
+**GeneBench-Pro says the opposite of what I just said.** They are explicit that *frontier* models
+*consistently notice* the data issues, and that the headroom lies *"less in noticing … than in
+turning those observations into concrete corrective decisions"* (p. 3, p. 13). If noticing is the
+solved half for them, how can the detector be the whole story for me?
+
+Because **we are not talking about the same model.** GBP's subjects are GPT-5.6-class frontier
+systems. My agent is **Qwen3-30B-A3B** — a 30B open model chosen precisely *because* it is weak
+(§6). For a frontier model, `df.describe()` and the sentinel is spotted. For a 30B model at a
+$0.10/1M price point, **noticing is genuinely not reliable**, and the deterministic profiler is
+substituting for a capability the base model does not have.
+
+So this is not a contradiction of GBP. It is a **boundary condition on their finding**, and it
+sharpens rather than challenges it:
+
+> **The notice–act gap is a frontier-model problem. The notice gap is a small-model problem.**
+> Which half of the scaffolding earns its keep depends on which half of the job your base model
+> already does for free — and that means "what should I build on top of the base model?" has no
+> model-independent answer.
+>
+> Which is, incidentally, an argument for owning an eval harness rather than a list of best
+> practices: the right answer changes when you change the model, and only the harness will tell you.
+
+The falsifiable version of that claim is one command away — re-run this exact ablation grid on
+GLM-5.2 and the briefing's −28% should *shrink*. I have not run it (§6). If it does not shrink, I am
+wrong about the mechanism, and I would want to know.
 
 This also explains the ambiguity failure (§4.5) exactly: there is **no detector for ambiguity**, so
 there is nothing to feed the gate, so the gate does nothing.
 
 #### The honest caveats on that finding
 
-1. **n is small.** 3 runs × 15 tasks; one task flipping is a 7-point swing. The `−27` for the
-   briefing is far outside the noise. The `0`s for the individual gates are **not** — a real effect
-   of 3–5 points would be invisible here. **"No measurable benefit" is not "no benefit."**
-2. **The gates may be insurance rather than throughput.** A grounding check that fires on 4% of runs
-   cannot move a 45-run pass rate — but the failure it prevents (a fabricated number in a filing) is
-   not one you price by frequency. The right test for a gate is adversarial, not average.
-3. **Detector and gate overlap by construction.** `no_briefing` also removes the pre-seeded
-   findings, because seeding *is* detection. They are not cleanly separable in this design — which
-   is itself the point.
+1. **"No measurable benefit" is not "no benefit."** The `−28%` for the briefing is far outside the
+   noise. The `≈0`s for the individual gates are **not**: with 28 tasks the intervals are ±5–9
+   points, so a real effect of three points would be invisible here.
+2. **The gates may be insurance rather than throughput.** A grounding check that fires on a handful
+   of runs cannot move a 280-run pass rate — but the failure it prevents (a fabricated number in a
+   filing) is not one you price by frequency. The right test for a gate is adversarial, not average.
+3. **The detector and the gate are not separable in this grid, and that is a flaw.**
+   `agent.py` seeds the ledger `if cfg.use_ledger and cfg.use_briefing:` — so `no_ledger` removes
+   the blocking gate **and every pre-seeded finding.** The `−2%` I report for the Findings Ledger is
+   really "gate + seeded findings", and **no configuration in this grid pulls the two apart.** The
+   clean experiment is a ninth config — briefing on, ledger on, *seeding off* — which is one flag and
+   about a dollar. I have not run it. It is the single cheapest thing anyone could do to improve this
+   evaluation, and I would rather point at it than quietly let the ambiguity stand.
 
 But the deal in this document was: *if an ablation shows a mechanism does not pay for itself, it
 gets cut.* So, kept honestly: **on this benchmark, at this sample size, the Findings Ledger, the
@@ -667,52 +795,146 @@ deterministic briefing does, enormously.**
 
 If I could ship one mechanism, it would be the one I spent the least time on.
 
-To resolve the rest I would need GeneBench-Pro's protocol: **10 runs per task**, roughly triple the
-tasks, bootstrap CIs. That — not another guardrail — is the next thing I would spend money on.
+### 4.5 The failure that matters — and why an average hid it
 
-### 4.5 The two failures I did not fix — and the boundary they reveal
+Go back to §4.4's domain table: `sales` scores **90%** — *better* than the domain the guardrails were
+designed against. That was the number I wanted, and for about a day it was the number I quoted.
 
-**`trap:units`** (batch B reports in µg/L, 10× too large) sits at **33% even at full strength**. The
-fix is spelled out in `data_dictionary.md`, which is *in the context*. The agent still pools the
-batches.
+Now read the same runs per task.
 
-**`ambiguous`** ("Did the biomarker improve?") is at **0/3**, and this one is more interesting,
-because I built a mechanism specifically for it: a **required** `question_is_precise` boolean, so
-the agent cannot skip the judgement. It now fills the field in — and answers **`True`**. It sincerely
-believes the question is precise.
+| | full agent | landed on the *documented naive* answer |
+|---|---|---|
+| `t4_simpson` — Simpson's paradox, **medical** (designed against) | 50% | 50% |
+| **`s4_simpson_sales`** — Simpson's paradox, **held-out domain** | **45%** | **40%** |
+| `b3_ambiguous` — *"Did the biomarker improve?"* | **0%** | — |
 
-The mechanism worked. The judgement was wrong. And that gives the sharpest result in the project:
+**On the confounded comparison — the failure both supplied papers were written about — the agent is
+a coin flip.** And when it fails it lands *exactly* on the confounded answer. Twenty-two easy tasks
+carry the 90%.
 
-> ## A gate is only as good as the detector feeding it.
+*(`s4` is also the task that read **1/10** on one run of n=10 and **6/10** on the next. The truth,
+at n=20, is **9/20**. Every strong sentence I wrote about this task from a single run — in both
+directions — was noise. See §4.4.1, and note that I am only able to say this because I ran it
+twice.)*
+
+*(For contrast, and to show the guardrails are not decoration: `trap:units` — assay batch B reporting
+10× too large — goes from **0/10 without the guardrails to 10/10 with them**. That is the largest
+single-task swing in the study. The detector sees the batch, seeds the finding, and the gate will not
+let the agent submit until it has been discharged. The machinery works **exactly as designed —
+wherever a detector feeds it.**)*
+
+> An aggregate is an average, and **an average is where a failure goes to hide.** If you take one
+> methodological point from this document, take that one — it is worth more than any gate in §3.
+
+#### So I tried to fix it with the prompt, and it did not move
+
+The obvious suspect was rule 4 of the system prompt — the one piece of domain knowledge I allow the
+agent. It was phrased in the language of a clinical trial:
+
+> *"If the groups were **not randomly assigned**, a raw comparison between them is not a **treatment
+> effect**…"*
+
+Nothing in an e-commerce table is "randomly assigned" and there is no "treatment," so the reflex had
+nothing to attach to. Plausible. Testable. I rewrote it in fully domain-neutral terms — *"this
+applies to EVERY grouped comparison: arm vs arm, channel vs channel, segment vs segment"* — and
+re-ran the benchmark.
+
+**It bought nothing measurable.** (D29 keeps the receipt; and note that the *first* time I checked
+this I read the difference off a single n=10 run and concluded far too confidently in both
+directions — which is D31 in miniature.) I kept the new wording, because it is the more honest rule,
+but it is not what closes this gap.
+
+Which is a negative result, and the most useful one in the project, because it forecloses the cheap
+explanation and leaves only the expensive one:
+
+> ## You cannot close the *notice* gap with better advice.
 >
-> The Findings Ledger works spectacularly on duplicates (**100% vs 17%**) because a twenty-line
-> script *detects* duplicates and hands the agent an obligation it cannot walk past.
+> The Findings Ledger works on sentinels and duplicates (**90–100%**) because a twenty-line profiler
+> **detects** them and hands the agent an obligation it cannot walk past.
 >
-> The same gate does nothing for ambiguity — because **there is no detector for ambiguity.** Nothing
-> supplies the observation, so the gate has nothing to gate.
+> There is **no detector for confounding.** Nothing computes *"are these groups imbalanced on some
+> third variable?"* So nothing is seeded, so the gate has nothing to gate, so the agent never
+> notices — and **rewording the instruction does not manufacture an observation.**
 >
-> These are one limitation wearing two hats. A structural gate can force an observation to **reach**
-> a decision. It cannot **create an observation that was never made.**
+> A structural gate can force an observation to **reach** a decision. It cannot **create an
+> observation that was never made.**
 
-That is the honest boundary of this whole approach, and it says exactly what to build next: not a
-better gate — **a better detector.** (Units: flag any column whose distribution is multi-modal *by
-batch*. Ambiguity: check whether the question pins down a population, a direction, and a unit —
-three cheap `if`s.)
+#### The ambiguity pair, which says the same thing more precisely
 
-### 4.5 Known limits of this evaluation
+I have two under-specified questions, and they behave completely differently — which is more
+informative than either alone:
+
+| | | full |
+|---|---|---|
+| `s13_ambiguous` | *"Was the campaign successful?"* — successful by **which measure**? | **90%** |
+| `b3_ambiguous` | *"Did the biomarker improve?"* — and for a biomarker, **lower is better** | **0%** |
+
+The `question_is_precise` boolean is a *required* field, so the model cannot skip the judgement. On
+`s13` it works: the ambiguity is right on the surface (revenue? conversion? per-customer?), the model
+sees it, declares the question imprecise, and states its reading.
+
+On `b3` it fills the field in and answers **`True`**. It sincerely believes *"did the biomarker
+improve?"* is a precise question — because the thing that makes it imprecise is not in the question
+at all. It is **in the semantics of the column**: for this assay, a *fall* is an improvement. Nothing
+in the data profile says so, and the model does not know it.
+
+> So it is not that there is "no detector for ambiguity." **`s13` proves the gate works when the
+> ambiguity is visible.** `b3` fails because the ambiguity is invisible *from the data* — it lives in
+> domain knowledge the profiler cannot compute and the model does not have.
+>
+> Which is the same lesson one level down: **the gate is fine. The observation never arrived.**
+
+That is the honest boundary of this whole approach, and it says exactly what to build next — not a
+better gate, and not a better prompt:
+
+| detector to build | ~lines | what it would seed as an open obligation |
+|---|---|---|
+| **confounding** — cross-tab every candidate grouping column against every other; flag imbalance | ~20 | *"`channel` is imbalanced on `customer_segment` (χ² = …). A raw channel comparison is not a channel effect."* |
+| **ambiguity (surface)** — does the question pin down a population, a measure, and a direction? | 3 `if`s | *"the question does not name a measure."* |
+
+Each is the same twenty lines of deterministic pandas already worth **−28%** everywhere else in this
+table. **The detector is the cheapest thing in this design, and it is the only thing that moves the
+number.**
+
+#### And one failure I would not try to fix in the agent at all
+
+`b3_ambiguous` is 0%, and no detector will save it. The fact that makes *"did the biomarker improve?"*
+ambiguous — **that a fall in this assay is an improvement** — is not in the data, not in the column
+names, not in the question, and **not in `data_dictionary.md` either.** I checked. It exists nowhere
+in anything the agent is given.
+
+> **That is not an agent failure. It is a documentation failure**, and the correct fix is one line in
+> the data dictionary, not one more gate in the agent.
+>
+> Worth saying out loud, because the reflex in a project like this is to attribute every red cell to
+> the model. Some of them are yours. An agent cannot notice what nobody wrote down — and if your
+> answer to that is a cleverer agent, you have misdiagnosed the bug.
+
+### 4.6 Known limits of this evaluation
 
 Stated plainly, because the papers are scrupulous about theirs and being caught hiding one is worse
 than having one:
 
-- **n = 14 tasks.** Small. One task flipping is a 7-point swing. Findings are directional, not
-  precise; I report ranges, not just means.
-- **I built the traps, so I know them.** There is an overfitting risk in tuning the system prompt
-  against my own benchmark. Mitigation: 3 tasks are held out and never looked at during development.
-- **One synthetic dataset** is not the real world. It is, however, a dataset whose ground truth I can
-  actually compute — which the real world rarely offers, and which is exactly why GeneBench-Pro
-  simulates too.
-- **The judge is only validated on 5 hand-labelled examples.** That is enough to catch a broken
-  judge, not enough to certify a good one.
+- **The judge is not validated at all.** 5 of 28 tasks are graded by an LLM (the behavioural ones no
+  arithmetic can settle). DDB validated theirs against two other judges at κ=1.0 on 200 responses. I
+  read mine's calls and they looked right, which is worth precisely what it sounds like. This is the
+  weakest link in the evaluation, and it is why the judge decides five tasks and not one more —
+  everything else is `math.isclose`.
+- **The ablation grid cannot separate the ledger from the seeding it feeds** (§4.4, caveat 3). One
+  extra config would fix it. I did not run it.
+- **"4,480 runs" is not 4,480 independent trajectories.** The cache key omits the config name, so an
+  ablation that does not change the prompt until a gate *fires* replays the full agent's cached
+  trajectory at the same nonce. This is common-random-numbers pairing — it makes the paired CIs
+  *more* precise, not biased — but the headline count overstates independent work, and cross-config
+  **cost** comparisons are meaningless.
+- **The central thesis is a bet, not a result.** *"Scaffolding beats model size"* is why this runs on
+  a model 14× cheaper than the best one available (§6). I never ran the big model with no
+  scaffolding, so I have not shown it. One command, ~$15.
+- **I built the traps, so I know them.** The mitigation is the held-out domain — which **caught me
+  twice** (D28, D29), which is the only evidence I have that the mitigation works.
+- **Synthetic data is not the real world.** It is, however, data whose ground truth I can actually
+  compute — which the real world rarely offers, and which is exactly why GeneBench-Pro simulates too.
+- **Ablations are single-mechanism.** No interactions tested.
 
 ---
 
@@ -722,7 +944,7 @@ Restraint is only credible if it comes with a trigger.
 
 | Not built | Why not | I'd build it when |
 |---|---|---|
-| Multi-agent (planner / coder / critic) | The state that matters lives in one kernel namespace. Every handoff forces it through the lossy channel of natural language — the exact channel this design works to minimize. Both papers evaluate single agents; DDB gets 51.6% with one. | The task genuinely decomposes into independent subproblems with narrow interfaces (DDB's own future-work suggestion: route structure / retrieval / cheminformatics to different stacks). |
+| Multi-agent (planner / coder / critic) | The state that matters lives in one kernel namespace. Every handoff forces it through the lossy channel of natural language — the exact channel this design works to minimize. Both papers evaluate single agents; DDB gets 51.6% with one. | The task genuinely decomposes into independent subproblems with narrow interfaces (DDB's own future-work suggestion: route *"structural reasoning, database retrieval, patent mining, target genetics, and verification subproblems"* to different stacks). |
 | A framework (LangChain etc.) | It would hide precisely the parts I'm being asked to show judgment on: context assembly, truncation, error recovery. And with an OpenAI-compatible endpoint, there is exactly one integration to write. | Dozens of tool integrations, or a team that needs shared conventions more than it needs transparency. |
 | RAG / vector store | The agent's problem is not retrieval of documents. It is reasoning over a file it already has. | Domain knowledge that isn't in the weights and can't fit in a prompt — e.g. an internal assay-methods wiki. |
 | Real sandbox (container / microVM) | Out of scope for a prototype; the tool contract is designed so it swaps in behind the same seam. | Before a single line of untrusted input. Non-negotiable in production. |
@@ -733,26 +955,43 @@ is also the thing that tells you what to build next.**
 
 ---
 
-## 6. Model choice, and why it's a measured decision
+## 6. Model choice — and why I deliberately did *not* pick the best one
 
 Token Factory hosts, among others, GLM-5.2, Kimi-K2.7-Code, DeepSeek-V4-Pro and MiniMax-M3 — which
-happens to be almost exactly DrugDiscoveryBench's open-model leaderboard:
+happens to be almost exactly DrugDiscoveryBench's open-model results (Figure 7, p.22):
 
 | Model | DDB pass rate | On Token Factory |
 |---|---|---|
-| GLM 5.2 | 37.8% | ✅ |
+| **GLM 5.2** | **37.8%** | ✅ |
 | Kimi K2.7 Code | 35.3% | ✅ |
 | DeepSeek V4 Pro | 31.7% | ✅ |
+| Qwen 3.7 Max | 29.3% | ✅ |
 | MiniMax M3 | 23.2% | ✅ |
 
-So the model choice does not have to be a vibe. **Agent: `zai-org/GLM-5.2`** — the best-performing
-open model on a published agentic-science benchmark, among those available on the platform I'm using.
-**Verifier/judge: `Qwen/Qwen3.5-397B-A17B`** — deliberately a different family, to avoid
-self-preference bias in review.
+So the choice does not have to be a vibe. On the evidence, the pick is **GLM-5.2**.
 
-I verified all six candidates handle the two-round tool-calling loop correctly before choosing
-(`notebooks/00_setup.ipynb`); none of them fumbled the protocol, so the choice rests on the benchmark
-and on cost, not on plumbing.
+**I did not pick GLM-5.2.**
+
+**Agent: `Qwen/Qwen3-30B-A3B-Instruct-2507`** — a model **14× cheaper** and several rungs down the
+ladder. **Verifier/judge: `openai/gpt-oss-120b`** — a different family from the agent, to avoid
+self-preference bias in review (D11).
+
+Here is why, and it is the whole argument of this document in one move.
+
+The thesis is that **reliability comes from the scaffolding, not from a bigger base model.** If I
+run that thesis on the strongest model available, I can never test it — every success is
+attributable to the model, and the design proves nothing. **Handicapping the base model is what
+turns the claim into an experiment.** It is also what makes a 2,240-run ablation study cost $8
+instead of $110.
+
+> The cheapest demonstration and the most rigorous one are, here, the same demonstration.
+
+**What this does not yet show.** That a small model *with* the scaffolding beats a big model
+*without* it. That is the direct test, and **I have not run it** — it is one command
+(`--config no_guardrails --model zai-org/GLM-5.2`) and about $15. It is the first thing I would
+spend the next budget on, and until I do, the sentence above is a design bet with supporting
+evidence, not a demonstrated fact. I would rather label it that way than let a code comment imply
+otherwise. (It did, for a while. See D18.)
 
 ---
 

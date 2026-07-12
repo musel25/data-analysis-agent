@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-abe98e6f1e8d3fc6",
+    "function": {
+     "arguments": "{\"code\": \"from scipy.stats import binom_test\\n\\n# After deduplication, compute response rate in each arm\\n# We are only analyzing `responded`, so no need to correct biomarker_final\\n\\n# Compute proportions\\nn_control = len(df_dedup[df_dedup['arm'] == 'control'])\\nn_treatment = len(df_dedup[df_dedup['arm'] == 'treatment'])\\n\\nresponded_control = df_dedup[df_dedup['arm'] == 'control']['responded'].sum()\\nresponded_treatment = df_dedup[df_dedup['arm'] == 'treatment']['responded'].sum()\\n\\nprop_control = responded_control / n_control\\nprop_treatment = responded_treatment / n_treatment\\n\\ntreatment_effect = prop_treatment - prop_control\\n\\n# Print results\\nprint(f'Control: {responded_control}/{n_control} = {prop_control:.4f}')\\nprint(f'Treatment: {responded_treatment}/{n_treatment} = {prop_treatment:.4f}')\\nprint(f'Treatment effect (treatment - control): {treatment_effect:.4f}')\\n\\n# Also compute 95% confidence interval for the difference\\nfrom statsmodels.stats.proportion import proportion_confint\\n\\nci_control = proportion_confint(responded_control, n_control, alpha=0.05, method='wilson')\\n# ci_treatment = proportion_confint(responded_treatment, n_treatment, alpha=0.05, method='wilson')\\n# But for difference, we use the method below\\n\\n# Use normal approximation for difference in proportions\\nse_diff = ((prop_treatment * (1 - prop_treatment) / n_treatment) +\\n           (prop_control * (1 - prop_control) / n_control)) ** 0.5\\n\\nz = 1.96  # 95% CI\\nlower_ci = treatment_effect - z * se_diff\\nupper_ci = treatment_effect + z * se_diff\\n\\nprint(f'95% CI for difference: [{lower_ci:.4f}, {upper_ci:.4f}]')\\n\\n# Test for significance\\np_value = binom_test(responded_treatment, n_treatment, prop_control, alternative='greater')\\nprint(f'One-sided p-value (treatment > control): {p_value:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5115,
+  "completion_tokens": 537
+ }
+}

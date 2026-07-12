@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9978e128c25941a9",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders\\nqa_mask = df['revenue'] == 999999.99\\n\\n# Filter out QA orders and refunded orders\\nfiltered_df = df[~qa_mask & (df['status'] == 'completed')]\\n\\n# Now, compute average revenue per converted order: only among orders where converted == 1\\n# Group by channel and compute mean revenue only for converted orders\\navg_revenue_converted_only = filtered_df[filtered_df['converted'] == 1].groupby('channel')['revenue'].mean()\\n\\n# Also compute conversion rate (converted = 1)\\nconversion_rate_by_channel = filtered_df.groupby('channel')['converted'].mean()\\n\\n# Compute number of converted orders per channel\\nnum_converted_by_channel = filtered_df[filtered_df['converted'] == 1].groupby('channel').size()\\n\\n# Print results\\nprint(\\\"Average revenue per converted order (only among converted orders):\\\")\\nprint(avg_revenue_converted_only)\\nprint(\\\"\\\\nNumber of converted orders per channel:\\\")\\nprint(num_converted_by_channel)\\nprint(\\\"\\\\nConversion rate by channel:\\\")\\nprint(conversion_rate_by_channel)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6578,
+  "completion_tokens": 333
+ }
+}

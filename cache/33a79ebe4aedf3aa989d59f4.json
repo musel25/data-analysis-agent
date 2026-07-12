@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8eeda70c80ebaf6e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the standardisation with explicit printing of the severity distribution\\n\\n# After deduplication, we have df_dedup\\n# Compute overall severity distribution\\nseverity_pop = df_dedup['severity'].value_counts(normalize=True)\\n\\nprint('Severity distribution in overall population:')\\nprint(severity_pop)\\n\\n# Now compute weighted response rates\\nweighted_response_treatment = 0\\nweighted_response_control = 0\\n\\nfor severity in severity_pop.index:\\n    # Get response rates for this severity and arm\\n    row_t = response_by_severity_arm.loc[(severity, 'treatment')]\\n    row_c = response_by_severity_arm.loc[(severity, 'control')]\\n    \\n    w = severity_pop[severity]  # weight\\n    weighted_response_treatment += row_t['prop'] * w\\n    weighted_response_control += row_c['prop'] * w\\n\\nprint(f'\\\\nWeighted response rate (treatment): {weighted_response_treatment:.4f}')\\nprint(f'Weighted response rate (control): {weighted_response_control:.4f}')\\nprint(f'Treatment effect (difference in proportions): {weighted_response_treatment - weighted_response_control:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6753,
+  "completion_tokens": 283
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be41c4238eae4f52",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep highest sample_seq per patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Filter to treatment arm\\ndf_treatment = df_dedup[df_dedup['arm'] == 'treatment']\\n\\n# Compute response rate by sex, unadjusted\\nresponse_rate_f = df_treatment[df_treatment['sex'] == 'F']['responded'].mean()\\nresponse_rate_m = df_treatment[df_treatment['sex'] == 'M']['responded'].mean()\\n\\n# Compute unadjusted difference\\ndiff_unadj = response_rate_f - response_rate_m\\n\\n# Compute response rate by sex and severity (stratified)\\nresponse_by_sex_severity = df_treatment.groupby(['sex', 'severity'])['responded'].mean().reset_index()\\n\\n# Compute adjusted difference (using stratified average)\\n# Weight by severity distribution in the treatment arm\\nseverity_dist = df_treatment['severity'].value_counts(normalize=True)\\n\\n# Adjusted response rate for each sex\\nadjusted_f = (response_by_sex_severity.loc[response_by_sex_severity['sex'] == 'F'].set_index('severity')['responded'] * severity_dist).sum()\\nadjusted_m = (response_by_sex_severity.loc[response_by_sex_severity['sex'] == 'M'].set_index('severity')['responded'] * severity_dist).sum()\\n\\n# Adjusted difference\\ndiff_adj = adjusted_f - adjusted_m\\n\\n# Print results\\nprint(f'Unadjusted response rate (F): {response_rate_f:.4f}')\\nprint(f'Unadjusted response rate (M): {response_rate_m:.4f}')\\nprint(f'Unadjusted difference: {diff_unadj:.4f}')\\nprint(f'Adjusted response rate (F): {adjusted_f:.4f}')\\nprint(f'Adjusted response rate (M): {adjusted_m:.4f}')\\nprint(f'Adjusted difference: {diff_adj:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5256,
+  "completion_tokens": 476
+ }
+}

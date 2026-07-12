@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ba7ba0b43e55ba8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Check for QA orders (revenue = 999999.99) \u2014 these are invalid\\nqa_orders = sales[sales['revenue_clean'] == 999999.99]\\nprint(f\\\"Number of QA orders: {len(qa_orders)}\\\")\\n\\n# Confirm they are not in the `customer_age` column\\nprint(f\\\"QA orders have valid age? {qa_orders['customer_age'].isna().sum() == len(qa_orders)}\\\")\\n\\n# Since the question is about mean age of customers who converted, and not revenue, \\n# we can ignore QA orders for this analysis. But we must ensure that `customer_age` is cleaned.\\n\\n# Replace -1 in customer_age with NaN (missing)\\nsales['customer_age_clean'] = sales['customer_age'].where(sales['customer_age'] != -1, other=pd.NA)\\n\\n# Now compute the mean age of customers who converted\\nconverted_customers = sales[sales['converted'] == 1]\\nmean_age_converted = converted_customers['customer_age_clean'].mean()\\n\\nprint(f\\\"Mean age of customers who converted: {mean_age_converted}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4771,
+  "completion_tokens": 338
+ }
+}

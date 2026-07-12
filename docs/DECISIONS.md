@@ -17,7 +17,8 @@ DrugDiscoveryBench (Akyürek, Tu et al., Scale AI & Phylo, 2026).
 works. A framework hides exactly those parts — context assembly, truncation, error recovery, the exit
 condition — behind decisions someone else made. With an OpenAI-compatible endpoint there is precisely
 one integration to write, so a framework buys nothing here and costs transparency. The whole agent is
-~200 lines; that is itself a claim, and it's checkable.
+~1,000 lines of code (comments and docstrings excluded — most of the file volume is the reasoning
+behind each choice); that is itself a claim, and it's checkable.
 **Revisit when:** dozens of tool integrations are needed, or a team needs shared conventions more than
 it needs to see the machinery. Then adopt one *with clear eyes*, having built the thing it abstracts.
 
@@ -34,8 +35,8 @@ guards* fix.
 The one genuine benefit of another agent — an opinion not anchored on the first agent's reasoning —
 is purchased for a single API call by the fresh-context verifier (D11).
 **Revisit when:** the task decomposes into genuinely independent subproblems with narrow interfaces.
-DDB's own future work suggests exactly this shape: route structural reasoning, database retrieval and
-cheminformatics to different model-tool stacks.
+DDB's own future work suggests exactly this shape: route *"structural reasoning, database retrieval,
+patent mining, target genetics, and verification subproblems"* to different model-tool stacks.
 
 ### D03 — Jupyter, not marimo
 **Considered:** marimo (reactive, pure-`.py`, no hidden state, ships as an app).
@@ -156,10 +157,11 @@ to the wrong population or scale."
 **Chose:** a pydantic contract the agent must fill before analysing, pinned into context every turn,
 and shown to the verifier at the end.
 **Why:** Advice in a system prompt decays over a long trajectory — which is precisely the failure DDB
-documents (a qualifier silently stops being applied three steps in). Structured state does not decay:
-it is re-rendered every turn from a variable, not remembered from a paragraph. The `population` field
-gets its own line because GBP's worked DRX1 example is trapped *exactly* on the denominator — compute
-over the tested subset and you get a plausible, wrong number.
+documents (a qualifier, in their words, *"at some point"* silently stops being applied). Structured
+state does not decay: it is re-rendered every turn from a variable, not remembered from a paragraph.
+The `population` field gets its own line because **one of the three decision points** in GBP's worked
+DRX1 example is a denominator trap — compute over the tested subset and you get a plausible, wrong
+number.
 **Revisit when:** it proves to be dead weight — if the ablation shows no benefit, it gets cut. That is
 the deal for every mechanism here.
 
@@ -301,8 +303,12 @@ artifact.
 correctly but returns the wrong decision-relevant answer has not successfully automated the
 analysis."* Partial credit measures effort; binary measures usefulness. A judge is reserved for the
 two behavioural tasks where no arithmetic can decide (did it flag the false premise? did it surface
-the ambiguity?) — binary rubric, temperature 0, different model family, and validated against my own
-hand labels first, because an unvalidated judge is a random number generator with good manners.
+the ambiguity?) — binary rubric, temperature 0, different model family from the agent.
+**The honest gap:** DDB validated their judge against two others at κ=1.0 on 200 responses. **I did
+not validate mine.** I read its calls on the behavioural tasks and they looked right, and that is
+worth exactly as much as it sounds. Five of 28 tasks rest on an unvalidated judge, and an unvalidated
+judge is a random number generator with good manners. Everything else is `math.isclose`, which is why
+I kept the judge's blast radius that small.
 **Accepted cost:** binary grading throws away stage-level diagnostic signal — GBP concedes this too.
 The trace log (D16) is where that signal is recovered.
 
@@ -360,10 +366,11 @@ before it — so notebooks 01–04 could no longer replay at all until they were
 of these bugs were invisible from reading the code and obvious the moment I ran the exact thing the
 README told a stranger to run.
 
-### D16 — Log every step as JSONL; run each task 5×
+### D16 — Log every step as JSONL; run each task 10×
 **Why:** Agent evals are noisy — GBP runs 10 attempts and bootstraps CIs; DDB runs 3 trials. A single
-run is an anecdote. 5× is the honest floor at this scale, and pass@5 vs 5-of-5 tells you *which* tasks
-are unstable (they turn out to be exactly the ambiguous and dirty ones, which is reassuring).
+run is an anecdote. I started at 3× and it was not enough to tell "no effect" from "cannot tell"
+(D27); 10× matches GBP and costs $8. Per-task consistency then tells you *which* tasks are unstable
+(they turn out to be exactly the ambiguous and dirty ones, which is reassuring).
 The JSONL trace is what turns a failure from "it got it wrong" into "at step 4 it noticed the
 sentinels and at step 6 it computed the mean anyway" — which is the only kind of failure report you
 can act on.
@@ -394,9 +401,10 @@ I only noticed because writing a new domain forced me to enumerate what the dete
 cover. A benchmark built from one dataset tests the mechanisms that dataset happens to provoke.
 
 ### D27 — Bootstrap CIs, and a *paired* test for the ablations
-**Chose:** hierarchical bootstrap (resample tasks, then runs within tasks — GeneBench-Pro's
-protocol, 10k resamples), and for each ablation a **paired** bootstrap of the difference against
-the full agent.
+**Chose:** hierarchical bootstrap — GeneBench-Pro's *scheme* (*"resampling problems and repeated runs
+within each sampled problem"*; they use 20,000 resamples, I use 10,000) — and, for each ablation, a
+**paired** bootstrap of the difference against the full agent. The pairing is mine, not theirs: GBP
+has no ablations and describes no paired test.
 **Why hierarchical:** the runs are not independent. Ten runs of an easy task are not ten
 independent successes, and tasks differ enormously in difficulty. Resampling individual runs would
 give a CI far too tight and I would believe it.
@@ -409,24 +417,443 @@ twenty points wide. The honest statement was never *"it does nothing"* — it wa
 tell."** A point estimate is how you fool yourself; the CI is what stops you.
 
 ### D17 — Classify failures using DrugDiscoveryBench's taxonomy
-**Chose:** hand-label every failing run as domain-reasoning / derivation / retrieval / constraint /
+**Chose:** label failing runs as domain-reasoning / derivation / retrieval / constraint /
 final-answer-slip.
 **Why:** Inventing my own taxonomy would make my failure profile incomparable to the literature.
 Reusing theirs means I can say "my agent's failures are 40% domain reasoning versus their 54%" — a
 sentence that means something. Standing on a published taxonomy is cheaper *and* more credible than
 inventing one.
+**Honest scope:** this is a manual read of the traces, not a validated coding scheme with a second
+rater. It orients; it does not certify.
+
+### D28 — I leaked two benchmark answers into my own system prompt
+**The third bug I shipped, and the one that would have been most embarrassing to have found for me.**
+
+Rule 5 of the system prompt used to read:
+
+> *Questions smuggle in assumptions: `"which of the FOUR sites..."`, `"WHY do women respond better?"`
+> … If a premise turns out to be false — **there are only three sites; women do not in fact respond
+> better** — then the correct answer is to SAY SO.*
+
+Those are, verbatim, two of the questions in `evals/tasks.py`. **And the sentence after them gives
+the answers.** The same two examples were also sitting in the `premises` field description of the
+`set_contract` tool schema (which ships to the model on every call) and in the verifier's rubric.
+Three separate channels.
+
+Those two tasks scored **100%** and **90%**. Naturally.
+
+**What makes this worth writing down** is that my leakage guard *passed the whole time*.
+`test_leak` checks that no **numeric** ground truth appears in a prompt — and it is correct, and it
+still holds. But the ground truth of a *behavioural* task is not a number. It is the sentence "the
+premise is false, and here is which one." My guard was pointed at the wrong channel.
+
+> **A leak guard only guards the channel you pointed it at.** Passing it is evidence about that
+> channel and about nothing else.
+
+**The control I got lucky enough to already have:** `s9_false_premise` is the same mechanism in the
+held-out sales domain, and was never named anywhere. It passed 10/10. So the mechanism does work — I
+just could not have *proved* it with the two tasks I was pointing at.
+
+#### The fix that made things worse — and the actual lesson
+
+**First attempt.** I stripped the two examples out and replaced them with the abstract *shape* of a
+false premise: *"a count, a direction, an existence claim."* No dataset, no column, no benchmark
+question. Contamination gone. Then I re-ran the ablation:
+
+| | contaminated prompt | abstract prompt |
+|---|---|---|
+| `b1_false_premise_sites` (leaked) | 10/10 | 9/10 |
+| `b2_false_premise_sex` (leaked) | 9/10 | 8/10 |
+| **`s9_false_premise`** (**clean control**) | **10/10** | **5/10** ← 🚨 |
+
+Removing the leak barely moved the tasks that were *leaked*. It **halved the one that wasn't.**
+
+Which tells you what those examples were actually doing. They were leaking two answers — and they
+were also *teaching the reflex*, concretely, to every other task. Trading them for an abstract
+description kept the honesty and threw away the instruction.
+
+> **Concrete examples teach. Abstract descriptions of examples do not.**
+> The bug was never "examples in the prompt." The bug was **examples drawn from my own benchmark.**
+
+**Second attempt, and the one that shipped.** Concrete examples again — vivid, specific, quoted —
+about *warehouses, work shifts and sensor revisions*: nouns that appear nowhere in `trial.csv`,
+nowhere in `sales.csv`, and in none of the 28 questions. Asserted, not assumed: a check in the test
+suite greps every 4-gram of every benchmark question against the full prompt and tool schema.
+
+`s9` came back. The prompt still teaches; it no longer cheats.
+
+**Then re-running the entire ablation from scratch**, because a prompt change invalidates every
+cached response, and half-old numbers are worse than no numbers.
+
+**The general form**, which is the part worth carrying to the next project:
+
+> Prompt examples are training data. If you draw them from your benchmark, you have trained on your
+> test set — and you will not feel it happen, because the prompt reads like *advice*.
+>
+> And you cannot fix it by making the advice vaguer. You fix it by drawing the examples from
+> somewhere your benchmark cannot see.
+
+### D29 — The prompt overfit to my benchmark *without naming anything in it*
+**And this one you cannot catch by reading the prompt.**
+
+Rule 4 — the single piece of domain knowledge I allow the agent — used to say:
+
+> *If the groups were **not randomly assigned**, a raw comparison between them is not a **treatment
+> effect** — it is a comparison of two different populations.*
+
+I defended this in a code comment: it names no column, no dataset, no Simpson's paradox, just "a
+general principle of causal inference." That was true, and it was beside the point. The rule is
+written in the **language of a clinical trial** — *randomised*, *treatment*, *arm*. On `trial.csv`
+the reflex fired. On `sales.csv` — where nothing is "randomly assigned", there is no "treatment",
+and the confound is channel × customer-segment — **the reflex did not fire.** On the one task the
+entire design exists to solve, the agent is a **coin flip** (45% at n=20), and when it misses it
+lands *exactly* on the confounded answer.
+
+**The aggregate hid it completely.** The sales domain scored **85%** — the same as the domain the
+guardrails were *designed* against — and I had written that up as reassurance. Twelve easy sales
+tasks were carrying the average while the crown jewel failed at 10%.
+
+> An aggregate is an average, and **an average is where a failure goes to hide.**
+
+**Attempted fix:** rewrite rule 4 in fully domain-neutral terms — *"this applies to EVERY grouped
+comparison — arm vs arm, channel vs channel, segment vs segment; if the groups differ systematically
+in some other variable, the raw difference is that other variable wearing the grouping's clothes."*
+Same length. No dialect from any one field. Then re-run all 2,240.
+
+**Result: it bought nothing measurable.**
+
+And here I have to make a confession that is really [D31] arriving early. I checked this on a single
+run of n=10, read `1/10 -> 1/10`, and wrote *"it made no difference, and that is the finding."* Then
+I re-ran the same benchmark and the same task came back `6/10`. Then `3/10`. **The truth, pooled over
+20 runs, is `9/20`.**
+
+| `s4_simpson_sales`, full agent | |
+|---|---|
+| one run of n=10 | 1/10 |
+| another run of n=10 | 6/10 |
+| another | 3/10 |
+| **pooled, n=20** | **9/20 = 45%** |
+
+So the honest statement is not *"the reword changed nothing"* — I could not have known that from what
+I had. It is: **the reword produced no effect I am able to detect, and the task itself is a coin flip
+with enormous run-to-run variance.**
+
+I am keeping the new wording, because it is the more honest rule. But it is not what closes this gap,
+and I was briefly certain of that for entirely the wrong reason.
+
+**And the negative result is worth more than the fix would have been**, because it forecloses the
+cheap explanation. The agent does not fail `s4` because the instruction was phrased for doctors. It
+fails because **nothing ever tells it the groups are imbalanced.** There is no detector for
+confounding — nothing computes *"is `channel` imbalanced on `customer_segment`?"* — so nothing is
+seeded, so the gate has nothing to gate.
+
+> ## You cannot close the *notice* gap with better advice.
+>
+> Sentinels and duplicates land at 90–100% because a twenty-line profiler **detects** them and hands
+> the agent an obligation it cannot walk past. Confounding lands at 10% because nothing detects it.
+>
+> The difference between those two numbers is not prompt quality. It is **twenty lines of pandas that
+> I have not written yet.**
+
+**The lesson, which is the whole argument for the held-out domain:**
+
+> Overfitting a prompt does not require naming your data. It is enough to speak your data's
+> **dialect**. You cannot see that by rereading your own prompt — it reads as general to *you*,
+> because you are fluent in the same dialect. Only a domain you did not write can show it to you.
+>
+> And the aggregate will hide it, because your easy tasks carry the average. **Read the per-task
+> table, not the headline.**
+
+### D30 — The offline-replay promise was true on exactly one computer
+**The fourth bug I shipped. It is the same bug as [D25], and I want that on the record.**
+
+The README says, in bold:
+
+> *"**No API key?** Every notebook replays from the committed response cache… the whole series runs
+> offline, deterministically, for free."*
+
+That was **false for everyone but me.**
+
+The agent's prompt carried the file paths it had been handed, and the notebooks (whose working
+directory is `notebooks/`) handed it **absolute** ones. So the first user message contained
+`/home/musel/Github/research_agent/data/trial.csv`. The cache key is a hash of the request. The
+request contained my home directory. **Every cached response was keyed to a path that exists on one
+laptop on Earth.**
+
+Clone the repo to `~/Downloads/`, set `LIVE=False`, run the notebook the README tells you to run:
+every call misses, and the whole thing raises. The promise fails on the first command a stranger
+types.
+
+And it is worse than a cache miss, because the *cached response itself* is poisoned: the model's
+generated code says `pd.read_csv("/home/musel/...")`. Even a key that hashed correctly would replay
+code that cannot run on anyone else's machine.
+
+**Fixed by:** pinning the executor's working directory to the repo root, and normalising every path
+into the prompt to be repo-relative (`data/trial.csv`). The prompt is now identical from any CWD, on
+any clone; the model's code is portable; the cache is portable. Verified by hashing the same agent
+call from two different working directories and asserting the keys match — and then re-running all
+2,240 runs, because the prompt changed.
+
+#### Why this one stings
+
+[D25] is *the same lesson*, and I wrote it down myself:
+
+> *"The README promised 'runs offline with no key — set `LIVE = False`.' I went to verify that
+> sentence before shipping it, and it was false. **A footgun that fails silently is worse than one
+> that crashes.** Both of these bugs were invisible from reading the code and obvious the moment I
+> ran the exact thing the README told a stranger to run."*
+
+I fixed the **flag** and I did not re-read my own conclusion. I ran the exact thing the README told a
+stranger to run — *on my own machine*, where it worked, which is the one place the test was
+guaranteed to pass.
+
+> **"I tested it" is not a claim about the code. It is a claim about the environment you tested it
+> in.** The bug lived in the difference between my machine and everyone else's, which is precisely
+> the region my test could not see.
+>
+> A reproducibility claim that has only ever been checked by the person who wrote it has not been
+> checked.
+
+Four self-inflicted bugs now ([D24], [D25], [D28], [D30]), and **not one of them was findable by
+reading the code.** Every single one surfaced by running something and looking hard at a number that
+was wrong: a `$0.0000` cost, a flag that would not move, a task scoring 100%, a cache that only I
+could hit. That is the entire argument of this project, learned the expensive way, four times.
+
+### D31 — I ran the same benchmark twice and got opposite verdicts. The CI was lying.
+**The fifth bug, and it is not in the agent. It is in the thing I built to check the agent.**
+
+Late on, I made a change I believed was cosmetic: the agent's file paths went from absolute to
+repo-relative (D30). It changed no logic. It provably changed no behaviour — **identical error rate
+(0.27 → 0.23 per run), identical step count (11.4 → 11.6), identical budget-exhaustion rate.** The
+prompt differs by one string.
+
+I re-ran all 2,240. Here is my centrepiece, measured before and after that non-change:
+
+| the same experiment, run twice | Δ for removing the Findings Ledger | 95% CI | verdict |
+|---|---|---|---|
+| run A | **−1.8%** | `[−8.9%, +4.6%]` | *"no detectable effect"* |
+| run B | **−11.1%** | `[−18.6%, −4.3%]` | ***"SIGNIFICANT — it helps"*** |
+
+**Same code. Same tasks. Same ten runs per cell. Opposite conclusions, and the two 95% intervals
+barely overlap.** Individual tasks swung by 30–50 points between the two runs
+(`s4_simpson_sales`: 10% → 60%).
+
+At least one of those intervals is wrong, and I have no way to know which — which means **both are
+worthless as stated.**
+
+#### Why the bootstrap lied
+
+It is not a coding bug. The hierarchical bootstrap is implemented correctly (D27). It is a bug in
+what I *asked* it.
+
+With **10 runs per cell**, the bootstrap resamples *with replacement from the ten outcomes I
+happened to observe.* If a cell came back **1/10**, every resample of it is drawn from those ten
+values — so the bootstrap's own distribution for that cell is centred near 10% and **cannot reach
+60%**, which is precisely what the next run produced. The empirical distribution is degenerate at
+the extremes, and the extremes are exactly where the interesting tasks live.
+
+> **A bootstrap tells you the sampling variance of the data you have.** It cannot tell you about the
+> data you didn't collect. At n=10 per cell, near p=0 or p=1, that is a distinction with a very
+> large difference — and the interval it hands you is **narrower than the truth, in a way that feels
+> rigorous.**
+
+#### What makes this the worst bug in the project
+
+I built this harness for exactly one reason. It is written at the top of `stats.py`:
+
+> *"Confidence intervals, because a point estimate is how you fool yourself."*
+
+And then I fooled myself **from inside the confidence interval** — twice, in opposite directions,
+and wrote both up as findings. In [D27] I congratulated myself for catching a point estimate
+masquerading as a result. This is the same mistake **one level up**: a *confidence interval*
+masquerading as a result.
+
+> A number with error bars is not automatically an honest number. **It is an honest number only if
+> the error bars are honest**, and mine were computed from too little data to know.
+>
+> The instrument you built to stop yourself believing noise is itself an instrument, and **it also
+> needs to be checked** — by the only method that has ever worked here: run it again and see if it
+> says the same thing.
+
+**Fixed by:** doubling to **20 runs per cell** (4,480 runs, $16) and reporting the pooled estimate;
+keeping both original runs on disk as the replication evidence; and adding the replication itself to
+the limitations rather than burying it. The honest headline is not a tighter number — **it is that
+one run of this benchmark was never enough to support the sentences I was writing from it.**
+
+**What I would actually do with a real budget:** stop bootstrapping a proportion from ten Bernoulli
+draws and fit a hierarchical beta-binomial, which shrinks the extreme cells instead of pretending
+they are certain. Or, far cheaper and more honest: **run the whole benchmark twice, every time, and
+report the spread between runs as the error bar.** That number cannot lie to you, because it is not
+a model — it is a measurement.
+
+### D32 — My most trusted gate was rejecting numbers the agent had just printed
+**The sixth bug, and the one I would most like to have found before someone else did.**
+
+D10 says the grounding gate is the mechanism I trust most, and gives the reason:
+
+> *"A regex catches it every time, for free, in fifteen lines… No LLM is involved. **It cannot be
+> talked out of it.**"*
+
+It also carries a warning I wrote myself, in the docstring, and then did not honour:
+
+> *"a gate that fires wrongly is a gate its user disables."*
+
+**It fired wrongly.** On **26.6% of 4,480 runs.**
+
+#### The bug
+
+The gate rounded both sides to four *significant figures* and demanded exact equality:
+
+```
+the code printed    -0.0869479104773222   ->  4 sig figs  ->  -0.08695
+the agent reported  -0.0869               ->  4 sig figs  ->  -0.0869
+                                                                -0.08695 != -0.0869
+REJECTED: "the values {-0.0869} in your evidence never appeared in any executed output."
+```
+
+The agent **had printed the number.** It rounded it to four decimals to write it into the report —
+which is what any analyst does — and my gate called that a fabrication.
+
+And then it could not escape. It re-ran the same code to print the number again; the duplicate-code
+guard handed back the cached observation; it tried once more; the gate rejected again. Watch the
+trajectory eat itself:
+
+```
+[10] ⛔ gate 3 (grounding) rejected — ungrounded: [0.636, 0.723, -0.087]
+[11] run_python  ✓ treatment_response_rate: 0.6363636363636364 ...
+[12] ⛔ gate 3 (grounding) rejected — ungrounded: [-0.0869]
+[13] ⟳ identical code re-submitted — returning cached result
+[14] run_python  ✓ -0.0869479104773222
+[16] ⛔ gate 3 (grounding) rejected — ungrounded: [-0.0869]
+[17-20] ⟳ ⟳ ⟳ ⟳   step budget exhausted — forcing best-effort answer
+```
+
+**The gate was implicated in 54% of every budget blowout in the study** (148 of 273). And the
+forced best-effort answer, submitted with the last step, was the confounded one — so a gate built
+to prevent a wrong number ended up *causing* one.
+
+#### Fixed by
+
+Comparing with a **relative tolerance (0.5%)** instead of demanding that two rounding schemes agree.
+A rounding convention is not a fabrication. The failure this gate exists to catch is DDB's *"its own
+code printed 1, and the final tally used 2"* — an error of **100%**, not of **0.006%**.
+
+Verified in both directions: it still rejects `1 → 2`, `7 → 8`, and invented numbers; it now accepts
+a three-significant-figure report of a value that was actually printed.
+
+#### The lesson, which is not the one I expected
+
+I trusted this gate *because* it was deterministic. I wrote "no LLM is involved, it cannot be talked
+out of it" as though that settled the question of whether it was **right**.
+
+> Determinism buys you **consistency**, not **correctness.** A regex that is confidently wrong is
+> worse than an LLM that is unsurely right, because nothing in the system is empowered to argue with
+> it — and I had removed, on purpose, the one component that might have.
+>
+> **A deterministic gate is only as good as its notion of "the same number."** Mine had one, it was
+> wrong, and it never once said so.
+
+And note where it was found: **not** by reading `grounded()`, which I had read many times and
+admired. It was found by watching a single trajectory, end to end, in a notebook — the agent
+printing a number and being told the number did not exist. Six bugs now, and the score is still
+**running things: 6, reading things: 0.**
+
+### D33 — I stopped writing *"what I'd build next is the detector"* and built the detector
+**The only decision in this log that is a prediction, tested.**
+
+Every draft of this project ended on the same sentence, and I was pleased with it:
+
+> *"What I'd build next isn't another gate. It's the detector."*
+
+The evidence was strong and it was mine. Anything a twenty-line script **detects** — sentinels,
+duplicates, numeric-as-text, scope — the agent handles at **95–100%**, because the finding is seeded
+as an obligation it cannot submit past. The one thing nothing detected — **confounding** — was a
+**coin flip**, on both domains, and:
+
+- rewording the system prompt to be domain-neutral **did not move it** (D29);
+- the Findings Ledger could not help, because the ledger forces you to act on what you *noticed*;
+- and I watched the agent, at temperature 0, **notice the imbalance, log it, and then dismiss it**:
+  *"the question asks for the difference in proportions, so no adjustment is needed."*
+
+Read that dismissal again. It is GeneBench-Pro's notice–act gap, verbatim, in my own trace: the
+agent let the **question's phrasing** overrule the **data's warning**.
+
+So the sentence was a hypothesis, and it was cheap to test. I stopped writing it down and wrote the
+detector instead.
+
+#### The detector, in full
+
+For every pair of low-cardinality **categorical** columns, cross-tabulate; if the conditional
+distribution of one departs from its marginal by ≥15 percentage points, the groups are not
+comparable. Seed it as an **open finding**. That is the whole idea, and it is about twenty lines
+(`observe._confounds`).
+
+It names no column, no dataset and no domain. It finds `arm × severity` in a clinical trial and
+`channel × customer_segment` in an e-commerce export by **exactly the same arithmetic** — which is
+the only way I get to claim it is not fitted to my own benchmark.
+
+#### The one design choice worth defending
+
+**It does not try to work out which column is the outcome.** It can't: an outcome is associated with
+its own cause by definition, and which variable is "the outcome" is a fact about the *question*, not
+about the data.
+
+My first version therefore flagged five "confounds" in `trial.csv`, of which one was real, and the
+agent burned its entire step budget discharging noise. The fix was one clause — consider only
+**non-numeric** low-cardinality columns — and it does a surprising amount of work: the 0/1 outcome
+columns drop out, and so does an integer re-test counter. `trial.csv` now yields **exactly one**
+finding, `sales.csv` yields **exactly one**, and both are the planted traps.
+
+**Cost of that clause, stated plainly:** if your groups are integer-encoded (`arm` as 0/1), this
+misses them. That is a real limitation and a one-line fix for a schema that needs it. I would rather
+write it down than let a clean result imply a generality I have not earned.
+
+#### What happened
+
+The demo that had been failing — the flagship Simpson's-paradox task, at temperature 0, the *first
+thing in the presentation* — went from submitting **−0.087** (the confounded answer, after burning
+all 20 steps) to submitting **+0.150** (the truth, in 13 steps, cleanly). And the trace now says
+`ACTED` on the confound rather than `DISMISSED`.
+
+> **The gate was never the problem. The gate had nothing to gate.**
+>
+> Twenty lines of `pd.crosstab` did what no amount of prompt engineering, no ledger, no verifier and
+> no bigger model was going to do — because none of them could **manufacture an observation that was
+> never made.**
+
+This is the whole thesis of the project, and it is the last thing I did to it:
+
+> **Spend your budget on what the agent *notices*, not on what you force it to do about it.**
+> A structural gate is cheap and it is worth building. But it is worth *nothing* until something
+> deterministic puts an observation in front of it.
 
 ---
 
 ## Platform
 
-### D18 — `zai-org/GLM-5.2` as the agent; `Qwen/Qwen3.5-397B-A17B` as verifier/judge
-**Why:** DDB benchmarked the open models and Token Factory hosts almost exactly their leaderboard —
-GLM 5.2 (37.8%), Kimi K2.7 Code (35.3%), DeepSeek V4 Pro (31.7%), MiniMax M3 (23.2%). GLM-5.2 is the
-strongest of them on a published agentic-science benchmark, so the choice rests on evidence rather
-than on taste. The verifier is a *different family* on purpose (D11).
-I smoke-tested all six candidates on the exact two-round tool-calling loop this agent needs before
-choosing; every one handled the protocol correctly, so the decision came down to the benchmark and
-cost, not to plumbing (`notebooks/00_setup.ipynb`).
-**Revisit when:** the eval harness exists — at which point "which model" stops being a judgement call
+### D18 — `Qwen3-30B-A3B` as the agent, on purpose, and *not* the best model available
+**Considered:** `zai-org/GLM-5.2` — the strongest open model on a published agentic-science
+benchmark. DrugDiscoveryBench evaluated the open models and Token Factory hosts almost exactly
+their leaderboard: GLM 5.2 (37.8%), Kimi K2.7 Code (35.3%), DeepSeek V4 Pro (31.7%), MiniMax M3
+(23.2%) — DDB Figure 7, p.22. On evidence, GLM-5.2 is the pick.
+
+**Chose:** `Qwen/Qwen3-30B-A3B-Instruct-2507` anyway — **14× cheaper**, and several rungs down
+the ladder.
+
+**Why deliberately not the best one:** the thesis of this design is that reliability comes from
+the *scaffolding*, not from a bigger base model. Running it on the strongest available model
+would make that thesis **unfalsifiable** — every success could be credited to the model, and I
+would have learned nothing. Handicapping the base model is what turns the claim into an
+experiment. The whole 2,240-run ablation study costs $8 precisely *because* of this choice.
+
+**Verifier/judge:** `openai/gpt-oss-120b` — a different family from the agent, on purpose (D11).
+
+**What this does NOT show, and I will not imply that it does:** that a small model *with*
+scaffolding beats a big model *without* it. That is the direct test of the thesis and **I have
+not run it.** It is one command —
+`uv run python -m evals.run_eval --config no_guardrails --model zai-org/GLM-5.2` — and roughly
+$15 at GLM's prices. It is the first thing I would spend the next budget on, and it is the one
+result that would let me state the thesis as a fact instead of a design bet.
+
+**Revisit when:** the harness exists — at which point "which model" stops being a judgement call
 and becomes a table. That is the point of building the harness first.

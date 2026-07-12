@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-999a562199b426eb",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\ndf['biomarker_change'] = df['biomarker_final'] - df['biomarker_baseline']\\n\\n# Remove rows with sentinel values (-999.0) in baseline or final\\nvalid_df = df[(df['biomarker_baseline'] != -999.0) & (df['biomarker_final'] != -999.0)]\\n\\n# Check for confounding: severity is not balanced across arms\\n# control: 71.2% mild, 23.3% moderate, 5.5% severe\\n# treatment: 21.1% mild, 37.6% moderate, 41.2% severe\\n\\n# Compute biomarker change by arm and severity\\nstratified = valid_df.groupby(['arm', 'severity'])['biomarker_change'].mean()\\n\\n# Compute the difference in mean biomarker change within each severity stratum\\ndiff_by_severity = stratified['treatment'] - stratified['control']\\n\\n# Compute weighted average of differences by severity, using treatment arm proportions\\n# This gives the adjusted difference\\n\\n# Get severity proportions in treatment arm\\ntreatment_severity = valid_df[valid_df['arm'] == 'treatment']['severity'].value_counts(normalize=True)\\n\\n# Weighted average of differences\\nweighted_diff = (diff_by_severity * treatment_severity).sum()\\n\\n# Final adjusted difference\\nadjusted_diff = weighted_diff\\n\\n# Report\\nprint(f\\\"Adjusted difference (treatment - control): {adjusted_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7140,
+  "completion_tokens": 377
+ }
+}

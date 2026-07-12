@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b6f3a97418a8a28b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, removing commas\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = sales['revenue_clean'] == 999999.99\\n\\n# Exclude QA orders\\nsales_filtered = sales[~qa_mask]\\n\\n# Now filter for loyal customers and completed orders\\nloyal_completed = sales_filtered[\\n    (sales_filtered['customer_segment'] == 'loyal') & \\n    (sales_filtered['status'] == 'completed')\\n]\\n\\n# Compute mean revenue\\nmean_revenue = loyal_completed['revenue_clean'].mean()\\n\\n# Print result\\nprint(\\\"Mean revenue for loyal, completed orders (excluding QA):\\\", mean_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3805,
+  "completion_tokens": 226
+ }
+}

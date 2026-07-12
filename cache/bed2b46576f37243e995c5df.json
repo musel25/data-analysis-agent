@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9f5b81c402028223",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\n\\n# Check if any QA orders are in completed orders\\nqa_in_completed = qa_mask & (df['status'] == 'completed')\\nprint(f\\\"QA orders in completed set: {qa_in_completed.sum()}\\\")\\n\\n# Filter for completed orders and exclude QA orders\\ncompleted_clean_df = df[(df['status'] == 'completed') & (~qa_mask)]\\n\\n# Compute mean revenue of completed orders, excluding QA orders\\nmean_revenue = completed_clean_df['revenue_clean'].mean()\\n\\n# Print final result\\nprint(f\\\"Mean revenue of completed orders (excluding QA): {mean_revenue:.2f} USD\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6196,
+  "completion_tokens": 261
+ }
+}

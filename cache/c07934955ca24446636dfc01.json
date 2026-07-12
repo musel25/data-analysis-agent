@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-98174dce78bbf01b",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column\\ndf['revenue_clean'] = pd.to_numeric(df['revenue'].str.replace(',', ''), errors='coerce')\\n\\n# Identify QA orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\n\\ntotal_qa_orders = qa_mask.sum()\\n\\n# Filter for loyal completed orders, excluding QA orders\\nloyal_completed_clean = df.query(\\\"customer_segment == 'loyal' and status == 'completed' and revenue_clean != 999999.99\\\")\\n\\n# Compute mean revenue\\nmean_revenue_clean = loyal_completed_clean['revenue_clean'].mean()\\n\\nprint(f'Total QA orders in dataset: {total_qa_orders}')\\nprint(f'Number of loyal completed orders (excluding QA): {len(loyal_completed_clean)}')\\nprint(f'Mean revenue (USD, excluding QA): {mean_revenue_clean}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7091,
+  "completion_tokens": 262
+ }
+}

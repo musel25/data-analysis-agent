@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0c1483c7eade344",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders and QA orders\\nfiltered_df = df[(df['status'] == 'completed') & (df['revenue'] != '999999.99')]\\n\\n# Compute average revenue per converted order by channel and segment\\nrevenue_per_converted = filtered_df[filtered_df['converted'] == 1].groupby(['channel', 'customer_segment'])['revenue_clean'].mean()\\n\\n# Extract email and paid_search values for each segment\\nemail_loyal = revenue_per_converted.loc[('email', 'loyal')]\\nemail_returning = revenue_per_converted.loc[('email', 'returning')]\\nemail_new = revenue_per_converted.loc[('email', 'new')]\\n\\npaid_loyal = revenue_per_converted.loc[('paid_search', 'loyal')]\\npaid_returning = revenue_per_converted.loc[('paid_search', 'returning')]\\npaid_new = revenue_per_converted.loc[('paid_search', 'new')]\\n\\n# Compute the relative performance of email vs paid_search within each segment\\nrel_loyal = email_loyal / paid_loyal\\nrel_returning = email_returning / paid_returning\\nrel_new = email_new / paid_new\\n\\n# Overall average revenue per converted order by channel (unstratified)\\noverall_email = filtered_df[(filtered_df['channel'] == 'email') & (filtered_df['converted'] == 1)]['revenue_clean'].mean()\\noverall_paid = filtered_df[(filtered_df['channel'] == 'paid_search') & (filtered_df['converted'] == 1)]['revenue_clean'].mean()\\n\\n# Compute overall ratio\\noverall_ratio = overall_email / overall_paid\\n\\n# Print results\\nprint(f\\\"Email vs Paid Search Revenue per Converted Order (relative):\\\")\\nprint(f\\\"- Loyal: {rel_loyal:.2f}\\\")\\nprint(f\\\"- Returning: {rel_returning:.2f}\\\")\\nprint(f\\\"- New: {rel_new:.2f}\\\")\\nprint(f\\\"\\\\nOverall average revenue per converted order:\\\")\\nprint(f\\\"- Email: {overall_email:.2f}\\\")\\nprint(f\\\"- Paid Search: {overall_paid:.2f}\\\")\\nprint(f\\\"- Ratio (email/paid): {overall_ratio:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8324,
+  "completion_tokens": 589
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-999d435bd7a539b9",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Manually compute chi-squared test without scipy\\n# Contingency table\\ntreatment_responded = df[df['arm'] == 'treatment']['responded'].sum()\\ntreatment_not_responded = df[df['arm'] == 'treatment'].shape[0] - treatment_responded\\ncontrol_responded = df[df['arm'] == 'control']['responded'].sum()\\ncontrol_not_responded = df[df['arm'] == 'control'].shape[0] - control_responded\\n\\n# Contingency table\\ntable = np.array([[treatment_responded, treatment_not_responded],\\n                   [control_responded, control_not_responded]])\\n\\n# Expected frequencies\\nrow_sums = table.sum(axis=1)\\ncol_sums = table.sum(axis=0)\\ntotal = table.sum()\\nexpected = np.outer(row_sums, col_sums) / total\\n\\n# Chi-squared statistic\\nchi2 = np.sum((table - expected)**2 / expected)\\n\\n# Degrees of freedom\\ndf = (table.shape[0] - 1) * (table.shape[1] - 1)\\n\\n# Approximate p-value using chi2 distribution\\n# Use a lookup: for df=1, chi2=6.4, p \u2248 0.011\\n# We'll use a simple rule: if chi2 > 3.84, p < 0.05\\nif chi2 > 3.84:\\n    p_value = 0.05\\nelse:\\n    p_value = 0.10\\n\\nprint(f\\\"Chi-squared statistic: {chi2}\\\")\\nprint(f\\\"P-value approximation: {p_value}\\\")\\n\\n# Check balance: age, sex, severity, site, assay_batch\\nbalance_check = {}\\nfor col in ['age', 'sex', 'severity', 'site', 'assay_batch']:\\n    if df[col].dtype == 'object':\\n        # Categorical: use chi-squared\\n        tab = pd.crosstab(df['arm'], df[col])\\n        # Expected frequencies\\n        row_sums = tab.sum(axis=1)\\n        col_sums = tab.sum(axis=0)\\n        total = tab.sum()\\n        expected = np.outer(row_sums, col_sums) / total\\n        chi2 = np.sum((tab - expected)**2 / expected)\\n        df = (tab.shape[0] - 1) * (tab.shape[1] - 1)\\n        # Approximate p-value\\n        if chi2 > 3.84:\\n            p_val = 0.05\\n        else:\\n            p_val = 0.10\\n        balance_check[col] = p_val\\n    else:\\n        # Continuous: use t-test\\n        t1 = df[df['arm'] == 'treatment'][col]\\n        t2 = df[df['arm'] == 'control'][col]\\n        n1, n2 = len(t1), len(t2)\\n        mean1, mean2 = t1.mean(), t2.mean()\\n        var1, var2 = t1.var(), t2.var()\\n        pooled_var = ((n1-1)*var1 + (n2-1)*var2) / (n1 + n2 - 2)\\n        se = np.sqrt(pooled_var * (1/n1 + 1/n2))\\n        t_stat = (mean1 - mean2) / se\\n        # Approximate p-value\\n        if abs(t_stat) > 1.96:\\n            p_val = 0.05\\n        else:\\n            p_val = 0.10\\n        balance_check[col] = p_val\\n\\nbalance_check\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7733,
+  "completion_tokens": 851
+ }
+}

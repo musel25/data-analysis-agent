@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b0ba4c8eb78722b8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate on patient_id, keeping the highest sample_seq for each patient\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Compute response rate within each severity stratum for each site\\nresponse_by_site_severity = df_dedup.groupby(['site', 'severity'])['responded'].mean().unstack(fill_value=0)\\n\\n# Compute overall severity distribution\\nseverity_dist = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Standardise response rates to the overall severity distribution\\n# This is done by computing a weighted average of the stratum-specific rates\\n# using the overall severity distribution as weights\\nstandardised_response_rate = {}\\nfor site in response_by_site_severity.index:\\n    rates = response_by_site_severity.loc[site]\\n    weights = severity_dist\\n    # Ensure weights sum to 1\\n    weights = weights / weights.sum()\\n    # Compute weighted average\\n    std_rate = (rates * weights).sum()\\n    standardised_response_rate[site] = std_rate\\n\\n# Convert to DataFrame\\nstd_rates_df = pd.DataFrame(list(standardised_response_rate.items()), columns=['site', 'standardised_response_rate'])\\n\\n# Sort by standardised response rate\\ntop_site = std_rates_df.loc[std_rates_df['standardised_response_rate'].idxmax()]\\n\\n# Print results\\nstd_rates_df, top_site\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7729,
+  "completion_tokens": 349
+ }
+}

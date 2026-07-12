@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-94ca2b5f44a92f1f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders (revenue == 999999.99)\\nqa_mask = df['revenue'] == 999999.99\\n\\n# Identify refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Filter out refunded orders and QA orders\\ndf_filtered = df[~refunded_mask & ~qa_mask]\\n\\n# Compute conversion rate by channel, stratified by customer segment\\n# First, group by channel and segment\\nconversion_rates = df_filtered.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\n# Compute overall conversion rate by channel (unadjusted)\\nemail_conv = df_filtered[df_filtered['channel'] == 'email']['converted'].mean()\\npaid_search_conv = df_filtered[df_filtered['channel'] == 'paid_search']['converted'].mean()\\n\\n# Compute adjusted conversion rate difference using stratification (weighted average of segment-specific differences)\\n# Get segment-level counts for weighting\\nsegment_counts = df_filtered['customer_segment'].value_counts()\\ntotal_n = len(df_filtered)\\nsegment_weights = segment_counts / total_n\\n\\n# Compute segment-specific differences in conversion rate (email - paid_search)\\ndifferences = []\\nfor seg in segment_counts.index:\\n    email_rate = conversion_rates[(conversion_rates['channel'] == 'email') & (conversion_rates['customer_segment'] == seg)]['converted'].iloc[0]\\n    paid_search_rate = conversion_rates[(conversion_rates['channel'] == 'paid_search') & (conversion_rates['customer_segment'] == seg)]['converted'].iloc[0]\\n    diff = email_rate - paid_search_rate\\n    differences.append(diff)\\n\\n# Weighted average difference\\nadjusted_diff = sum(d * w for d, w in zip(differences, segment_weights))\\n\\n# Output the results\\nprint(f'Email channel conversion rate (unadjusted): {email_conv:.4f}')\\nprint(f'Paid search channel conversion rate (unadjusted): {paid_search_conv:.4f}')\\nprint(f'Unadjusted difference (email - paid_search): {email_conv - paid_search_conv:.4f}')\\nprint(f'Adjusted difference (email - paid_search): {adjusted_diff:.4f}')\\n\\n# Return adjusted difference\\nadjusted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 9287,
+  "completion_tokens": 564
+ }
+}

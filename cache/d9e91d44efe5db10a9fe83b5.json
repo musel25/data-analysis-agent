@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-893449b265830c24",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since channel is not randomised and segments are imbalanced, we must adjust.\\n# Use stratification by customer_segment: compute conversion rate within each segment,\\n# then average across segments, weighted by segment size in the total population.\\n\\n# Compute conversion rate within each segment-channel combination\\nstratified_conv = filtered_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\nprint('Conversion rate within each segment-channel combination:')\\nprint(stratified_conv)\\n\\n# Compute segment size in the filtered dataset\\nsegment_counts = filtered_df['customer_segment'].value_counts()\\nprint('Segment sizes in filtered dataset:')\\nprint(segment_counts)\\n\\n# Weighted average of conversion rates by channel, stratified by segment\\n# Weight = proportion of each segment in the total\\nweighted_conv = {}\\nfor channel in ['email', 'paid_search']:\\n    total = 0\\n    weight_sum = 0\\n    for seg in segment_counts.index:\\n        conv_rate = stratified_conv.loc[channel, seg]\\n        weight = segment_counts[seg] / segment_counts.sum()\\n        total += conv_rate * weight\\n        weight_sum += weight\\n    weighted_conv[channel] = total\\n\\nweighted_conv_series = pd.Series(weighted_conv)\\nprint('Weighted conversion rate (stratified by segment):')\\nprint(weighted_conv_series)\\n\\n# Compute difference\\ndiff = weighted_conv_series['email'] - weighted_conv_series['paid_search']\\nprint(f'Difference (email - paid_search): {diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6348,
+  "completion_tokens": 360
+ }
+}

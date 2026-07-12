@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a598817178afcf19",
+    "function": {
+     "arguments": "{\"code\": \"# Final fix: drop 'channel' from stratified before merging\\nstratified = stratified.drop(columns=['channel'])\\n\\n# Re-create segment_proportions and merge\\nsegment_proportions = sales_df.groupby(['channel', 'customer_segment']).size().groupby('channel').apply(lambda x: x / x.sum()).reset_index(name='prop')\\n\\n# Merge on 'customer_segment' only, then join channel_totals\\nmerged = pd.merge(stratified, segment_proportions, on=['customer_segment'])\\nmerged = pd.merge(merged, channel_totals, on='channel')\\n\\n# Compute weighted conversion rate for each channel\\nmerged['weighted_rate'] = merged['conversion_rate'] * merged['prop']\\n\\n# Sum by channel to get adjusted overall conversion rate\\nadjusted_rates = merged.groupby('channel')['weighted_rate'].sum().reset_index()\\nadjusted_rates = adjusted_rates.rename(columns={'weighted_rate': 'adjusted_conversion_rate'})\\n\\n# Compute the difference (email - paid_search)\\ndifference = adjusted_rates[adjusted_rates['channel'] == 'email']['adjusted_conversion_rate'].values[0] - \\\\\\n            adjusted_rates[adjusted_rates['channel'] == 'paid_search']['adjusted_conversion_rate'].values[0]\\n\\n# Print results\\nprint(\\\"\\\\nAdjusted conversion rates (weighted by segment proportions within each channel):\\\\n\\\")\\nprint(adjusted_rates)\\n\\nprint(f\\\"\\\\nDifference in conversion rates (email - paid_search): {difference:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5273,
+  "completion_tokens": 337
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9037b270f49eb612",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Since customer segment and age are confounders, we need to adjust for them.\\n# We'll compute the conversion rate difference after stratifying by customer_segment and customer_age.\\n# First, create age groups\\nsales_df['age_group'] = pd.cut(sales_df['customer_age'], bins=[0, 30, 50, 100], labels=['<30', '30-50', '50+'])\\n\\n# Compute conversion rates within each stratum (customer_segment x age_group)\\nstratified_conv = sales_df.groupby(['channel', 'customer_segment', 'age_group'])['converted'].mean().reset_index()\\n\\n# Compute weighted average conversion rates for each channel, weighted by the size of each stratum\\nstratum_sizes = sales_df.groupby(['channel', 'customer_segment', 'age_group']).size().reset_index(name='size')\\nstratified_conv = stratified_conv.merge(stratum_sizes, on=['channel', 'customer_segment', 'age_group'])\\n\\n# Weighted conversion rate per channel\\nstratified_conv['weighted_conv'] = stratified_conv['converted'] * stratified_conv['size']\\n\\n# Sum over strata for each channel\\ntotal_weighted_conv = stratified_conv.groupby('channel')['weighted_conv'].sum()\\ntotal_size = stratified_conv.groupby('channel')['size'].sum()\\n\\n# Compute adjusted conversion rates\\nadjusted_conv_rate = total_weighted_conv / total_size\\n\\n# Compute the difference in adjusted conversion rates (email - paid_search)\\ndifference = adjusted_conv_rate['email'] - adjusted_conv_rate['paid_search']\\n\\n# Output the results\\ndifference, adjusted_conv_rate\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2459,
+  "completion_tokens": 405
+ }
+}

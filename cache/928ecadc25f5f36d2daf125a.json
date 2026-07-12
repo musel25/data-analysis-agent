@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8bc6f45ac5febbc9",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA orders (revenue = 999999.99)\\nreal_orders = sales[sales['revenue_clean'] != 999999.99]\\n\\n# Filter out refunded orders (they don't contribute to valid conversion stats)\\nconverted_orders = real_orders[real_orders['converted'] == 1]\\n\\n# Now, filter out rows where customer_age == -1 (missing data sentinel)\\nvalid_converters = converted_orders[converted_orders['customer_age'] != -1]\\n\\n# Compute mean age of customers who converted\\nmean_age = valid_converters['customer_age'].mean()\\n\\nprint(f'Mean age of customers who converted: {mean_age}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3789,
+  "completion_tokens": 229
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b1bd51e48e46da49",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Remove QA test orders and refunded orders\\nqa_mask = (sales['revenue_clean'] == 999999.99)\\nvalid_mask = ~(qa_mask | (sales['status'] == 'refunded'))\\n\\n# Filter to only converted orders\\nconverted_mask = (sales['converted'] == 1)\\n\\n# Final population: converted, valid orders\\nfinal_mask = valid_mask & converted_mask\\nfinal_data = sales.loc[final_mask, ['channel', 'customer_segment', 'revenue_clean']]\\n\\n# Stratify by customer_segment and compute mean revenue per channel\\nresults = []\\nfor segment in final_data['customer_segment'].unique():\\n    segment_data = final_data[final_data['customer_segment'] == segment]\\n    email_mean = segment_data[segment_data['channel'] == 'email']['revenue_clean'].mean()\\n    paid_search_mean = segment_data[segment_data['channel'] == 'paid_search']['revenue_clean'].mean()\\n    ratio = email_mean / paid_search_mean\\n    results.append({\\n        'customer_segment': segment,\\n        'email_mean': email_mean,\\n        'paid_search_mean': paid_search_mean,\\n        'ratio': ratio\\n    })\\n\\n# Convert to DataFrame\\nresults_df = pd.DataFrame(results)\\nprint(results_df)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5776,
+  "completion_tokens": 362
+ }
+}

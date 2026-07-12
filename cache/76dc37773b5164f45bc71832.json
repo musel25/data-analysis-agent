@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a12858bc5ed79b8a",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Final computation of the adjusted treatment effect\\n# We already computed this above, but now extract the final value\\n# Using the same logic: weighted average of within-strata differences, weighted by control group size in each stratum\\n\\n# Re-compute for clarity\\ncontrol_n_by_severity = df[df['arm'] == 'control'].groupby('severity')['patient_id'].count()\\ntotal_control = control_n_by_severity.sum()\\nweights = control_n_by_severity / total_control\\n\\n# Compute response rates within each arm and severity\\nstratified = df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nstratified = stratified.pivot(index='severity', columns='arm', values='responded')\\nstratified['diff'] = stratified['treatment'] - stratified['control']\\n\\n# Weighted average difference\\nweighted_diff = (stratified['diff'] * weights).sum()\\n\\n# Print evidence\\nprint(f\\\"Weighted average treatment effect (adjusted for severity): {weighted_diff:.4f}\\\")\\nprint(f\\\"Within-strata differences:\\\")\\nfor s in stratified.index:\\n    print(f\\\"  {s}: {stratified['diff'][s]:.4f}\\\")\\nprint(f\\\"Weights (by control group size): {weights.to_dict()}\\\")\\n\\n# Return the value for submission\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5820,
+  "completion_tokens": 327
+ }
+}

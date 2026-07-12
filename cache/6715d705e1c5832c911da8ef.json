@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-aab064eb88bf334d",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Since scipy is not available, use a manual chi-square approximation\\n# But we don't need the full test \u2014 we just need to know if severity affects response\\n# We already see from the data: severe patients have lower response rates\\n\\n# Check response rates by severity (without chi-square)\\nseverity_response_rate = trial_df.groupby('severity')['responded'].mean()\\nprint(\\\"Response rate by severity:\\\")\\nprint(severity_response_rate)\\n\\n# Stratified analysis: compute within-stratum treatment effects\\nstratified = trial_df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\nstratified_pivot = stratified.pivot(index='severity', columns='arm', values='responded')\\nstratified_pivot['diff'] = stratified_pivot['treatment'] - stratified_pivot['control']\\n\\nprint(\\\"\\\\nWithin-stratum treatment effects (treatment - control):\\\")\\nprint(stratified_pivot['diff'])\\n\\n# Compute weighted average of within-stratum differences\\nn_total = len(trial_df)\\nprop_by_severity = trial_df['severity'].value_counts(normalize=True)\\n\\nweighted_diff = 0\\nfor severity in prop_by_severity.index:\\n    diff = stratified_pivot.loc[severity, 'diff']\\n    weight = prop_by_severity[severity]\\n    weighted_diff += diff * weight\\n\\nprint(f\\\"\\\\nWeighted average treatment effect (adjusted for severity): {weighted_diff:.4f}\\\")\\n\\n# Final value\\nfinal_effect = weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3560,
+  "completion_tokens": 362
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-923fd792680307a3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Filter out refunded orders \u2014 they are not completed sales\\n# Conversion rate is defined as: completed orders / total orders (only completed ones count)\\n# So we must exclude refunded orders\\ncompleted_df = df[df['status'] == 'completed']\\n\\n# Now compute conversion rate by channel\\ntotal_by_channel = completed_df.groupby('channel').size()\\nconverted_by_channel = completed_df.groupby('channel')['converted'].sum()\\n\\n# Conversion rate = number of converted orders / total completed orders by channel\\nconversion_rate_by_channel = converted_by_channel / total_by_channel\\n\\n# Difference: email minus paid_search\\nemail_rate = conversion_rate_by_channel['email']\\npaid_search_rate = conversion_rate_by_channel['paid_search']\\ndifference = email_rate - paid_search_rate\\n\\nprint(f'Completed orders by channel:\\\\n{total_by_channel}')\\nprint(f'Converted orders by channel:\\\\n{converted_by_channel}')\\nprint(f'Conversion rates:\\\\n{conversion_rate_by_channel}')\\nprint(f'Difference (email - paid_search): {difference}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5143,
+  "completion_tokens": 270
+ }
+}

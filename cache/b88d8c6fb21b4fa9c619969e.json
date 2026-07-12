@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-950eea0df6c73805",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Final check: use only completed orders\\ndf_completed = pd.read_csv('data/sales.csv')\\n# Filter to completed\\ndf_completed = df_completed[df_completed['status'] == 'completed']\\n\\n# Parse revenue as float (though not needed for conversion rate)\\n# But we can do it for completeness\\n# Strip commas and convert to float\\n# df_completed['revenue'] = df_completed['revenue'].str.replace(',', '').astype(float)\\n\\n# But revenue not needed for conversion rate\\n\\n# Compute conversion rate by segment and channel\\nconv_by_seg_channel = df_completed.groupby(['channel', 'customer_segment'])['converted'].mean()\\n\\n# Get overall segment distribution (as weights)\\nseg_total = df_completed['customer_segment'].value_counts(normalize=True)\\n\\n# Compute adjusted conversion rate for each channel\\n# Using overall segment distribution as reference\\nemail_adj_rate = (conv_by_seg_channel['email'] * seg_total).sum()\\npaid_search_adj_rate = (conv_by_seg_channel['paid_search'] * seg_total).sum()\\n\\n# Compute difference\\ndiff_adj = email_adj_rate - paid_search_adj_rate\\n\\n# Convert to percentage points\\ndiff_pct_points = diff_adj * 100\\n\\n# Print final numbers\\nprint(f\\\"Adjusted conversion rate (email): {email_adj_rate:.4f}\\\")\\nprint(f\\\"Adjusted conversion rate (paid_search): {paid_search_adj_rate:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {diff_adj:.4f}\\\")\\nprint(f\\\"Difference in percentage points: {diff_pct_points:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6264,
+  "completion_tokens": 370
+ }
+}

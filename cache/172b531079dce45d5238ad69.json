@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bcffbaa082677e57",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute conversion rates by channel, stratified by segment\\n# First, compute overall conversion rates\\noverall_conversion = sales_df['converted'].mean()\\n\\n# Compute conversion rates by channel\\nconversion_by_channel = sales_df.groupby('channel')['converted'].mean()\\n\\n# Compute conversion rates by segment\\nconversion_by_segment = sales_df.groupby('customer_segment')['converted'].mean()\\n\\n# Compute expected conversion rate if no channel effect (adjust for segment)\\n# Use weighted average of segment conversion rates, weighted by segment distribution in each channel\\n\\n# Get segment proportions in each channel\\nsegment_prop_by_channel = sales_df.groupby('channel')['customer_segment'].value_counts(normalize=True).unstack(fill_value=0)\\n\\n# Get segment conversion rates\\nsegment_conv_rates = sales_df.groupby('customer_segment')['converted'].mean()\\n\\n# Compute expected conversion rate per channel (weighted average of segment rates)\\nexpected_conversion_by_channel = segment_prop_by_channel @ segment_conv_rates\\n\\n# Compute actual vs expected conversion rates\\ncomparison = pd.DataFrame({\\n    'actual': conversion_by_channel,\\n    'expected': expected_conversion_by_channel,\\n    'difference': conversion_by_channel - expected_conversion_by_channel\\n})\\n\\n# Compute the actual conversion rates\\nactual_conversion_rate_email = conversion_by_channel['email']\\nactual_conversion_rate_paid_search = conversion_by_channel['paid_search']\\n\\n# Compute the expected conversion rate if channel had no effect (only segment mix)\\n# Use overall segment conversion rates weighted by segment distribution in each channel\\n\\n# Final result: actual conversion rate vs expected (if channel had no effect)\\ncomparison, actual_conversion_rate_email, actual_conversion_rate_paid_search\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4393,
+  "completion_tokens": 375
+ }
+}

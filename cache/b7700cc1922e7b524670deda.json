@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd18a83647e2045c",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# We have already deduplicated on patient_id \u2014 good.\\n# Now, we must compute the treatment effect on response rate, adjusted for severity.\\n# Since severity is a strong confounder and the assignment is non-random, we must stratify.\\n\\n# Compute response rate within each severity level, by arm\\nresponse_by_severity_arm = df_dedup.groupby(['severity', 'arm'])['responded'].agg(['count', 'sum'])\\nresponse_by_severity_arm = response_by_severity_arm.rename(columns={'sum': 'responded_count', 'count': 'n'})\\nresponse_by_severity_arm['prop'] = response_by_severity_arm['responded_count'] / response_by_severity_arm['n']\\n\\n# Compute weighted average response rate by arm, weighted by severity distribution in the overall population\\n# Use the overall severity distribution as the target weighting (standardisation)\\n\\n# Overall severity distribution\\ntotal_n = len(df_dedup)\\nseverity_pop = df_dedup['severity'].value_counts(normalize=True)\\n\\n# Weighted response rate per arm\\nweighted_response_treatment = 0\\nweighted_response_control = 0\\n\\nfor severity in severity_pop.index:\\n    if severity in response_by_severity_arm.index:\\n        # Get response proportion for this severity and arm\\n        row_t = response_by_severity_arm.loc[(severity, 'treatment')]\\n        row_c = response_by_severity_arm.loc[(severity, 'control')]\\n        \\n        # Weight by overall population proportion\\n        w = severity_pop[severity]\\n        weighted_response_treatment += row_t['prop'] * w\\n        weighted_response_control += row_c['prop'] * w\\n\\n# Compute treatment effect (treatment minus control)\\ntreatment_effect = weighted_response_treatment - weighted_response_control\\n\\n# Print results\\nprint('Overall response rates by arm (raw):')\\nprint(df_dedup.groupby('arm')['responded'].mean())\\nprint('\\\\nResponse rates by severity and arm:')\\nprint(response_by_severity_arm)\\nprint(f'\\\\nWeighted response rate (treatment): {weighted_response_treatment:.4f}')\\nprint(f'Weighted response rate (control): {weighted_response_control:.4f}')\\nprint(f'Treatment effect (difference in proportions): {treatment_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5333,
+  "completion_tokens": 526
+ }
+}

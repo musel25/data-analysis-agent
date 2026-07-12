@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a9d0d2b98415a022",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Filter: completed orders, exclude QA and refunded\\ncompleted_orders = df[(df['status'] == 'completed') & (df['revenue'] != 999999.99)]\\n\\n# Compute weighted average revenue per channel, using customer_segment as a confounder\\n# We'll compute the average revenue for each channel, but stratify by segment\\n# Then compute the difference in means, adjusted for segment\\n\\n# Total counts per segment\\nsegment_counts = completed_orders['customer_segment'].value_counts()\\n\\n# Compute average revenue per channel within each segment\\nstratified_avg = completed_orders.groupby(['channel', 'customer_segment'])['revenue'].mean().reset_index()\\n\\n# Compute the overall average revenue per channel (unadjusted)\\noverall_avg = completed_orders.groupby('channel')['revenue'].mean().reset_index()\\n\\n# Compute the difference in average revenue between channels\\n# But since the segments are imbalanced, we must adjust\\n# We can use stratified mean (weighted by segment proportion)\\n\\n# Compute the proportion of each segment in each channel\\nchannel_segment_prop = completed_orders.groupby('channel')['customer_segment'].value_counts(normalize=True).reset_index(name='prop')\\n\\n# Merge back to get proportions\\nstratified_avg = stratified_avg.merge(channel_segment_prop, on=['channel', 'customer_segment'])\\n\\n# Compute adjusted average revenue per channel: weighted by segment proportion\\nadjusted_avg = stratified_avg.groupby('channel').apply(\\n    lambda x: (x['revenue'] * x['prop']).sum()\\n).reset_index(name='adjusted_revenue')\\n\\n# Compute the difference\\ndiff = adjusted_avg['adjusted_revenue'].diff().iloc[1]  # email - paid_search\\n\\nprint(\\\"Adjusted average revenue per channel:\\\")\\nprint(adjusted_avg)\\nprint(f\\\"\\\\nDifference (email - paid_search): {diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5173,
+  "completion_tokens": 490
+ }
+}

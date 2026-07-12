@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-823216f8dc975076",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders (revenue == 999999.99)\\nqa_mask = df['revenue'] == 999999.99\\n\\n# Drop QA orders\\ndf_clean = df[~qa_mask]\\n\\n# Confirm we have 894 rows\\nassert len(df_clean) == 894, f'Expected 894, got {len(df_clean)}'\\n\\n# Now compute conversion rate by customer_segment\\n# Conversion rate = (sum of converted) / (total count) for each segment\\nconversion_by_segment = df_clean.groupby('customer_segment')['converted'].agg(['sum', 'count'])\\nconversion_by_segment['rate'] = conversion_by_segment['sum'] / conversion_by_segment['count']\\n\\n# Sort by rate descending\\nconversion_by_segment = conversion_by_segment.sort_values('rate', ascending=False)\\n\\n# Display results\\nconversion_by_segment\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6293,
+  "completion_tokens": 277
+ }
+}

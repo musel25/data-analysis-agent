@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bb8f43fb7b7e4323",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA and refunded orders\\nqa_mask = df['revenue_clean'] == 999999.99\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Drop QA and refunded orders\\ndf_clean = df[~qa_mask & ~refunded_mask].copy()\\n\\n# Cross-tabulate channel vs customer_segment to check confounding\\nprint(\\\"Cross-tabulation: channel vs customer_segment\\\")\\nprint(pd.crosstab(df_clean['channel'], df_clean['customer_segment']))\\n\\n# Compute conversion rate by channel and segment\\nconversion_by_channel_segment = (\\n    df_clean\\n    .groupby(['channel', 'customer_segment'])\\n    .agg(conversion_rate=('converted', 'mean'))\\n    .reset_index()\\n)\\n\\nprint(\\\"\\\\nConversion rates by channel and segment:\\\")\\nprint(conversion_by_channel_segment)\\n\\n# Compute weighted average conversion rate for each channel (weighted by segment size)\\nsegment_size = df_clean.groupby('customer_segment').size()\\n\\n# Weighted conversion rate per channel\\ndef weighted_avg_conversion(group):\\n    return (group['converted'] * group['customer_segment'].map(segment_size)).sum() / group['customer_segment'].map(segment_size).sum()\\n\\nweighted_conversion_by_channel = (\\n    df_clean\\n    .groupby('channel')\\n    .apply(weighted_avg_conversion)\\n    .reset_index(name='weighted_conversion_rate')\\n)\\n\\nprint(\\\"\\\\nWeighted conversion rates by channel:\\\")\\nprint(weighted_conversion_by_channel)\\n\\n# Compute difference in weighted conversion rates (email - paid_search)\\ndiff = (weighted_conversion_by_channel\\n        .set_index('channel')['weighted_conversion_rate']\\n        .loc['email']\\n        - weighted_conversion_by_channel\\n        .set_index('channel')['weighted_conversion_rate']\\n        .loc['paid_search'])\\n\\nprint(f\\\"\\\\nDifference in weighted conversion rates (email - paid_search): {diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4467,
+  "completion_tokens": 512
+ }
+}

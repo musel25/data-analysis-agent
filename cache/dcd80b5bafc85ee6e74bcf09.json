@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-87adc6f85ad17338",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Exclude rows where biomarker_baseline == -999\\ndf_clean = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate by patient_id, keeping the row with the highest sample_seq\\n# This ensures one row per patient, with the latest (highest sample_seq) assay\\ndf_dedup = df_clean.loc[df_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Filter to the treatment arm only\\ndf_treatment = df_dedup[df_dedup['arm'] == 'treatment']\\n\\n# Step 4: Stratify by baseline severity\\n# Compute response rate and count within each sex-severity stratum\\nstrata = df_treatment.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).round(3)\\nprint('Response rates by sex and severity:')\\nprint(strata)\\n\\n# Step 5: Compute the stratified risk difference using Mantel-Haenszel method\\n# First, compute risk difference within each stratum\\nstrata['rd'] = strata['mean']\\n\\n# Total number of patients in each stratum\\nn_strata = strata['count']\\n\\n# Compute the weighted average of the risk differences, using stratum size as weight\\n# But since we want the difference between female and male within each stratum, we compute:\\n# For each severity level, compute (female response rate - male response rate)\\n# Then, if we assume the same effect across strata, we can compute a pooled RD\\n\\n# Extract female and male response rates per severity\\nfemales = strata.loc[('F',), 'mean']\\nmales = strata.loc[('M',), 'mean']\\n\\n# Compute stratum-specific differences\\nrd_strata = {}\\nfor severity in ['mild', 'moderate', 'severe']:\\n    f_rate = females.get(severity, 0)\\n    m_rate = males.get(severity, 0)\\n    rd = f_rate - m_rate\\n    rd_strata[severity] = rd\\n\\n# Print stratum-specific differences\\nprint('\\\\nStratum-specific response rate differences (female - male):')\\nfor severity, rd in rd_strata.items():\\n    print(f'{severity}: {rd:.3f}')\\n\\n# Now compute the overall pooled risk difference using Mantel-Haenszel\\n# We'll use the MH method: sum of (a_i * d_i / n_i) / sum of (a_i * d_i / n_i) ???\\n# Actually, for risk difference, MH is not standard. But we can use a weighted average of RDs.\\n# Since the question asks for a single difference, we compute a weighted average of the stratum-specific RDs.\\n# Weight by the total number of patients in each stratum.\\n\\n# Compute the weighted average of the stratum-specific risk differences\\n# Total number of patients per severity\\nn_per_severity = df_treatment['severity'].value_counts()\\n\\n# Weighted average of RDs\\nweighted_rd = 0\\ntotal_n = 0\\nfor severity in ['mild', 'moderate', 'severe']:\\n    rd = rd_strata[severity]\\n    n = n_per_severity.get(severity, 0)\\n    weighted_rd += rd * n\\n    total_n += n\\n\\npooled_rd = weighted_rd / total_n if total_n > 0 else 0\\n\\nprint(f'\\\\nPooled risk difference (weighted average across severity): {pooled_rd:.3f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6829,
+  "completion_tokens": 836
+ }
+}

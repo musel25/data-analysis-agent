@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be87cee54a239987",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute 95% confidence intervals for mean change in each arm\\n# Using t-distribution\\nalpha = 0.05\\nz = 1.96  # Approximate for large samples\\n\\n# For control arm\\nt_crit = np.percentile(np.random.standard_t(df=476-1, size=10000), 97.5)\\nse_control = df_sd_by_arm.loc[0, 'change'] / np.sqrt(n_by_arm.loc[0, 'n'])\\nlower_control = df_change_by_arm.loc[0, 'change'] - t_crit * se_control\\nupper_control = df_change_by_arm.loc[0, 'change'] + t_crit * se_control\\n\\n# For treatment arm\\nt_crit = np.percentile(np.random.standard_t(df=279-1, size=10000), 97.5)\\nse_treatment = df_sd_by_arm.loc[1, 'change'] / np.sqrt(n_by_arm.loc[1, 'n'])\\nlower_treatment = df_change_by_arm.loc[1, 'change'] - t_crit * se_treatment\\nupper_treatment = df_change_by_arm.loc[1, 'change'] + t_crit * se_treatment\\n\\nprint(f\\\"Control arm: mean = {df_change_by_arm.loc[0, 'change']:.3f}, 95% CI = [{lower_control:.3f}, {upper_control:.3f}]\\\")\\nprint(f\\\"Treatment arm: mean = {df_change_by_arm.loc[1, 'change']:.3f}, 95% CI = [{lower_treatment:.3f}, {upper_treatment:.3f}]\\\")\\n\\n# Compute difference in means and its CI\\ndiff_mean = df_change_by_arm.loc[1, 'change'] - df_change_by_arm.loc[0, 'change']\\nse_diff = np.sqrt(se_control**2 + se_treatment**2)\\nlower_diff = diff_mean - t_crit * se_diff\\nupper_diff = diff_mean + t_crit * se_diff\\n\\nprint(f\\\"\\\\nDifference in mean change (treatment - control): {diff_mean:.3f}\\\")\\nprint(f\\\"95% CI for difference: [{lower_diff:.3f}, {upper_diff:.3f}]\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5925,
+  "completion_tokens": 523
+ }
+}

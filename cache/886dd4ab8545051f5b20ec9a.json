@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bdc2192d201a68fe",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Filter out QA orders and refunded orders\\nfiltered_df = df[~((df['revenue'] == '999999.99') | (df['status'] == 'refunded'))]\\n\\n# Check customer segment distribution by channel\\nprint(\\\"Customer segment distribution by channel:\\\")\\nprint(filtered_df.groupby('channel')['customer_segment'].value_counts())\\n\\n# Compute conversion rate within each customer segment\\n# Use stratified analysis: compute conversion rate for each segment, then compute weighted average\\n# But since the question asks for the proportion in email vs paid_search, we need to compare raw rates\\n# However, due to confounding, we must adjust for segment\\n\\n# Compute conversion rate per channel and per segment\\nconversion_by_channel_segment = filtered_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='customer_segment')\\nprint(\\\"\\\\nConversion rate by channel and segment:\\\")\\nprint(conversion_by_channel_segment)\\n\\n# Compute overall conversion rates\\noverall_conversion = filtered_df.groupby('channel')['converted'].mean()\\nprint(\\\"\\\\nOverall conversion rate by channel:\\\")\\nprint(overall_conversion)\\n\\n# Compute adjusted conversion rate difference using stratification\\n# Weighted average conversion rate by channel, weighted by segment distribution\\nsegment_counts = filtered_df.groupby('channel')['customer_segment'].value_counts().unstack(fill_value=0)\\nsegment_totals = segment_counts.sum(axis=1)\\nsegment_weights = segment_counts.divide(segment_totals, axis=0)\\n\\n# Apply weights to conversion rates\\nweighted_conversion = (conversion_by_channel_segment * segment_weights).sum(axis=1)\\nprint(\\\"\\\\nWeighted conversion rate by channel (adjusted for segment):\\\")\\nprint(weighted_conversion)\\n\\n# Difference in adjusted conversion rates\\nadjusted_difference = weighted_conversion['email'] - weighted_conversion['paid_search']\\nprint(f\\\"\\\\nAdjusted conversion rate difference (email - paid_search): {adjusted_difference}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6182,
+  "completion_tokens": 460
+ }
+}

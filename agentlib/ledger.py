@@ -52,9 +52,9 @@ class QuestionContract(BaseModel):
         "Every explicit filter or limit the user stated. Copy them; do not paraphrase them away."))
     premises: list[str] = Field(default_factory=list, description=(
         "FACTUAL CLAIMS THE QUESTION TAKES FOR GRANTED, which you must CHECK against the data "
-        "before answering. e.g. 'there are four sites', 'women respond better than men', 'the "
-        "trial was randomised'. A question can be built on a false premise. If one is false, say "
-        "so — do NOT answer the question as if it were true."))
+        "before answering. e.g. 'there are six warehouses', 'the night shift outperforms the day "
+        "shift'. A question can be built on a false premise. If one is false, say so — do NOT "
+        "answer the question as if it were true."))
     question_is_precise: bool = Field(description=(
         "Is there exactly ONE reasonable reading of this question — one quantity, over one set of "
         "rows, in one unit? Answer FALSE if a competent analyst could reasonably compute two "

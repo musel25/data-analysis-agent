@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a5b719d0b621a4e6",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows with biomarker_baseline == -999\\ntrial_clean = trial[trial['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\ntrial_dedup = trial_clean.loc[trial_clean.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Compute response rates by arm (unadjusted)\\nresponse_rate_treatment = trial_dedup[trial_dedup['arm'] == 'treatment']['responded'].mean()\\nresponse_rate_control = trial_dedup[trial_dedup['arm'] == 'control']['responded'].mean()\\nraw_diff = response_rate_treatment - response_rate_control\\n\\n# Step 4: Compute stratified response rates by severity and arm\\nstratified_rates = trial_dedup.groupby(['severity', 'arm'])['responded'].mean().unstack(level='arm')\\n\\n# Step 5: Compute weights (overall severity distribution)\\nseverity_counts = trial_dedup['severity'].value_counts(normalize=True)\\n\\n# Step 6: Compute adjusted response rates by arm (standardisation to overall severity distribution)\\nadjusted_response_treatment = (stratified_rates['treatment'] * severity_counts).sum()\\nadjusted_response_control = (stratified_rates['control'] * severity_counts).sum()\\nadjusted_diff = adjusted_response_treatment - adjusted_response_control\\n\\n# Print only the numbers that will be in evidence\\nprint(f\\\"response_rate_treatment: {response_rate_treatment}\\\")\\nprint(f\\\"response_rate_control: {response_rate_control}\\\")\\nprint(f\\\"raw_diff: {raw_diff}\\\")\\nprint(f\\\"adjusted_response_treatment: {adjusted_response_treatment}\\\")\\nprint(f\\\"adjusted_response_control: {adjusted_response_control}\\\")\\nprint(f\\\"adjusted_diff: {adjusted_diff}\\\")\\n\\n# Print the stratified rates as they are needed for evidence\\nprint(\\\"stratified_rates:\\\")\\nprint(stratified_rates)\\n\\n# Print the severity weights\\nprint(\\\"severity_counts:\\\")\\nprint(severity_counts)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7199,
+  "completion_tokens": 509
+ }
+}

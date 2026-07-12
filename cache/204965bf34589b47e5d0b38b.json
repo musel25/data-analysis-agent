@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8d1bf20ecd4cc590",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (999999.99)\\nqa_orders = (sales['revenue_clean'] == 999999.99)\\nsales_clean = sales[~qa_orders].copy()\\n\\n# Drop refunded orders\\nrefunded = sales_clean['status'] == 'refunded'\\nsales_final = sales_clean[~refunded].copy()\\n\\n# Now, compute mean age of customers who converted\\n# Exclude those with age = -1 (missing data)\\nconverted_customers = sales_final[sales_final['converted'] == 1]\\nvalid_ages = converted_customers[converted_customers['customer_age'] != -1]['customer_age']\\n\\n# Compute and print the number of valid converted customers with non-missing age\\nnum_valid_converted = len(valid_ages)\\nprint(\\\"Number of valid converted customers with non-missing age:\\\", num_valid_converted)\\n\\n# Compute mean age\\nmean_age = valid_ages.mean()\\nprint(\\\"Mean age of converted customers (excluding -1):\\\", mean_age)\\n\\n# Round to two decimals for final answer\\nmean_age_rounded = round(mean_age, 2)\\nprint(\\\"Final mean age (rounded):\\\", mean_age_rounded)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5430,
+  "completion_tokens": 343
+ }
+}

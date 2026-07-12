@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ac0dfa0e9656b8b1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Final cleaned dataset\\ndf_clean = pd.read_csv('data/sales.csv')\\ndf_clean['revenue_clean'] = df_clean['revenue'].str.replace(',', '').astype(float)\\nqa_mask = df_clean['revenue_clean'] == 999999.99\\ndf_clean = df_clean[~qa_mask].copy()\\ndf_clean = df_clean[df_clean['customer_age'] != -1]\\n\\n# Check conversion rate by channel (raw)\\nraw_conv_rate = df_clean.groupby('channel')['converted'].mean()\\n\\n# Check conversion rate by segment\\nsegment_conv = df_clean.groupby('customer_segment')['converted'].mean()\\n\\n# Check if the channel effect is confounded by segment\\n# Email has higher proportion of loyal customers, who have higher conversion\\n# So raw comparison overstates email's effect\\n\\n# Compute adjusted conversion rate: average across segments, weighted by segment distribution\\n# This is a crude standardisation to isolate the campaign effect\\n\\n# Get segment distribution in each channel\\ndist_by_channel = df_clean.groupby('channel')['customer_segment'].value_counts(normalize=True).unstack(fill_value=0)\\n\\n# Weighted average conversion rate by channel (standardised to common segment distribution)\\n# Use overall segment distribution as reference\\noverall_segment_dist = df_clean['customer_segment'].value_counts(normalize=True)\\n\\n# Compute standardised conversion rate\\ndef standardise_conv_rate(channel_data, segment_dist):\\n    return (channel_data['converted'] * segment_dist).sum()\\n\\n# Apply standardisation\\nstandardised_conv = dist_by_channel.apply(lambda row: (row * overall_segment_dist).sum() * 100, axis=1)\\n\\n# Compute actual mean conversion rate by channel\\nactual_conv = df_clean.groupby('channel')['converted'].mean() * 100\\n\\n# Output comparison\\nprint('Standardised conversion rate (adjusted for segment):')\\nprint(standardised_conv)\\nprint('\\\\nActual conversion rate (raw):')\\nprint(actual_conv)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5215,
+  "completion_tokens": 457
+ }
+}

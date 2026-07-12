@@ -11,8 +11,12 @@ And their defence of the strictness, which I agree with:
 
 An LLM judge is used ONLY for the behavioural tasks that no arithmetic can decide (did it flag
 the false premise? did it state its interpretation of an ambiguous question?). Binary rubric,
-temperature 0, a DIFFERENT model family from the agent, and validated against hand labels before
-it is trusted — an unvalidated judge is a random number generator with good manners.
+temperature 0, and a DIFFERENT model family from the agent.
+
+It is NOT validated. DDB checked theirs against two other judges at kappa=1.0 on 200 responses; I
+read mine's calls and they looked right, which is worth what it sounds like. An unvalidated judge is
+a random number generator with good manners — which is exactly why it decides 5 of 28 tasks and not
+one more. Everything else is math.isclose.
 """
 from __future__ import annotations
 

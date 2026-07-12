@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a48412f1a8d4af00",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Remove QA orders with '999999.99'\\ndf_clean = df[df['revenue'] != '999999.99'].copy()\\n\\n# Clean all revenue values: remove commas and cast to float\\ndf_clean['revenue'] = df_clean['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Replace -1 in customer_age with NaN\\ndf_clean['customer_age'] = df_clean['customer_age'].replace(-1, pd.NA)\\n\\n# Drop refunded orders \u2014 they are not completed sales\\n# The question is about campaign success, which is measured by completed orders that converted\\ndf_final = df_clean[df_clean['status'] == 'completed'].copy()\\n\\n# Cross-tabulate channel vs customer_segment\\nprint(\\\"\\\\nCross-tabulation of channel vs customer_segment (completed orders only):\\\")\\nprint(pd.crosstab(df_final['channel'], df_final['customer_segment']))\\n\\n# Compute conversion rate by channel\\nconverted_by_channel = df_final.groupby('channel')['converted'].mean()\\nprint(\\\"\\\\nConversion rate by channel:\\\")\\nprint(converted_by_channel)\\n\\n# Compute conversion rate by segment and channel\\nconversion_by_segment_channel = df_final.groupby(['customer_segment', 'channel'])['converted'].mean()\\nprint(\\\"\\\\nConversion rate by segment and channel:\\\")\\nprint(conversion_by_segment_channel)\\n\\n# Compute difference in conversion rate (email - paid_search) within each segment\\npivot = conversion_by_segment_channel.unstack('channel')\\ndiff = pivot['email'] - pivot['paid_search']\\nprint(\\\"\\\\nDifference (email - paid_search) in conversion rate by segment:\\\")\\nprint(diff)\\n\\n# Final dataset shape\\nprint(f\\\"\\\\nFinal dataset shape: {df_final.shape}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 10116,
+  "completion_tokens": 438
+ }
+}

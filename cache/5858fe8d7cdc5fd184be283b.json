@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ad74e83cb88819d5",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Replace -999.0 with NaN in biomarker_baseline\\ndf['biomarker_baseline'] = df['biomarker_baseline'].replace(-999.0, pd.NA)\\n\\n# Calculate change in biomarker: final - baseline\\ndf['biomarker_change'] = df['biomarker_final'] - df['biomarker_baseline']\\n\\n# Drop rows where baseline is missing (now NaN)\\ndf_clean = df.dropna(subset=['biomarker_baseline'])\\n\\n# Stratify by severity and compute mean change within each severity group\\nstratified_change = df_clean.groupby(['arm', 'severity'])['biomarker_change'].mean().reset_index()\\n\\n# Compute the overall mean change for each arm (raw, unadjusted)\\nraw_mean_change = df_clean.groupby('arm')['biomarker_change'].mean().round(2)\\n\\n# Compute the adjusted mean change using stratification: average of within-severity differences\\n# First, compute within-severity differences in mean change\\nwithin_severity_diff = stratified_change.groupby('severity')['biomarker_change'].apply(\\n    lambda x: x['treatment'] - x['control']\\n)\\n\\n# Weighted average of within-severity differences by severity group size in treatment arm\\n# (Or use overall population weights \u2014 we'll use treatment arm for consistency)\\ntreatment_severity_counts = df_clean[df_clean['arm'] == 'treatment']['severity'].value_counts()\\n\\n# Weighted average of within-severity differences\\nadjusted_diff = (within_severity_diff * treatment_severity_counts).sum() / treatment_severity_counts.sum()\\n\\n# Print results\\nprint(\\\"Raw mean change by arm (unadjusted):\\\")\\nprint(raw_mean_change)\\n\\nprint(\\\"\\\\nWithin-severity differences (treatment - control):\\\")\\nprint(within_severity_diff)\\n\\nprint(f\\\"\\\\nAdjusted difference (weighted average): {adjusted_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7372,
+  "completion_tokens": 468
+ }
+}

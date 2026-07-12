@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9a6f87ceafa307ab",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Remove rows with biomarker_baseline == -999\\ndf_clean = df[df[\\\"biomarker_baseline\\\"] != -999].copy()\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\n# Sort by patient_id and sample_seq, then drop duplicates\\ndf_dedup = df_clean.sort_values(by=['patient_id', 'sample_seq'], ascending=[True, False]).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 3: Convert assay_batch B biomarker_final values from \u00b5g/L to ng/mL (divide by 10)\\ndf_dedup.loc[df_dedup[\\\"assay_batch\\\"] == 'B', \\\"biomarker_final\\\"] /= 10\\n\\n# Step 4: Stratify by severity and compute response rate within each stratum\\nstratum_results = []\\nfor severity in df_dedup[\\\"severity\\\"].unique():\\n    subset = df_dedup[df_dedup[\\\"severity\\\"] == severity]\\n    n_treatment = subset[subset[\\\"arm\\\"] == \\\"treatment\\\"].shape[0]\\n    n_control = subset[subset[\\\"arm\\\"] == \\\"control\\\"].shape[0]\\n    responded_treatment = subset[(subset[\\\"arm\\\"] == \\\"treatment\\\") & (subset[\\\"responded\\\"] == 1)].shape[0]\\n    responded_control = subset[(subset[\\\"arm\\\"] == \\\"control\\\") & (subset[\\\"responded\\\"] == 1)].shape[0]\\n    \\n    prop_treatment = responded_treatment / n_treatment if n_treatment > 0 else 0\\n    prop_control = responded_control / n_control if n_control > 0 else 0\\n    \\n    stratum_results.append({\\n        \\\"severity\\\": severity,\\n        \\\"n_treatment\\\": n_treatment,\\n        \\\"n_control\\\": n_control,\\n        \\\"prop_treatment\\\": prop_treatment,\\n        \\\"prop_control\\\": prop_control,\\n        \\\"treatment_effect\\\": prop_treatment - prop_control\\n    })\\n\\n# Convert to DataFrame\\nstratum_df = pd.DataFrame(stratum_results)\\n\\n# Step 5: Compute overall treatment effect as weighted average of stratum effects\\n# Weight by total number of patients in each stratum\\nstratum_totals = df_dedup[\\\"severity\\\"].value_counts().sort_index()\\nstratum_weights = stratum_totals / stratum_totals.sum()\\n\\nweighted_effect = (stratum_df[\\\"treatment_effect\\\"] * stratum_weights).sum()\\n\\n# Output results\\nprint('Stratum-specific treatment effects:')\\nprint(stratum_df)\\nprint(f'\\\\nOverall treatment effect (weighted average): {weighted_effect}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5205,
+  "completion_tokens": 636
+ }
+}

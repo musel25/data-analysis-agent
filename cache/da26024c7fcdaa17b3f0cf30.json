@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bd2792a45a4b4b6f",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Stratify by severity and compute adjusted treatment effect\\ndef compute_stratified_effect(df, strata_col='severity', treatment_col='arm', response_col='responded'):\\n    results = []\\n    for level in df[strata_col].unique():\\n        subset = df[df[strata_col] == level]\\n        n_treat = subset[subset[treatment_col] == 'treatment'].shape[0]\\n        n_control = subset[subset[treatment_col] == 'control'].shape[0]\\n        resp_treat = subset[subset[treatment_col] == 'treatment'][response_col].mean()\\n        resp_control = subset[subset[treatment_col] == 'control'][response_col].mean()\\n        effect = resp_treat - resp_control\\n        results.append({\\n            'severity': level,\\n            'n_treatment': n_treat,\\n            'n_control': n_control,\\n            'response_rate_treatment': resp_treat,\\n            'response_rate_control': resp_control,\\n            'treatment_effect': effect\\n        })\\n    return pd.DataFrame(results)\\n\\nstratified_df = compute_stratified_effect(data)\\nprint(stratified_df)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3987,
+  "completion_tokens": 285
+ }
+}

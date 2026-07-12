@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-97d46b6de2efcb8a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\ndata = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\ndata['revenue_clean'] = data['revenue'].str.replace(',', '', regex=True).astype(float)\\n\\n# Remove QA orders and refunded orders\\ndata_clean = data[\\n    (data['revenue_clean'] != 999999.99) & \\n    (data['status'] == 'completed')\\n]\\n\\n# Compute the overall conversion rate\\noverall_conversion_rate = data_clean['converted'].mean()\\n\\n# Compute the average revenue per order\\navg_revenue_per_order = data_clean['revenue_clean'].mean()\\n\\n# Compute the total revenue\\ntotal_revenue = data_clean['revenue_clean'].sum()\\n\\n# Compute the conversion rate by channel (raw)\\nraw_conversion_by_channel = data_clean.groupby('channel')['converted'].mean()\\n\\n# Compute the conversion rate by channel and segment (for adjustment)\\nconversion_by_channel_segment = data_clean.groupby(['channel', 'customer_segment'])['converted'].mean()\\n\\n# Compute the adjusted conversion rate for each channel\\n# We will use the overall segment distribution as the baseline\\nsegment_distribution = data_clean['customer_segment'].value_counts(normalize=True)\\n\\n# For each channel, compute the weighted average of conversion rates by segment\\nadjusted_conversion_email = (conversion_by_channel_segment.loc['email'] * segment_distribution).sum()\\nadjusted_conversion_paid_search = (conversion_by_channel_segment.loc['paid_search'] * segment_distribution).sum()\\n\\n# Compute the difference in adjusted conversion rates\\nadjusted_diff = adjusted_conversion_email - adjusted_conversion_paid_search\\n\\n# Print key metrics\\nprint(f\\\"Overall conversion rate: {overall_conversion_rate:.4f}\\\")\\nprint(f\\\"Average revenue per order: {avg_revenue_per_order:.2f}\\\")\\nprint(f\\\"Total revenue: {total_revenue:.2f}\\\")\\nprint(f\\\"Raw conversion rate - Email: {raw_conversion_by_channel['email']:.4f}\\\")\\nprint(f\\\"Raw conversion rate - Paid Search: {raw_conversion_by_channel['paid_search']:.4f}\\\")\\nprint(f\\\"Adjusted conversion rate - Email: {adjusted_conversion_email:.4f}\\\")\\nprint(f\\\"Adjusted conversion rate - Paid Search: {adjusted_conversion_paid_search:.4f}\\\")\\nprint(f\\\"Adjusted difference (Email - Paid Search): {adjusted_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5043,
+  "completion_tokens": 557
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8e8566437056d387",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float after removing commas\\nsales['revenue_float'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify and remove the 6 QA orders with revenue = 999999.99\\nqa_mask = sales['revenue_float'] == 999999.99\\nprint(f\\\"Number of QA orders (revenue = 999999.99): {qa_mask.sum()}\\\")\\n\\n# Remove QA orders\\nsales_clean = sales[~qa_mask].copy()\\n\\n# Confirm the removal\\nprint(f\\\"New shape after removing QA orders: {sales_clean.shape}\\\")\\n\\n# Check status: are refunded orders included?\\nrefunded_count = sales_clean['status'].value_counts().get('refunded', 0)\\nprint(f\\\"Number of refunded orders in cleaned data: {refunded_count}\\\")\\n\\n# Filter for completed orders only\\ncompleted = sales_clean[sales_clean['status'] == 'completed']\\n\\n# Now filter for loyal customers\\nloyal_completed = completed[completed['customer_segment'] == 'loyal']\\n\\n# Compute mean revenue for loyal completed orders\\nmean_revenue_loyal = loyal_completed['revenue_float'].mean()\\n\\nprint(f\\\"Mean revenue of completed orders from loyal customers: {mean_revenue_loyal}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3309,
+  "completion_tokens": 341
+ }
+}

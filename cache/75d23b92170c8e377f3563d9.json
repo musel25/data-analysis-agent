@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9939dbe4ef655efe",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Remove rows with sentinel value in biomarker_baseline\\nvalid_data = data[data['biomarker_baseline'] != -999].copy()\\n\\n# Compute change in biomarker from baseline to final\\nvalid_data['biomarker_change'] = valid_data['biomarker_final'] - valid_data['biomarker_baseline']\\n\\n# Compute the mean change in biomarker by arm\\nmean_change_control = valid_data[valid_data['arm'] == 'control']['biomarker_change'].mean()\\nmean_change_treatment = valid_data[valid_data['arm'] == 'treatment']['biomarker_change'].mean()\\n\\n# Compute the difference in mean change\\ndifference = mean_change_treatment - mean_change_control\\n\\n# Compute 95% confidence interval for the difference using bootstrap\\nimport numpy as np\\n\\nnp.random.seed(42)  # For reproducibility\\nbootstrap_diffs = []\\nfor _ in range(10000):\\n    sample = valid_data.sample(n=len(valid_data), replace=True)\\n    sample_control = sample[sample['arm'] == 'control']['biomarker_change']\\n    sample_treatment = sample[sample['arm'] == 'treatment']['biomarker_change']\\n    diff = sample_treatment.mean() - sample_control.mean()\\n    bootstrap_diffs.append(diff)\\n\\nbootstrap_diffs = np.array(bootstrap_diffs)\\nlower_ci = np.percentile(bootstrap_diffs, 2.5)\\nupper_ci = np.percentile(bootstrap_diffs, 97.5)\\n\\n# Print results\\nprint(f'Mean change in biomarker (control): {mean_change_control:.2f}')\\nprint(f'Mean change in biomarker (treatment): {mean_change_treatment:.2f}')\\nprint(f'Difference (treatment - control): {difference:.2f}')\\nprint(f'95% CI: [{lower_ci:.2f}, {upper_ci:.2f}]')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4964,
+  "completion_tokens": 470
+ }
+}

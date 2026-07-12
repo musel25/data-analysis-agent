@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-95b61ebe157b4b2f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq per patient\\ndf = df.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999 (QC failure)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 3: Verify that the population is now one-per-patient and clean\\nprint(f\\\"Final shape after deduplication and QC: {df.shape}\\\")\\nprint(f\\\"Unique patient_id: {df['patient_id'].nunique()}\\\")\\n\\n# Step 4: Compute response rate within each severity stratum by arm\\ndf_response = df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\ndf_response = df_response.rename(columns={'responded': 'response_rate'})\\n\\n# Step 5: Compute overall response rate by arm (unadjusted) for comparison\\ndf_arm_response = df.groupby('arm')['responded'].mean().reset_index()\\ndf_arm_response = df_arm_response.rename(columns={'responded': 'unadjusted_response_rate'})\\n\\n# Step 6: Compute standardised response rate difference\\n# Use the overall severity distribution as weights\\nseverity_dist = df['severity'].value_counts(normalize=True)\\n\\n# Compute stratum-specific treatment effect (treatment - control)\\ntreatment_rate = df_response[df_response['arm'] == 'treatment']['response_rate']\\ncontrol_rate = df_response[df_response['arm'] == 'control']['response_rate']\\n\\n# Align by severity\\nstratum_diffs = []\\nfor severity in ['mild', 'moderate', 'severe']:\\n    trt_rate = treatment_rate[df_response['severity'] == severity].values[0]\\n    ctl_rate = control_rate[df_response['severity'] == severity].values[0]\\n    diff = trt_rate - ctl_rate\\n    stratum_diffs.append(diff)\\n\\n# Compute weighted average of differences by severity distribution\\nweighted_diff = sum(d * severity_dist[severity] for d, severity in zip(stratum_diffs, ['mild', 'moderate', 'severe']))\\n\\n# Now compute the standardised difference using the standard method: \\n# Standardised treatment effect = sum( p_severity * (rate_treatment - rate_control) )\\n# This is equivalent to the weighted difference above.\\n\\nprint(f\\\"Stratum-specific differences (treatment - control):\\\\n{pd.Series(stratum_diffs, index=['mild', 'moderate', 'severe'])}\\\")\\nprint(f\\\"Standardised difference (weighted by severity distribution): {weighted_diff:.4f}\\\")\\n\\n# Output for report\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6157,
+  "completion_tokens": 648
+ }
+}

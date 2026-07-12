@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-946dc6d67629c0e8",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline is -999 (QC failure sentinel)\\ndf_clean = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping the row with the highest sample_seq\\n# Sort by patient_id and sample_seq (descending) to ensure highest sample_seq is kept\\ndf_dedup = df_clean.sort_values(['patient_id', 'sample_seq'], ascending=[True, False]).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 3: Compute the fraction of patients with severe baseline disease\\nn_patients = len(df_dedup)\\nsevere_count = (df_dedup['severity'] == 'severe').sum()\\nfraction_severe = severe_count / n_patients\\n\\n# Print all numbers that will be used in evidence\\nprint(f\\\"Total unique patients after deduplication: {n_patients}\\\")\\nprint(f\\\"Number with severe baseline disease: {severe_count}\\\")\\nprint(f\\\"Fraction with severe baseline disease: {fraction_severe}\\\")\\n\\n# Return the fraction as a float for `value`\\nfraction_severe\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4809,
+  "completion_tokens": 302
+ }
+}

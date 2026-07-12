@@ -96,7 +96,7 @@ def _key(model, messages, tools, temperature, nonce) -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:24]
 
 
-def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_retries=4,
+def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_retries=6,
         nonce=0, meter=None):
     """Call the model. Returns the raw `message` object (so you can see `.tool_calls`).
 
@@ -149,7 +149,12 @@ def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_
             last_err = e
             if attempt == max_retries - 1:
                 raise
-            time.sleep(2 ** attempt)                # 1s, 2s, 4s, 8s
+            # A 429 is the platform asking us to slow down. It is NOT an agent failure, and the
+            # first eval run recorded seven of them as crashes — five of those against the FULL
+            # agent, which quietly cost it ~1.8 points of pass rate against its own ablations.
+            # Infrastructure noise must never land in the numerator. Back off hard instead.
+            rate_limited = "429" in str(e) or "ratelimit" in type(e).__name__.lower()
+            time.sleep((5 * 2 ** attempt) if rate_limited else (2 ** attempt))
     else:                                            # pragma: no cover
         raise last_err
 

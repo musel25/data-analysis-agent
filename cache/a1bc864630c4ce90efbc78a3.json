@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a3265ebf4b0be11e",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Now compute conversion rate by channel, unadjusted\\nemail_conv = filtered_df[filtered_df['channel'] == 'email']['converted'].mean()\\npaid_search_conv = filtered_df[filtered_df['channel'] == 'paid_search']['converted'].mean()\\n\\nprint(f\\\"Raw email conversion rate: {email_conv:.4f}\\\")\\nprint(f\\\"Raw paid_search conversion rate: {paid_search_conv:.4f}\\\")\\nprint(f\\\"Raw difference (email - paid_search): {email_conv - paid_search_conv:.4f}\\\")\\n\\n# But we must adjust for segment because channel and segment are confounded\\n# Use stratification by customer_segment\\n\\n# Compute conversion rate within each segment\\nstratified = filtered_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='customer_segment')\\n\\n# Also get counts per group for weighting\\ncounts = filtered_df.groupby(['channel', 'customer_segment']).size().unstack(level='customer_segment')\\n\\nprint(\\\"\\\\nStratified conversion rates by segment:\\\")\\nprint(stratified)\\nprint(\\\"\\\\nCounts per group:\\\")\\nprint(counts)\\n\\n# Compute weighted average conversion rate by channel, using segment proportions as weights\\n# First, get overall segment proportions in the data\\noverall_segment_prop = filtered_df['customer_segment'].value_counts(normalize=True)\\n\\n# Weighted conversion rate for each channel\\nemail_weighted = (stratified.loc['email'] * overall_segment_prop).sum()\\npaid_search_weighted = (stratified.loc['paid_search'] * overall_segment_prop).sum()\\n\\nprint(f\\\"\\\\nWeighted email conversion rate: {email_weighted:.4f}\\\")\\nprint(f\\\"Weighted paid_search conversion rate: {paid_search_weighted:.4f}\\\")\\nprint(f\\\"Adjusted difference (email - paid_search): {email_weighted - paid_search_weighted:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4936,
+  "completion_tokens": 440
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a796929fad698fa4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, handling thousands separators\\nsales_df['revenue'] = sales_df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out refunded orders\\nsales_df = sales_df[sales_df['status'] == 'completed']\\n\\n# Compute weighted conversion rate for each channel, using customer_segment as a stratum\\n# First, get the total number of customers in each segment per channel\\nsegment_counts = sales_df.groupby(['channel', 'customer_segment']).size().unstack(fill_value=0)\\n\\n# Get the conversion rate per segment\\nconversion_rates = sales_df.groupby(['channel', 'customer_segment'])['converted'].mean()\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_conversion = {}\\nfor channel in ['email', 'paid_search']:\\n    total = 0\\n    weighted_sum = 0\\n    for segment in ['loyal', 'new', 'returning']:\\n        count = segment_counts.loc[channel, segment]\\n        rate = conversion_rates.loc[channel, segment]\\n        total += count\\n        weighted_sum += count * rate\\n    weighted_conversion[channel] = weighted_sum / total\\n\\n# Compute the difference in weighted conversion rates (email - paid_search)\\ndifference_weighted = weighted_conversion['email'] - weighted_conversion['paid_search']\\n\\n# Print results\\nprint(f\\\"Weighted email conversion rate: {weighted_conversion['email']:.4f}\\\")\\nprint(f\\\"Weighted paid search conversion rate: {weighted_conversion['paid_search']:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference_weighted:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3381,
+  "completion_tokens": 394
+ }
+}

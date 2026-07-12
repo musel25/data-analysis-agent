@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9f8fff3fa9cd3a51",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Keep only the highest sample_seq per patient\\ntrial_df = trial_df.sort_values('sample_seq', ascending=False)\\ntrial_df = trial_df.drop_duplicates(subset=['patient_id'], keep='first')\\n\\n# Compute the treatment effect using stratification by severity\\n# We will compute the weighted average response rate for each arm\\n# using the severity distribution in the full sample as weights\\nseverity_counts = trial_df['severity'].value_counts(normalize=True)\\n\\n# Compute arm-specific response rates within each severity level\\nresponse_by_arm_severity = trial_df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\n\\n# Compute the weighted average response rate for each arm\\nweighted_response_control = (response_by_arm_severity.loc[response_by_arm_severity['arm'] == 'control']\\n                              .assign(weight=lambda x: x['severity'].map(severity_counts))\\n                              .assign(weighted_response=lambda x: x['responded'] * x['weight'])\\n                              ['weighted_response'].sum())\\n\\nweighted_response_treatment = (response_by_arm_severity.loc[response_by_arm_severity['arm'] == 'treatment']\\n                                .assign(weight=lambda x: x['severity'].map(severity_counts))\\n                                .assign(weighted_response=lambda x: x['responded'] * x['weight'])\\n                                ['weighted_response'].sum())\\n\\n# Compute the treatment effect\\ntreatment_effect_adjusted = weighted_response_treatment - weighted_response_control\\n\\nprint(f\\\"Control weighted response rate (adjusted for severity): {weighted_response_control:.3f}\\\")\\nprint(f\\\"Treatment weighted response rate (adjusted for severity): {weighted_response_treatment:.3f}\\\")\\nprint(f\\\"Adjusted treatment effect (diff in proportions): {treatment_effect_adjusted:.3f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3370,
+  "completion_tokens": 433
+ }
+}

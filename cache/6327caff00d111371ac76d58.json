@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8343fe12b040d4c4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Define strata: combinations of site and severity\\nstrata = df[['site', 'severity']].apply(lambda x: '_'.join(x.astype(str)), axis=1)\\n\\n# Compute response rate within each stratum\\nstratum_rates = df.groupby(['arm', strata])['responded'].mean().reset_index()\\n\\n# Compute the number of patients in each stratum-arm combination\\nstratum_counts = df.groupby(['arm', strata]).size().reset_index(name='n')\\n\\n# Merge rates and counts\\nstratum_data = pd.merge(stratum_rates, stratum_counts, on=['arm', strata])\\n\\n# Compute weighted average response rate by arm, using stratum sizes as weights\\n# Use .loc for proper indexing\\nweighted_treatment_rate = (stratum_data.loc[stratum_data['arm'] == 'treatment', 'n'] * \\n                           stratum_data.loc[stratum_data['arm'] == 'treatment', 'responded']).sum() / \\n                          stratum_data.loc[stratum_data['arm'] == 'treatment', 'n'].sum()\\n\\nweighted_control_rate = (stratum_data.loc[stratum_data['arm'] == 'control', 'n'] * \\n                        stratum_data.loc[stratum_data['arm'] == 'control', 'responded']).sum() / \\n                       stratum_data.loc[stratum_data['arm'] == 'control', 'n'].sum()\\n\\n# Compute adjusted treatment effect\\nadjusted_effect = weighted_treatment_rate - weighted_control_rate\\n\\n# Print results\\nweighted_treatment_rate, weighted_control_rate, adjusted_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5785,
+  "completion_tokens": 385
+ }
+}

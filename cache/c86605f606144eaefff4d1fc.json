@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-be1aecc19e28dcce",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping the row with highest sample_seq per patient\\ndata = data.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Correct assay_batch B biomarker_final \u2014 divide by 10 to convert from \u00b5g/L to ng/mL\\ndata.loc[data['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 3: Compute the response rate in the treatment and control arms\\nresponse_rate_treatment = data[data['arm'] == 'treatment']['responded'].mean()\\nresponse_rate_control = data[data['arm'] == 'control']['responded'].mean()\\n\\n# Compute the raw difference (treatment - control)\\ndifference = response_rate_treatment - response_rate_control\\n\\n# Step 4: Compute the stratum-specific response rates (within each severity)\\nstratified = data.groupby(['severity', 'arm'])['responded'].mean().reset_index()\\nstratified = stratified.pivot(index='severity', columns='arm', values='responded').reset_index()\\nstratified.columns.name = None\\n\\n# Compute stratum-specific treatment effects (treatment - control)\\nstratified['treatment_effect'] = stratified['treatment'] - stratified['control']\\n\\n# Compute the population distribution of severity (weights for standardisation)\\npopulation_severity_dist = data['severity'].value_counts(normalize=True).sort_index()\\n\\n# Compute the standardised treatment effect (weighted average of stratum-specific effects)\\nstd_effect = (stratified['treatment_effect'] * population_severity_dist).sum()\\n\\n# Print only the numbers that are in the evidence\\n\\n# Number of unique patients\\nnum_patients = len(data)\\n\\n# Response rates\\nresp_treat = response_rate_treatment\\nresp_ctrl = response_rate_control\\n\\n# Raw difference\\nraw_diff = difference\\n\\n# Standardised effect\\nstd_eff = std_effect\\n\\n# Output only the required numbers\\nprint(num_patients)\\nprint(resp_treat)\\nprint(resp_ctrl)\\nprint(raw_diff)\\nprint(std_eff)\\n\\n# Return for submission\\nnum_patients, resp_treat, resp_ctrl, raw_diff, std_eff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 14330,
+  "completion_tokens": 536
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-943b4793c3381cc4",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\ndata = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\nif data['revenue'].str.contains(',', na=False).any():\\n    data['revenue_clean'] = data['revenue'].str.replace(',', '', regex=False).astype(float)\\nelse:\\n    data['revenue_clean'] = data['revenue'].astype(float)\\n\\n# Exclude refunded orders and QA test orders (revenue == 999999.99)\\ncompleted_only = data[data['status'] == 'completed']\\nqa_count = (completed_only['revenue'] == '999999.99').sum()\\nif qa_count > 0:\\n    completed_only = completed_only[completed_only['revenue'] != '999999.99']\\n\\n# Now compute overall average revenue per channel for completed orders\\noverall_avg = completed_only.groupby('channel')['revenue_clean'].mean()\\n\\n# Print the overall average revenue per channel\\nprint(\\\"Overall average revenue per completed order (USD):\\\")\\nprint(overall_avg)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6789,
+  "completion_tokens": 277
+ }
+}

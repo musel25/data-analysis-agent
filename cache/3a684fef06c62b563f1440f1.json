@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-abb475d76edc9ff1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Deduplicate: keep highest sample_seq per patient\\ndf_dedup = df.sort_values('sample_seq', ascending=False).drop_duplicates('patient_id')\\n\\n# Compute response rates by arm and severity\\ncrosstab = pd.crosstab(df_dedup['arm'], df_dedup['severity'], values=df_dedup['responded'], aggfunc='mean')\\n\\n# Extract control and treatment response rates for each severity level\\ncontrol_mild = crosstab.loc['control', 'mild']\\ncontrol_moderate = crosstab.loc['control', 'moderate']\\ncontrol_severe = crosstab.loc['control', 'severe']\\n\\ntreatment_mild = crosstab.loc['treatment', 'mild']\\ntreatment_moderate = crosstab.loc['treatment', 'moderate']\\ntreatment_severe = crosstab.loc['treatment', 'severe']\\n\\n# Compute stratum-specific differences: treatment - control\\ndiff_mild = treatment_mild - control_mild\\ndiff_moderate = treatment_moderate - control_moderate\\ndiff_severe = treatment_severe - control_severe\\n\\n# Compute control arm counts per severity\\ncontrol_counts = df_dedup[df_dedup['arm'] == 'control']['severity'].value_counts()\\ntotal_control = control_counts.sum()\\n\\n# Compute weights: control counts divided by total control\\nw_mild = control_counts['mild'] / total_control\\nw_moderate = control_counts['moderate'] / total_control\\nw_severe = control_counts['severe'] / total_control\\n\\n# Compute weighted average difference\\nweighted_diff = diff_mild * w_mild + diff_moderate * w_moderate + diff_severe * w_severe\\n\\n# Print ALL values that will be used in evidence \u2014 no truncation\\nprint('diff_mild:', diff_mild)\\nprint('diff_moderate:', diff_moderate)\\nprint('diff_severe:', diff_severe)\\nprint('w_mild:', w_mild)\\nprint('w_moderate:', w_moderate)\\nprint('w_severe:', w_severe)\\nprint('weighted_diff:', weighted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 11403,
+  "completion_tokens": 529
+ }
+}

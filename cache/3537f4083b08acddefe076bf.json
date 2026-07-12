@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9a8a6560f213547b",
+    "function": {
+     "arguments": "{\"code\": \"# Compute mean biomarker change by arm and severity\\nstratified_change = valid_df.groupby(['arm', 'severity'])['biomarker_change'].mean().reset_index()\\n\\n# Pivot to get arms as columns\\nstratified_pivot = stratified_change.pivot(index='severity', columns='arm', values='biomarker_change')\\nstratified_pivot.columns = ['control', 'treatment']\\nstratified_pivot['diff'] = stratified_pivot['treatment'] - stratified_pivot['control']\\n\\n# Compute weighted average of the treatment effect, weighted by the proportion of each severity level in the full valid sample\\nvalid_total = len(valid_df)\\nseverity_counts = valid_df['severity'].value_counts(normalize=True)\\n\\n# Weighted average treatment effect\\nweighted_diff = (stratified_pivot['diff'] * severity_counts).sum()\\n\\n# Output\\nprint(\\\"\\\\nMean biomarker change by arm and severity:\\\")\\nprint(stratified_pivot)\\n\\nprint(f\\\"\\\\nWeighted average difference in biomarker change (treatment - control): {weighted_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4665,
+  "completion_tokens": 264
+ }
+}

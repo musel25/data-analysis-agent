@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b146a3d2f6e666c1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\nmax_seq_per_patient = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999\\ndf_clean = max_seq_per_patient[max_seq_per_patient['biomarker_baseline'] != -999]\\n\\n# Step 3: Filter to treatment arm only\\ndf_treatment = df_clean[df_clean['arm'] == 'treatment']\\n\\n# Step 4: Check distribution of severity by sex in treatment arm\\nseverity_sex_cross = pd.crosstab(df_treatment['sex'], df_treatment['severity'])\\nprint(severity_sex_cross)\\n\\n# Step 5: Compute response rates stratified by sex and severity\\n# First, compute response rate for each sex-severity stratum\\nresponse_rates = df_treatment.groupby(['sex', 'severity'])['responded'].mean().reset_index()\\nprint('\\\\nResponse rates by sex and severity:')\\nprint(response_rates)\\n\\n# Step 6: Compute adjusted response rate difference using stratification (direct standardisation)\\n# Total number of patients in each sex-severity group\\nn_total = df_treatment.groupby(['sex', 'severity']).size().reset_index(name='n')\\n\\n# Total number of patients in each sex group\\nn_sex = df_treatment.groupby('sex').size().reset_index(name='n_sex')\\n\\n# Weight each severity group by its proportion in the overall treatment arm\\n# Use the overall distribution of severity as the standard population\\nseverity_total = df_treatment['severity'].value_counts(normalize=True)\\n\\n# Compute weighted average response rate per sex\\nadjusted_response_rate = {}\\nfor sex in ['F', 'M']:\\n    sex_data = df_treatment[df_treatment['sex'] == sex]\\n    weighted_rate = 0\\n    for severity in severity_total.index:\\n        if severity in sex_data['severity'].values:\\n            rate = sex_data[sex_data['severity'] == severity]['responded'].mean()\\n        else:\\n            rate = 0  # No patients in this stratum\\n        weight = severity_total[severity]\\n        weighted_rate += rate * weight\\n    adjusted_response_rate[sex] = weighted_rate\\n\\n# Difference in adjusted response rates\\ndiff_adj = adjusted_response_rate['F'] - adjusted_response_rate['M']\\n\\n# Raw difference for comparison\\nraw_response_rate_F = df_treatment[df_treatment['sex'] == 'F']['responded'].mean()\\nraw_response_rate_M = df_treatment[df_treatment['sex'] == 'M']['responded'].mean()\\ndiff_raw = raw_response_rate_F - raw_response_rate_M\\n\\n# Print results\\nprint(f'\\\\nRaw response rate (F): {raw_response_rate_F:.3f}')\\nprint(f'Raw response rate (M): {raw_response_rate_M:.3f}')\\nprint(f'Raw difference: {diff_raw:.3f}')\\nprint(f'Adjusted response rate (F): {adjusted_response_rate[\\\"F\\\"]:.3f}')\\nprint(f'Adjusted response rate (M): {adjusted_response_rate[\\\"M\\\"]:.3f}')\\nprint(f'Adjusted difference: {diff_adj:.3f}')\\n\\n# Return the adjusted difference in percentage points\\nprint(f'\\\\nFinal adjusted difference: {diff_adj:.3f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4681,
+  "completion_tokens": 779
+ }
+}

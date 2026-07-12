@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b13eca1d6e97e6e2",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Filter for completed orders\\ncompleted = sales[sales['status'] == 'completed']\\n\\n# Step 2: Clean revenue \u2014 remove commas and cast to float\\n# The revenue column is string with thousands separators, e.g. '1,234.56'\\ncompleted['revenue_clean'] = completed['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 3: Check for QA orders (revenue = 999999.99)\\nqa_mask = completed['revenue_clean'] == 999999.99\\nprint(f'QA orders in completed set: {qa_mask.sum()}')\\n\\n# Step 4: Remove QA orders if any\\nif qa_mask.sum() > 0:\\n    completed_clean = completed[~qa_mask]\\n    print(f'Removed {qa_mask.sum()} QA orders.')\\nelse:\\n    completed_clean = completed\\n\\n# Step 5: Compute mean revenue\\nmean_revenue = completed_clean['revenue_clean'].mean()\\nprint(f'Mean revenue of completed orders: {mean_revenue:.2f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3249,
+  "completion_tokens": 290
+ }
+}

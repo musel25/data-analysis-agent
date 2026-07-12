@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8261034602f4c75e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA orders (revenue = 999999.99)\\nqa_orders = df[df['revenue_clean'] == 999999.99]\\ndf_clean = df[~df['revenue_clean'].isin([999999.99])]\\n\\n# Filter out refunded orders\\ndf_clean = df_clean[df_clean['status'] == 'completed']\\n\\n# Compute conversion rates by channel and customer_segment\\ncross_tab = pd.crosstab(\\n    index=df_clean['channel'],\\n    columns=df_clean['customer_segment'],\\n    values=df_clean['converted'],\\n    aggfunc='mean'\\n)\\n\\n# Print conversion rates by channel and segment\\nprint('Conversion rates by channel and segment:')\\nprint(cross_tab)\\n\\n# Compute difference in conversion rates (email - paid_search) by segment\\ndiffs = cross_tab.loc['email'] - cross_tab.loc['paid_search']\\nprint('\\\\nDifference in conversion rates (email - paid_search) by segment:')\\nprint(diffs)\\n\\n# Compute segment proportions in the overall sample\\nsegment_counts = df_clean['customer_segment'].value_counts(normalize=True)\\nprint('\\\\nProportion of each customer segment in the sample:')\\nprint(segment_counts)\\n\\n# Compute ATE: weighted average of segment-level differences\\nate = (diffs * segment_counts).sum()\\nprint(f'\\\\nAverage Treatment Effect (ATE) across segments: {ate:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8292,
+  "completion_tokens": 406
+ }
+}

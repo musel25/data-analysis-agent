@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-afb7e7b08456f61a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and cast to float\\nsales['revenue'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter for completed orders\\ncompleted_orders = sales[sales['status'] == 'completed']\\n\\n# Identify and remove QA orders (revenue == 999999.99)\\nqa_mask = sales['revenue'] == 999999.99\\nprint(f\\\"Number of QA orders found: {qa_mask.sum()}\\\")\\n\\n# Remove QA orders from the completed set\\ncompleted_orders_clean = completed_orders[~qa_mask]\\n\\n# Compute mean revenue on clean data\\nmean_revenue_clean = completed_orders_clean['revenue'].mean()\\n\\nprint(f\\\"Mean revenue of completed orders (after removing QA orders): {mean_revenue_clean:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3686,
+  "completion_tokens": 228
+ }
+}

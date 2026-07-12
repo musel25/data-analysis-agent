@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8060221c34469559",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue to detect QA orders\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders (revenue == 999999.99)\\nqa_orders = sales[sales['revenue_clean'] == 999999.99]\\n\\n# Exclude QA orders from the converted group\\n# First, get all converted customers with valid age\\nconverted = sales[(sales['converted'] == 1) & (sales['customer_age'] != -1)]\\n\\n# Now, remove QA orders from this group\\nconverted_clean = converted[~converted['order_id'].isin(qa_orders['order_id'])]\\n\\n# Compute mean age\\nmean_age = converted_clean['customer_age'].mean()\\n\\nprint(f\\\"Mean age of converted customers (after removing QA orders and missing age): {mean_age:.2f}\\\")\\n\\n# Output for evidence\\nprint(f\\\"Number of converted customers after cleaning: {len(converted_clean)}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6412,
+  "completion_tokens": 267
+ }
+}

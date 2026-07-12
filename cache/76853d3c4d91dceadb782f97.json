@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-895670e914d84533",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\n# Filter out rows with biomarker_baseline == -999 (QC failure)\\ndf = data[data['biomarker_baseline'] != -999]\\n\\n# Deduplicate: keep highest sample_seq per patient_id\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Correct assay_batch B values: divide biomarker_final by 10\\n# Only batch B needs correction\\ndf.loc[df['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 3: Compute response rate by arm and severity\\nresponse_by_arm_severity = pd.crosstab(\\n    index=df['arm'],\\n    columns=df['severity'],\\n    values=df['responded'],\\n    aggfunc='mean'\\n)\\nprint('Response rate by arm and severity:')\\nprint(response_by_arm_severity)\\n\\n# Step 4: Compute difference in proportions within each severity stratum\\nstratum_diffs = {}\\nn_per_severity = df['severity'].value_counts().sort_index()\\nprint('\\\\nGroup sizes by severity:')\\nprint(n_per_severity)\\n\\nweighted_diff = 0\\nfor severity in df['severity'].unique():\\n    treated_rate = df[(df['arm'] == 'treatment') & (df['severity'] == severity)]['responded'].mean()\\n    control_rate = df[(df['arm'] == 'control') & (df['severity'] == severity)]['responded'].mean()\\n    diff = treated_rate - control_rate\\n    weight = n_per_severity[severity] / n_per_severity.sum()\\n    stratum_diffs[severity] = diff\\n    weighted_diff += diff * weight\\n    print(f'  {severity}: treated={treated_rate:.4f}, control={control_rate:.4f}, diff={diff:.4f}, weight={weight:.4f}')\\n\\nprint(f'\\\\nWeighted average treatment effect (treatment - control): {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5899,
+  "completion_tokens": 502
+ }
+}

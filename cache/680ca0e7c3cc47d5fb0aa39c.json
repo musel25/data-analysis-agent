@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9edfdc2553ab2e03",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Stratify by severity and compute response rates within each stratum\\ndf['responded'] = df['responded'].astype(int)  # Ensure it's integer\\n\\n# Compute response rate for each arm within each severity level\\nstratified = df.groupby(['arm', 'severity'])['responded'].agg(['mean', 'count']).reset_index()\\nstratified.columns = ['arm', 'severity', 'response_rate', 'n']\\n\\n# Compute the difference in response rates within each severity stratum\\n# We'll compute the treatment minus control difference within each severity group\\nwithin_strata = stratified.pivot(index='severity', columns='arm', values='response_rate')\\nwithin_strata['diff'] = within_strata['treatment'] - within_strata['control']\\n\\n# Compute the overall treatment effect using a weighted average of within-strata differences\\n# Weight by the size of the control group in each stratum (standard approach for confounder adjustment)\\ncontrol_n = df[df['arm'] == 'control'].groupby('severity')['patient_id'].count()\\ntotal_control = control_n.sum()\\nweights = control_n / total_control\\n\\n# Weighted average difference in proportions\\nweighted_diff = (within_strata['diff'] * weights).sum()\\n\\n# Also compute the unadjusted difference for comparison\\ncontrol_resp = df[df['arm'] == 'control']['responded'].mean()\\ntreatment_resp = df[df['arm'] == 'treatment']['responded'].mean()\\nunadjusted_diff = treatment_resp - control_resp\\n\\nprint(\\\"Stratified response rates by arm and severity:\\\")\\nprint(stratified)\\nprint(f\\\"\\\\nWeighted average treatment effect (adjusted for severity): {weighted_diff:.4f}\\\")\\nprint(f\\\"Unadjusted treatment effect: {unadjusted_diff:.4f}\\\")\\n\\n# Output for submission\\nweighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5173,
+  "completion_tokens": 429
+ }
+}

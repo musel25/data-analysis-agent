@@ -18,7 +18,7 @@
 # > **The claim:** a data-analysis agent is a **while loop that writes code, runs it, and reads
 # > the results.** Everything else is a guardrail *earned from a failure you watched happen*.
 #
-# **~885 lines. No framework. Runs on a $0.10/1M-token open model at about half a cent per
+# **~1,000 lines. No framework. Runs on a $0.10/1M-token open model at about half a cent per
 # analysis.**
 #
 # ---
@@ -29,7 +29,7 @@
 # | **2. The problem** | it says a working drug doesn't work |
 # | **3. The papers** | 54% of real agent failures are *not* coding failures |
 # | **4. The design** | three ledgers and a gated exit |
-# | **5. The evidence** | 360 runs, 8 ablations |
+# | **5. The evidence** | 4,480 runs, 8 ablations, a held-out domain |
 # | **6. The punchline** | **the result that inverted my own thesis** |
 # | **7. The dashboard** | *(embedded below)* |
 #
@@ -153,15 +153,16 @@ print("═" * 66)
 # # 3. This is exactly what the papers found
 #
 # ### GeneBench-Pro — Li & Ho (OpenAI, 2026)
-# 129 multistage statistical-reasoning problems on messy biomedical data. Best frontier model:
-# **31.5%**. On **45.7% of problems it scores zero across ten attempts.**
+# 129 multistage statistical-reasoning problems on messy biomedical data. Best configuration:
+# **31.5%**. The best *mainline* model scores **28.7%** — and on **45.7% of problems it scores zero
+# across all ten attempts.**
 #
 # > *"the agent **notices** the relevant local diagnostic clue but **treats it as a local data
-# > cleaning issue** rather than as evidence that should **change the downstream statistical
-# > method**."*
+# > cleaning issue** rather than as evidence that should **change the downstream statistical method
+# > and QC pipeline**."*
 #
-# ### DrugDiscoveryBench — Akyürek, Tu et al. (Scale AI, 2026)
-# 82 expert drug-discovery tasks; best agent **51.6%**. They hand-classified **226 failing runs**:
+# ### DrugDiscoveryBench — Akyürek, Tu et al. (Scale AI & Phylo, 2026)
+# 82 expert drug-discovery tasks; best agent **51.6%**. They classified **226 failing runs**:
 #
 # | Failure mode | Share |
 # |---|---|
@@ -233,7 +234,7 @@ print(rejection_message("open_findings",
 # ---
 # # 5. How would I know it works?
 #
-# 15 tasks, two datasets, ground truth computed in pandas by the grader — it never goes near the
+# 28 tasks, three domains, ground truth computed in pandas by the grader — it never goes near the
 # agent. Binary, all-or-nothing grading, following GeneBench-Pro.
 #
 # ### The guard that makes the benchmark trustworthy
@@ -366,7 +367,7 @@ print("and I say so, instead of reporting a point estimate and hoping nobody che
 # **exactly zero**, and I wrote — in the notebook — *"the ablation does not show the Findings
 # Ledger paying for itself."*
 #
-# At **28 tasks × 10 runs** it comes back at **Δ −5%, CI [−11%, +1%]**. The point estimate says five
+# At **28 tasks × 10 runs** it comes back at **Δ −2%, CI [−9%, +5%]**. The point estimate says two
 # points, and it's the **only** gate whose interval sits almost entirely on the "it helps" side. It
 # still grazes zero, so I can't claim it at 95%.
 #
@@ -385,15 +386,15 @@ print("and I say so, instead of reporting a point estimate and hoping nobody che
 #   runs can't move an average pass rate — but you don't price a fabricated number in a drug filing
 #   by its *frequency*. The right test for a gate is **adversarial, not average**, and this
 #   benchmark is an average one. That's a limitation of my evaluation, not evidence against the gate.
-# - **One oddity I won't overclaim:** removing the briefing alone (62%) scores *worse* than removing
-#   the briefing **and** every gate (69%). Gates without a detector may be *worse than nothing* —
+# - **One oddity I won't overclaim:** removing the briefing alone (60%) scores *worse* than removing
+#   the briefing **and** every gate (65%). Gates without a detector may be *worse than nothing* —
 #   they burn the step budget on ceremony with no information behind it. But that paired CI is
 #   `[−18%, +4%]`; it crosses zero. **A hypothesis with a mechanism, not a finding.**
 #
 # ### So what would I build next?
 #
 # **Not another gate. More detectors.** Every remaining failure is a missing detector — the units
-# trap (33%) needs *"flag any column that's multi-modal by batch"*; the ambiguity task (0%) needs
+# confounding trap (10%) needs *"cross-tab every grouping column against every other"*; the ambiguity task (0%) needs
 # *"does the question pin down a population, a direction, and a unit?"* Three cheap `if`s.
 #
 # And then re-run at 10 runs/task, because right now I can see a 27-point effect and I am blind to
@@ -404,7 +405,7 @@ print("and I say so, instead of reporting a point estimate and hoping nobody che
 # # 7. The dashboard
 #
 # Everything above, as something you can poke at: run the agent on any question, **toggle the
-# guardrails off and watch it fail**, and browse the 360-run evidence.
+# guardrails off and watch it fail**, and browse the 4,480-run evidence.
 #
 # Run the cell below — it starts the app and embeds it right here.
 
@@ -454,5 +455,5 @@ IFrame(f"http://localhost:{PORT}", width="100%", height=900)
 # | **The design** | `docs/DESIGN.md` |
 # | **Every decision, and what would change my mind** | `docs/DECISIONS.md` |
 # | **The buildup, from one API call to the whole agent** | `notebooks/01` → `07` |
-# | **The agent** | `agentlib/` — 885 lines |
+# | **The agent** | `agentlib/` — ~1,000 lines |
 # | **The benchmark and the ablations** | `evals/` |

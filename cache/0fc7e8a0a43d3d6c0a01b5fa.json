@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bb29f06e578841d7",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\nimport numpy as np\\nfrom scipy import stats\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Create a cleaned version: replace -999 with NaN for biomarker_baseline\\ntrial_df_clean = trial_df.copy()\\ntrial_df_clean['biomarker_baseline'] = trial_df_clean['biomarker_baseline'].replace(-999, pd.NA)\\n\\n# Drop rows with missing baseline biomarker (complete case analysis)\\ntrial_df_complete = trial_df_clean.dropna(subset=['biomarker_baseline'])\\n\\n# Compute the change in biomarker\\ntrial_df_complete['biomarker_change'] = trial_df_complete['biomarker_final'] - trial_df_complete['biomarker_baseline']\\n\\n# Perform ANCOVA: model change as a function of arm, with baseline as covariate\\n# We'll use a linear model with interaction to check if the treatment effect differs\\nfrom statsmodels.regression.linear_model import OLS\\nfrom statsmodels.tools import add_constant\\n\\n# Prepare data for regression\\nX = trial_df_complete[['arm', 'biomarker_baseline']]\\nX = pd.get_dummies(X, columns=['arm'], drop_first=True)  # One-hot encode arm\\nX = add_constant(X)  # Add intercept\\n\\ny = trial_df_complete['biomarker_change']\\n\\n# Fit the model\\nmodel = OLS(y, X).fit()\\n\\n# Print summary\\nprint(model.summary())\\n\\n# Extract the coefficient for treatment arm (control is baseline)\\ntreatment_effect = model.params['arm_Treatment']\\n\\n# Extract p-value for treatment effect\\np_value = model.pvalues['arm_Treatment']\\n\\n# Return the estimate and p-value\\nprint(f\\\"\\\\nTreatment effect (change in biomarker change) on treatment arm: {treatment_effect}\\\")\\nprint(f\\\"P-value: {p_value}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5399,
+  "completion_tokens": 436
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-815d75481d8297fd",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue to float: remove commas and cast\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders\\ndf_clean = df[df['revenue'] != 999999.99].copy()\\n\\n# Filter for new customers reached by paid search\\nnew_paid_search_mask = (df_clean['customer_segment'] == 'new') & (df_clean['channel'] == 'paid_search')\\n\\n# Check if any such customers exist\\nnum_new_paid_search = new_paid_search_mask.sum()\\nif num_new_paid_search == 0:\\n    raise ValueError(\\\"No customers in the 'new' segment reached by 'paid_search'. The premise is false.\\\")\\n\\n# Extract the population\\npopulation = df_clean[new_paid_search_mask]\\n\\n# Compute fraction converted\\ntotal = len(population)\\nconverted = population['converted'].sum()\\nconverted_fraction = converted / total\\n\\n# Print every number that appears in the final answer\\nprint(\\\"Total number of new customers reached by paid search:\\\", total)\\nprint(\\\"Number who converted:\\\", converted)\\nprint(\\\"Fraction converted:\\\", converted_fraction)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6302,
+  "completion_tokens": 298
+ }
+}

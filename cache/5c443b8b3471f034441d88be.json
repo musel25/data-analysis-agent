@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-85863ad092d1e80a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load and clean data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue: remove commas and convert to float\\ndf['revenue'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Remove QA orders and refunded orders\\ncompleted_only = df[(df['status'] == 'completed') & (df['revenue'] != 999999.99)]\\n\\n# Stratify by customer_segment and compute conversion rate within each segment\\nstratified = completed_only.groupby(['customer_segment', 'channel'])['converted'].mean().unstack(level='channel')\\n\\n# Compute difference within each segment\\nstratified['diff'] = stratified['email'] - stratified['paid_search']\\n\\n# Compute segment sizes for weighting\\nsegment_counts = completed_only.groupby('customer_segment').size()\\n\\n# Compute weighted average difference\\nweighted_diff = (stratified['diff'] * segment_counts).sum() / segment_counts.sum()\\n\\n# Print all required values\\nprint('Stratified conversion rates (email):', stratified['email'].to_dict())\\nprint('Stratified conversion rates (paid_search):', stratified['paid_search'].to_dict())\\nprint('Segment-specific differences (email - paid_search):', stratified['diff'].to_dict())\\nprint('Segment counts:', segment_counts.to_dict())\\nprint('Weighted average difference (adjusted):', weighted_diff)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8968,
+  "completion_tokens": 339
+ }
+}

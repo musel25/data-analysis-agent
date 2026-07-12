@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9a1308cc94eaa602",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Filter out QA test orders (revenue = 999999.99)\\nqa_mask = df['revenue_clean'] == 999999.99\\n\\n# Filter out refunded orders\\nrefunded_mask = df['status'] == 'refunded'\\n\\n# Apply filters: keep only completed orders and non-QA orders\\nfiltered_df = df[~qa_mask & ~refunded_mask]\\n\\n# Compute conversion rate for each channel\\nchannel_conv = filtered_df.groupby('channel')['converted'].mean()\\n\\n# Extract conversion rates\\nemail_conv = channel_conv['email']\\npaid_search_conv = channel_conv['paid_search']\\n\\n# Compute difference\\ndifference = email_conv - paid_search_conv\\n\\n# Print results\\nprint(f\\\"Number of rows after filtering: {filtered_df.shape[0]}\\\")\\nprint(f\\\"Email conversion rate: {email_conv}\\\")\\nprint(f\\\"Paid search conversion rate: {paid_search_conv}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 17454,
+  "completion_tokens": 307
+ }
+}

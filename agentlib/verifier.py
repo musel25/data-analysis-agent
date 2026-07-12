@@ -43,10 +43,10 @@ Check exactly four things:
 4. UNACKNOWLEDGED DATA PROBLEMS — Does the output show something the conclusion ignores? Missing
    data, an impossible value, a group imbalance, a suspicious scale?
 
-5. FALSE PREMISE — Did the question assume something that the data does not support ("which of the
-   FOUR sites", "WHY do women respond better")? If the analyst answered such a question as if the
-   premise were true, that is a failure, even if their arithmetic is correct. Answering a false
-   question launders the false premise into a fact.
+5. FALSE PREMISE — Did the question assume something the data does not support ("which of the SIX
+   warehouses...", "WHY does the night shift outperform...")? If the analyst answered such a
+   question as if the premise were true, that is a failure, even if their arithmetic is correct.
+   Answering a false question launders the false premise into a fact.
 
 Be concrete and be brief. If it is sound, say so — do not invent problems to look useful. If it is
 not, name the specific defect.

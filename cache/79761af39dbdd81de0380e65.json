@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9ac924fea704727c",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Compute change in biomarker (baseline - final), ignoring missing values\\ndata['change'] = data['biomarker_baseline'] - data['biomarker_final']\\n\\n# Check if the change is meaningful for the treatment arm vs control arm\\ntreatment_change = data[data['arm'] == 'treatment']['change'].dropna()\\ntreatment_change_mean = treatment_change.mean()\\ncontrol_change = data[data['arm'] == 'control']['change'].dropna()\\ncontrol_change_mean = control_change.mean()\\n\\n# Compute the difference in mean change between arms\\ndiff_mean_change = treatment_change_mean - control_change_mean\\n\\n# Use bootstrap to compute confidence interval for the difference in mean change\\n# to avoid assumptions about normality\\n\\nn_bootstraps = 10000\\nbootstrapped_diffs = []\\n\\nfor _ in range(n_bootstraps):\\n    # Resample with replacement from treatment and control groups\\n    boot_treatment = np.random.choice(treatment_change, size=len(treatment_change), replace=True)\\n    boot_control = np.random.choice(control_change, size=len(control_change), replace=True)\\n    \\n    # Compute mean change for each bootstrap sample\\n    boot_treat_mean = np.mean(boot_treatment)\\n    boot_control_mean = np.mean(boot_control)\\n    \\n    # Store the difference\\n    bootstrapped_diffs.append(boot_treat_mean - boot_control_mean)\\n\\n# Compute 95% confidence interval\\nlower_ci = np.percentile(bootstrapped_diffs, 2.5)\\nupper_ci = np.percentile(bootstrapped_diffs, 97.5)\\n\\n# Check if the confidence interval excludes zero\\nis_significant = (lower_ci > 0) or (upper_ci < 0)\\n\\n# Output results\\ntreatment_change_mean, control_change_mean, diff_mean_change, lower_ci, upper_ci, is_significant\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3871,
+  "completion_tokens": 439
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b22c7997f795a3d1",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ntrial_df = pd.read_csv('data/trial.csv')\\n\\n# Ensure 'arm' and 'severity' are categorical\\ntrial_df['arm'] = trial_df['arm'].astype(str)\\ntrial_df['severity'] = trial_df['severity'].astype(str)\\n\\n# Compute the overall treatment effect using inverse probability weighting (IPW) to adjust for severity imbalance\\n# Step 1: Estimate propensity scores (probability of being in treatment group given severity)\\npropensity = trial_df.groupby('severity')['arm'].mean()\\n\\n# Map propensity scores to each row\\ntrial_df['propensity'] = trial_df['severity'].map(propensity)\\n\\n# Step 2: Compute inverse probability weights\\ntrial_df['weight'] = np.where(trial_df['arm'] == 'treatment', 1 / trial_df['propensity'], 1 / (1 - trial_df['propensity']))\\n\\n# Step 3: Compute weighted response rates\\nweighted_response_treatment = (trial_df[trial_df['arm'] == 'treatment']['responded'] * trial_df[trial_df['arm'] == 'treatment']['weight']).sum() / trial_df[trial_df['arm'] == 'treatment']['weight'].sum()\\nweighted_response_control = (trial_df[trial_df['arm'] == 'control']['responded'] * trial_df[trial_df['arm'] == 'control']['weight']).sum() / trial_df[trial_df['arm'] == 'control']['weight'].sum()\\n\\n# Step 4: Compute weighted treatment effect\\nweighted_treatment_effect = weighted_response_treatment - weighted_response_control\\n\\n# Print results\\nweighted_treatment_effect, weighted_response_treatment, weighted_response_control\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5133,
+  "completion_tokens": 388
+ }
+}

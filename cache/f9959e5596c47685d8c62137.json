@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b47a8da53f1acf6e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Read the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Replace -999.0 with NaN in biomarker_baseline\\ndf['biomarker_baseline'] = df['biomarker_baseline'].replace(-999.0, pd.NA)\\n\\n# Calculate change in biomarker: final - baseline\\ndf['biomarker_change'] = df['biomarker_final'] - df['biomarker_baseline']\\n\\n# Drop rows where baseline is missing (now NaN)\\ndf_clean = df.dropna(subset=['biomarker_baseline'])\\n\\n# Stratify by severity and compute mean change within each severity group\\nstratified_change = df_clean.groupby(['arm', 'severity'])['biomarker_change'].mean().reset_index()\\n\\n# Compute the overall mean change for each arm (raw, unadjusted)\\nraw_mean_change = df_clean.groupby('arm')['biomarker_change'].mean().round(2)\\n\\n# Now compute within-severity differences (treatment - control)\\n# First, pivot the data to get treatment and control means per severity\\npivot_table = stratified_change.pivot(index='severity', columns='arm', values='biomarker_change')\\n\\n# Compute difference: treatment - control\\nwithin_severity_diff = pivot_table['treatment'] - pivot_table['control']\\n\\n# Compute weights: use the number of patients in each severity group in the treatment arm\\n# (This is a common choice for weighting in stratified analysis)\\ntreatment_severity_counts = df_clean[df_clean['arm'] == 'treatment']['severity'].value_counts()\\n\\n# Weighted average of within-severity differences\\nadjusted_diff = (within_severity_diff * treatment_severity_counts).sum() / treatment_severity_counts.sum()\\n\\n# Also compute the raw difference for comparison\\nraw_diff = raw_mean_change['treatment'] - raw_mean_change['control']\\n\\n# Print results\\nprint(\\\"Raw mean change by arm (unadjusted):\\\")\\nprint(raw_mean_change)\\n\\nprint(\\\"\\\\nWithin-severity differences (treatment - control):\\\")\\nprint(within_severity_diff)\\n\\nprint(f\\\"\\\\nAdjusted difference (weighted average): {adjusted_diff:.2f}\\\")\\n\\nprint(f\\\"\\\\nRaw difference (treatment - control): {raw_diff:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7991,
+  "completion_tokens": 534
+ }
+}

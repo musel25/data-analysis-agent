@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bf8c4029f776f6f2",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Deduplicate on patient_id, keeping the row with highest sample_seq per patient\\ndata = data.sort_values('sample_seq', ascending=False).drop_duplicates(subset='patient_id', keep='first')\\n\\n# Step 2: Correct assay_batch B biomarker_final \u2014 divide by 10 to convert from \u00b5g/L to ng/mL\\ndata.loc[data['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 3: Compute response rate within each severity stratum\\n# Stratify by severity and compute proportion responded in each arm\\nstratified = data.groupby(['severity', 'arm'])['responded'].mean().reset_index()\\nstratified = stratified.pivot(index='severity', columns='arm', values='responded').reset_index()\\nstratified.columns.name = None\\n\\n# Compute the stratum-specific treatment effect (treatment - control)\\nstratified['treatment_effect'] = stratified['treatment'] - stratified['control']\\n\\n# Compute the overall population distribution of severity (for standardisation weights)\\npopulation_severity_dist = data['severity'].value_counts(normalize=True).sort_index()\\n\\n# Compute the standardised treatment effect (using population severity distribution as weights)\\nstd_effect = (stratified['treatment_effect'] * population_severity_dist).sum()\\n\\n# Now compute the raw marginal difference (treatment - control) for comparison\\nraw_treatment_rate = data[data['arm'] == 'treatment']['responded'].mean()\\nraw_control_rate = data[data['arm'] == 'control']['responded'].mean()\\nraw_difference = raw_treatment_rate - raw_control_rate\\n\\n# Output all key numbers\\nstratified, std_effect, raw_treatment_rate, raw_control_rate, raw_difference\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8931,
+  "completion_tokens": 432
+ }
+}

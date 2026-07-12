@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8bda823475bd5157",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Exclude rows where biomarker_baseline is -999\\n# (sentinel for QC failure)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate on patient_id, keeping highest sample_seq\\n# This ensures one row per patient (the last test)\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Correct assay_batch B values: divide by 10 (\u00b5g/L to ng/mL)\\ndf.loc[df['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Compute response rates by arm and severity\\nresponse_by_arm_severity = df.groupby(['arm', 'severity'])['responded'].mean().reset_index()\\n\\n# Print the response rates by arm and severity\\nprint(\\\"Response rates by arm and severity:\\\")\\nfor _, row in response_by_arm_severity.iterrows():\\n    print(f\\\"{row['arm']} - {row['severity']}: {row['responded']:.6f}\\\")\\n\\n# Compute severity weights (overall distribution)\\nseverity_weights = df['severity'].value_counts(normalize=True).sort_index()\\nprint(\\\"Severity weights (overall):\\\")\\nfor severity, weight in severity_weights.items():\\n    print(f\\\"{severity}: {weight:.6f}\\\")\\n\\n# Compute adjusted response rates per arm using standardisation\\nadjusted_treatment = (df[df['arm'] == 'treatment'].groupby('severity')['responded'].mean() * severity_weights).sum()\\nadjusted_control = (df[df['arm'] == 'control'].groupby('severity')['responded'].mean() * severity_weights).sum()\\n\\nadjusted_treatment_effect = adjusted_treatment - adjusted_control\\n\\n# Print the final adjusted treatment effect\\nprint(f\\\"Adjusted treatment effect (standardized): {adjusted_treatment_effect:.6f}\\\")\\n\\n# Return the value to be used in the answer\\nadjusted_treatment_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6127,
+  "completion_tokens": 483
+ }
+}

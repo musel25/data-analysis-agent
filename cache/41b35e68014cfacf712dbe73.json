@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ab48ec6faa0a886d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Check for QA orders: revenue = 999999.99\\n# First, parse revenue to float to compare\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders\\nqa_mask = df['revenue_clean'] == 999999.99\\nprint(f\\\"Number of QA orders: {qa_mask.sum()}\\\")\\n\\n# Check if any QA order is in the loyal segment\\nloyal_mask = df['customer_segment'] == 'loyal'\\nqa_in_loyal = qa_mask & loyal_mask\\nprint(f\\\"Number of QA orders among loyal customers: {qa_in_loyal.sum()}\\\")\\n\\n# Now, compute conversion rate among loyal customers, excluding QA orders\\n# Filter out QA orders first\\ndf_filtered = df[~qa_mask].copy()\\nloyal_filtered_mask = df_filtered['customer_segment'] == 'loyal'\\nconverted_loyal_filtered = df_filtered[loyal_filtered_mask]['converted']\\n\\n# Compute conversion rate\\ntotal_loyal_filtered = len(converted_loyal_filtered)\\nconverted_loyal_count = converted_loyal_filtered.sum()\\nconversion_rate_filtered = converted_loyal_filtered.mean()\\n\\nprint(f\\\"Total loyal customers (after removing QA): {total_loyal_filtered}\\\")\\nprint(f\\\"Converted loyal customers: {converted_loyal_count}\\\")\\nprint(f\\\"Conversion rate: {conversion_rate_filtered}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5863,
+  "completion_tokens": 373
+ }
+}

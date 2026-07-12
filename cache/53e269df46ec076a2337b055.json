@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-9b351631cdaff9d7",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Clean the revenue column: remove commas and convert to float\\nsales['revenue_clean'] = sales['revenue'].str.replace(',', '').astype(float)\\n\\n# Drop QA orders (revenue = 999999.99)\\nqa_orders = sales[sales['revenue_clean'] == 999999.99]\\nsales_clean = sales[~(sales['revenue_clean'] == 999999.99)].copy()\\n\\n# Drop refunded orders for revenue and conversion analysis\\ncompleted_only = sales_clean[sales_clean['status'] == 'completed']\\n\\n# Stratified analysis: compute conversion rate and average revenue by channel and segment\\nstratified = completed_only.groupby(['channel', 'customer_segment'])['converted'].agg(['mean', 'count']).round(3)\\nstratified_revenue = completed_only.groupby(['channel', 'customer_segment'])['revenue_clean'].mean().round(2)\\n\\n# Compute stratum-specific differences\\n# For conversion rate: email - paid_search\\nconversion_diff = []\\nfor seg in ['new', 'returning', 'loyal']:\\n    email_conv = stratified.loc[('email', seg), 'mean']\\n    paid_conv = stratified.loc[('paid_search', seg), 'mean']\\n    diff = email_conv - paid_conv\\n    conversion_diff.append((seg, diff))\\n\\n# For revenue: email - paid_search\\nrevenue_diff = []\\nfor seg in ['new', 'returning', 'loyal']:\\n    email_rev = stratified_revenue.loc[('email', seg)]\\n    paid_rev = stratified_revenue.loc[('paid_search', seg)]\\n    diff = email_rev - paid_rev\\n    revenue_diff.append((seg, diff))\\n\\n# Print detailed results\\nprint(\\\"=== STRATIFIED COMPARISON RESULTS ===\\\")\\nprint(\\\"Conversion rate difference (email - paid_search) by segment:\\\")\\nfor seg, diff in conversion_diff:\\n    print(f\\\"  {seg}: {diff:.3f}\\\")\\n\\nprint(\\\"\\\\nAverage revenue difference (email - paid_search) by segment:\\\")\\nfor seg, diff in revenue_diff:\\n    print(f\\\"  {seg}: ${diff:.2f}\\\")\\n\\n# Print overall metrics\\noverall_conversion_rate = completed_only['converted'].mean()\\noverall_avg_revenue = completed_only['revenue_clean'].mean()\\nprint(f\\\"\\\\n=== OVERALL METRICS (after removing QA and refunded orders) ===\\\")\\nprint(f\\\"Overall conversion rate: {overall_conversion_rate:.3f}\\\")\\nprint(f\\\"Overall average revenue: ${overall_avg_revenue:.2f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 8151,
+  "completion_tokens": 636
+ }
+}

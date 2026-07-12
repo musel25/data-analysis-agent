@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-92aaf4a2f95d9480",
+    "function": {
+     "arguments": "{\"code\": \"from scipy.stats import chi2_contingency\\n\\n# Check if the segment distribution is significantly different between channels\\ncontingency_table = pd.crosstab(sales['channel'], sales['customer_segment'])\\nchi2, p_value, dof, expected = chi2_contingency(contingency_table)\\n\\nprint(f'Chi-square test p-value: {p_value:.4f}')\\n\\n# Stratify by customer_segment and compute conversion rates within each segment\\nstratified_rates = sales.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(fill_value=0)\\n\\n# Compute the difference in conversion rates within each segment\\nstratified_diffs = stratified_rates['email'] - stratified_rates['paid_search']\\n\\n# Compute overall difference using weighted average (by segment size)\\nsegment_sizes = sales.groupby('customer_segment').size()\\ntotal_emails = sales[sales['channel'] == 'email'].shape[0]\\ntotal_paid_search = sales[sales['channel'] == 'paid_search'].shape[0]\\n\\n# Weighted average of differences\\nweighted_diff = (stratified_diffs * segment_sizes).sum() / (segment_sizes.sum())\\n\\nprint(f'Stratified differences by segment: {stratified_diffs.to_dict()}')\\nprint(f'Weighted average difference: {weighted_diff:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 2741,
+  "completion_tokens": 312
+ }
+}

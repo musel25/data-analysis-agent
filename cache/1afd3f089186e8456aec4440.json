@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a416e515f7e0d884",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Remove rows where biomarker_baseline is -999 (QC failure sentinel)\\ndf = df[df['biomarker_baseline'] != -999]\\n\\n# Step 2: Deduplicate by keeping the highest sample_seq per patient_id\\ndf = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Correct assay_batch B values: divide by 10 (since B is in \u00b5g/L, which is 10\u00d7 ng/mL)\\ndf.loc[df['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 4: Compute response rate within each severity level, by arm\\ndf['responded'] = df['responded'].astype(int)  # Ensure it's int\\n\\n# Stratify by severity: compute response rate within each severity group, by arm\\nstratified = df.groupby(['severity', 'arm'])['responded'].agg(['mean', 'count']).reset_index()\\n\\n# Extract response rates per stratum\\ntreatment_mild = stratified[(stratified['severity'] == 'mild') & (stratified['arm'] == 'treatment')]['mean'].iloc[0]\\ntreatment_moderate = stratified[(stratified['severity'] == 'moderate') & (stratified['arm'] == 'treatment')]['mean'].iloc[0]\\ntreatment_severe = stratified[(stratified['severity'] == 'severe') & (stratified['arm'] == 'treatment')]['mean'].iloc[0]\\n\\ncontrol_mild = stratified[(stratified['severity'] == 'mild') & (stratified['arm'] == 'control')]['mean'].iloc[0]\\ncontrol_moderate = stratified[(stratified['severity'] == 'moderate') & (stratified['arm'] == 'control')]['mean'].iloc[0]\\ncontrol_severe = stratified[(stratified['severity'] == 'severe') & (stratified['arm'] == 'control')]['mean'].iloc[0]\\n\\n# Compute overall response rates (for reference)\\ntreatment_response_rate = df[df['arm'] == 'treatment']['responded'].mean()\\ncontrol_response_rate = df[df['arm'] == 'control']['responded'].mean()\\n\\ntreatment_effect_raw = treatment_response_rate - control_response_rate\\n\\n# Now compute adjusted treatment effect using stratum-specific rates\\n# Use the overall distribution of severity in the control group as the reference (standardisation)\\ncontrol_severity_counts = df[df['arm'] == 'control']['severity'].value_counts(normalize=True)\\n\\n# Weighted average of treatment response rate by control severity distribution\\nadjusted_treatment_rate = (\\n    treatment_mild * control_severity_counts.get('mild', 0) +\\n    treatment_moderate * control_severity_counts.get('moderate', 0) +\\n    treatment_severe * control_severity_counts.get('severe', 0)\\n)\\n\\n# Adjusted control rate (same weighting)\\nadjusted_control_rate = (\\n    control_mild * control_severity_counts.get('mild', 0) +\\n    control_moderate * control_severity_counts.get('moderate', 0) +\\n    control_severe * control_severity_counts.get('severe', 0)\\n)\\n\\n# Adjusted treatment effect\\nadjusted_treatment_effect = adjusted_treatment_rate - adjusted_control_rate\\n\\n# Print results\\ntreatment_response_rate, control_response_rate, treatment_effect_raw, adjusted_treatment_rate, adjusted_control_rate, adjusted_treatment_effect\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4984,
+  "completion_tokens": 839
+ }
+}

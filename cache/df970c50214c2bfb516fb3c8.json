@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-89de839fa0822990",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-run the stratified analysis with explicit weighting to avoid nan\\n# Compute the weighted average of treatment effects across severity strata\\n\\ntotal_n = len(df)\\nstratum_counts = df['severity'].value_counts()\\nstratum_weights = stratum_counts / total_n\\n\\n# Compute weighted treatment effect\\nweighted_effect = 0.0\\nfor severity, group in df.groupby('severity'):\\n    control_rate = group[group['arm'] == 'control']['responded'].mean()\\n    treatment_rate = group[group['arm'] == 'treatment']['responded'].mean()\\n    effect = treatment_rate - control_rate\\n    weight = stratum_weights[severity]\\n    weighted_effect += effect * weight\\n\\n# Final outputs\\nraw_diff = response_rate_treatment - response_rate_control\\n\\nprint(f\\\"Raw difference (treatment - control): {raw_diff:.4f}\\\")\\nprint(f\\\"Stratified treatment effect (weighted): {weighted_effect:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4555,
+  "completion_tokens": 235
+ }
+}

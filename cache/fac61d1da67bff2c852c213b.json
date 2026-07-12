@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a987d612289fb0a3",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Re-load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Create age groups\\nbins = [0, 30, 50, 100]\\nlabels = ['<30', '30-50', '50+']\\ndf['age_group'] = pd.cut(df['customer_age'], bins=bins, labels=labels, include_lowest=True)\\n\\n# Now compute conversion rates stratified by customer_segment and age_group\\n# First, compute conversion rates within each stratum\\nstrata = pd.crosstab([df['channel'], df['customer_segment'], df['age_group']], df['converted'], normalize='index')\\nstrata = strata[1]  # Only keep the 'converted' = 1 rate\\n\\n# Convert to a Series with MultiIndex\\nstrata = strata.reset_index()\\nstrata.columns = ['channel', 'customer_segment', 'age_group', 'conversion_rate']\\n\\n# Now compute the weighted average conversion rate for each channel, weighted by stratum size\\n# Get the size of each stratum\\nstratum_sizes = df.groupby(['channel', 'customer_segment', 'age_group']).size().reset_index(name='count')\\n\\n# Merge with conversion rates\\nstratum_data = pd.merge(strata, stratum_sizes, on=['channel', 'customer_segment', 'age_group'])\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_conv_rate = stratum_data.groupby('channel').apply(\\n    lambda x: (x['conversion_rate'] * x['count']).sum() / x['count'].sum()\\n).reset_index(name='weighted_conversion_rate')\\n\\n# Extract rates\\nemail_rate = weighted_conv_rate[weighted_conv_rate['channel'] == 'email']['weighted_conversion_rate'].iloc[0]\\npaid_search_rate = weighted_conv_rate[weighted_conv_rate['channel'] == 'paid_search']['weighted_conversion_rate'].iloc[0]\\n\\n# Compute difference\\ndifference = email_rate - paid_search_rate\\n\\n# Print results\\nprint(f'Weighted conversion rate (email): {email_rate:.4f}')\\nprint(f'Weighted conversion rate (paid_search): {paid_search_rate:.4f}')\\nprint(f'Difference (email - paid_search): {difference:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5839,
+  "completion_tokens": 522
+ }
+}

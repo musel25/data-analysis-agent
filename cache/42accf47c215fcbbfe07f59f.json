@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-8327163a976f2c5a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nfile_path = 'data/sales.csv'\\ndf = pd.read_csv(file_path)\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Drop QA orders (revenue = 999999.99)\\ndf_clean = df[df['revenue_clean'] != 999999.99]\\n\\n# Drop refunded orders (only completed count toward conversion)\\ndf_clean = df_clean[df_clean['status'] == 'completed']\\n\\n# Now stratify by customer_segment to compute conversion rates\\n# Compute conversion rate for each segment within each channel\\nconversion_rates = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().reset_index()\\n\\nprint(\\\"Conversion rates by channel and segment:\\\")\\nprint(conversion_rates)\\n\\n# Compute overall conversion rate for each channel, stratified by segment\\n# To isolate the campaign effect, we use a standardization (population-weighted average)\\n# First, compute the segment distribution in the overall sample\\nsegment_pop = df_clean['customer_segment'].value_counts(normalize=True)\\n\\n# Compute weighted average conversion rate for each channel\\nweighted_conv_email = (conversion_rates.loc[conversion_rates['channel'] == 'email'].set_index('customer_segment')['converted'] * segment_pop).sum()\\nweighted_conv_paid_search = (conversion_rates.loc[conversion_rates['channel'] == 'paid_search'].set_index('customer_segment')['converted'] * segment_pop).sum()\\n\\n# Compute the difference (email - paid_search)\\ndifference = weighted_conv_email - weighted_conv_paid_search\\n\\nprint(f\\\"Weighted average conversion rate (email): {weighted_conv_email:.4f}\\\")\\nprint(f\\\"Weighted average conversion rate (paid_search): {weighted_conv_paid_search:.4f}\\\")\\nprint(f\\\"Difference (email - paid_search): {difference:.4f}\\\")\\n\\n# Also compute raw rates for comparison\\nraw_email_rate = df_clean[df_clean['channel'] == 'email']['converted'].mean()\\nraw_paid_search_rate = df_clean[df_clean['channel'] == 'paid_search']['converted'].mean()\\nraw_diff = raw_email_rate - raw_paid_search_rate\\n\\nprint(f\\\"Raw conversion rate (email): {raw_email_rate:.4f}\\\")\\nprint(f\\\"Raw conversion rate (paid_search): {raw_paid_search_rate:.4f}\\\")\\nprint(f\\\"Raw difference (email - paid_search): {raw_diff:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4164,
+  "completion_tokens": 578
+ }
+}

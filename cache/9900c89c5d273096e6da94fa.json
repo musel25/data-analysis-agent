@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ae30097aad80e98f",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# We have already deduplicated and filtered to treatment arm\\n# df_final is our working dataset: 253 patients in treatment arm, no duplicates, no -999\\n\\n# Now compute response rates by sex and severity\\n# We'll compute within each severity stratum\\nresponse_rates = df_final.groupby(['sex', 'severity'])['responded'].agg(['mean', 'count']).round(4)\\nresponse_rates = response_rates.rename(columns={'mean': 'response_rate', 'count': 'n'})\\n\\n# Compute crude response rates by sex (unadjusted)\\ncrude_females = df_final[df_final['sex'] == 'F']['responded'].mean()\\ncrude_males = df_final[df_final['sex'] == 'M']['responded'].mean()\\ncrude_diff = crude_females - crude_males\\n\\n# Compute adjusted difference using stratified method (Mantel-Haenszel)\\n# We'll compute the difference within each stratum, then average with weights\\nstratum_weights = df_final.groupby('severity')['responded'].count() / len(df_final)\\n\\n# Compute stratum-specific differences\\nstratum_diffs = []\\nfor severity in ['mild', 'moderate', 'severe']:\\n    df_sev = df_final[df_final['severity'] == severity]\\n    rate_f = df_sev[df_sev['sex'] == 'F']['responded'].mean()\\n    rate_m = df_sev[df_sev['sex'] == 'M']['responded'].mean()\\n    diff = rate_f - rate_m\\n    stratum_diffs.append(diff)\\n\\n# Compute weighted average difference\\nweighted_diff = sum(w * d for w, d in zip(stratum_weights, stratum_diffs))\\n\\n# Also compute the crude difference for comparison\\nprint(\\\"Response rates by sex and severity:\\\")\\nprint(response_rates)\\nprint(f\\\"\\\\nCrude difference (unadjusted): {crude_diff:.4f} (females - males)\\\")\\nprint(f\\\"Stratified difference (adjusted): {weighted_diff:.4f}\\\")\\n\\n# Return the stratum-specific differences and weights\\nstratum_results = {\\n    'stratum_diffs': dict(zip(['mild', 'moderate', 'severe'], stratum_diffs)),\\n    'weights': stratum_weights.to_dict(),\\n    'crude_diff': crude_diff,\\n    'adjusted_diff': weighted_diff\\n}\\n\\nstratum_results\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5581,
+  "completion_tokens": 560
+ }
+}

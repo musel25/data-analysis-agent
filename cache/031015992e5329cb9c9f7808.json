@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a4242a6372825884",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and convert to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders: revenue == 999999.99\\ndf_qa = df[df['revenue_clean'] == 999999.99]\\nprint('QA orders found:')\\nprint(df_qa[['order_id', 'channel', 'customer_segment', 'customer_age', 'status', 'revenue', 'converted']])\\n\\n# Remove QA orders\\ndf_clean = df[~(df['revenue_clean'] == 999999.99)]\\n\\n# Now, for the estimand: mean age of customers who converted\\n# Filter to converted customers (converted == 1)\\ndf_converted = df_clean[df_clean['converted'] == 1]\\n\\n# Filter out missing age (-1)\\ndf_converted_valid = df_converted[df_converted['customer_age'] != -1]\\n\\n# Compute mean age\\nmean_age = df_converted_valid['customer_age'].mean()\\n\\nprint(f'Number of converted customers with valid age: {len(df_converted_valid)}')\\nprint(f'Mean age of converted customers (excluding -1 and QA): {mean_age:.2f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 5145,
+  "completion_tokens": 336
+ }
+}

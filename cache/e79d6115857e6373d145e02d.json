@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-86e5faa6a5692a60",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Parse revenue to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify QA orders\\ndf['is_qa'] = df['revenue_clean'] == 999999.99\\n\\n# Check if any QA order is in the loyal segment\\nloyal_mask = df['customer_segment'] == 'loyal'\\nqa_in_loyal = df['is_qa'] & loyal_mask\\n\\n# Print details of QA orders in loyal segment\\nqa_loyal_rows = df[qa_in_loyal]\\nprint(\\\"QA orders among loyal customers:\\\")\\nprint(qa_loyal_rows[['order_id', 'channel', 'customer_segment', 'customer_age', 'status', 'revenue', 'converted', 'is_qa']])\\n\\n# Check converted status of QA loyal orders\\nconverted_qa_loyal = qa_loyal_rows['converted'].sum()\\nprint(f\\\"Number of QA orders among loyal customers: {len(qa_loyal_rows)}\\\")\\nprint(f\\\"Sum of 'converted' in QA loyal orders: {converted_qa_loyal}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6794,
+  "completion_tokens": 301
+ }
+}

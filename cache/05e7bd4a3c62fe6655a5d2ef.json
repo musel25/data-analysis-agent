@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bfd5dfead722351e",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndata = pd.read_csv('data/trial.csv')\\n\\n# Step 1: Filter out rows where biomarker_baseline == -999\\nfiltered_data = data[data['biomarker_baseline'] != -999].copy()\\n\\n# Step 2: Deduplicate by keeping the highest sample_seq per patient_id\\nfiltered_data = filtered_data.loc[filtered_data.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 3: Correct assay_batch B: divide biomarker_final by 10 to convert \u00b5g/L to ng/mL\\nfiltered_data.loc[filtered_data['assay_batch'] == 'B', 'biomarker_final'] /= 10\\n\\n# Step 4: Compute response rates within each severity stratum\\nresponse_by_arm_severity = filtered_data.groupby(['arm', 'severity'])['responded'].mean().unstack(fill_value=0)\\n\\n# Print stratum-specific response rates\\nprint(\\\"Stratum-specific response rates:\\\")\\nprint(response_by_arm_severity)\\n\\n# Step 5: Compute control arm severity distribution (for standardisation)\\ncontrol_severity_dist = filtered_data[filtered_data['arm'] == 'control']['severity'].value_counts(normalize=True)\\nprint(\\\"\\\\nControl arm severity distribution:\\\")\\nprint(control_severity_dist)\\n\\n# Step 6: Compute direct standardised treatment effect\\nweighted_effect = 0\\nfor severity in response_by_arm_severity.columns:\\n    trt_rate = response_by_arm_severity.loc['treatment', severity]\\n    ctrl_rate = response_by_arm_severity.loc['control', severity]\\n    weight = control_severity_dist[severity]\\n    weighted_effect += weight * (trt_rate - ctrl_rate)\\n\\nprint(f\\\"\\\\nDirect standardised treatment effect (treatment minus control): {weighted_effect}\\\")\\n\\n# Step 7: Compute raw difference for comparison\\nraw_treatment_rate = filtered_data[filtered_data['arm'] == 'treatment']['responded'].mean()\\nraw_control_rate = filtered_data[filtered_data['arm'] == 'control']['responded'].mean()\\nraw_effect = raw_treatment_rate - raw_control_rate\\nprint(f\\\"Raw difference in response rates (treatment minus control): {raw_effect}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6340,
+  "completion_tokens": 513
+ }
+}

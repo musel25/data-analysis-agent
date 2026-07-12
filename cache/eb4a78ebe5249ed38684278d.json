@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-82fa0e691eb3fe8e",
+    "function": {
+     "arguments": "{\"code\": \"import math\\n\\n# Manually compute binomial probability using log-sum-exp to avoid overflow\\n# We want P(X <= k) where X ~ Binomial(n, 0.5)\\n# Use log probabilities and sum in log space\\n\\n# Log of 0.5\\nlog_p = math.log(0.5)\\n\\n# Compute log of P(X = i)\\nlog_prob = lambda i, n: i * log_p + (n - i) * log_p + math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)\\n\\n# Sum log probabilities from 0 to k\\nlog_p_cum = -float('inf')\\nfor i in range(k + 1):\\n    log_p_i = log_prob(i, n)\\n    if log_p_i == -float('inf'):\\n        continue\\n    if log_p_cum == -float('inf'):\\n        log_p_cum = log_p_i\\n    else:\\n        log_p_cum = math.logaddexp(log_p_cum, log_p_i)\\n\\n# Two-sided p-value\\np_val_sign_test = 2 * math.exp(log_p_cum)\\n\\n# Print result\\nprint(f\\\"Sign test for median = 0 (manual):\\\")\\nprint(f\\\"- Positive changes: {positive_count}\\\")\\nprint(f\\\"- Negative changes: {negative_count}\\\")\\nprint(f\\\"- Zero changes: {zero_count}\\\")\\nprint(f\\\"- Total non-zero: {n}\\\")\\nprint(f\\\"- Test statistic (k): {k}\\\")\\nprint(f\\\"- Two-sided p-value: {p_val_sign_test:.6f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 4895,
+  "completion_tokens": 388
+ }
+}

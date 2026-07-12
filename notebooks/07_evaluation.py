@@ -37,20 +37,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from evals.tasks import TASKS, test_leak, test_separation
+from evals.tasks import TASKS, test_contamination, test_leak, test_separation
 
 pd.set_option("display.width", 140)
 pd.set_option("display.max_columns", 30)
 
 # %% [markdown]
 # ---
-# ## 1. The benchmark, and the two guards that make it trustworthy
+# ## 1. The benchmark, and the three guards that make it trustworthy
 #
-# 15 tasks over two datasets. Ground truth is a **pandas callable** that only the grader ever
+# 28 tasks over three domains. Ground truth is a **pandas callable** that only the grader ever
 # invokes — it never goes near the agent.
 #
-# But a benchmark can be broken in ways that are invisible unless you check. Two assertions run
-# before every single evaluation:
+# But a benchmark can be broken in ways that are invisible unless you check. Three assertions run
+# before every single evaluation — and they **raise**, they don't warn:
 
 # %% [markdown]
 # ### Guard 1 — separation
@@ -78,20 +78,21 @@ print(pd.DataFrame(rows).to_string(index=False))
 
 test_separation()
 test_leak()
-print("\n✓ every naive path is far outside its tolerance band")
-print("✓ no ground truth appears in any prompt")
+test_contamination()
+print("\n✓ every naive path is far outside its tolerance band  (test_separation)")
+print("✓ no numeric ground truth appears in any prompt      (test_leak)")
+print("✓ no benchmark question appears in the agent's prompt (test_contamination)")
 
 # %% [markdown]
-# > ### 🐛 This guard caught **three of my own tasks** and I'm keeping the receipts.
+# > ### 🐛 This guard caught **two of my own tasks** and I'm keeping the receipts.
 # >
 # > | Task I wrote | What the guard found |
 # > |---|---|
 # > | *"median baseline biomarker among severe patients"* | **The median is robust to outliers.** 11% sentinels barely move it (68.9 vs 67.9). The task could not distinguish a careful analyst from a careless one. |
 # > | *"mean age of control-arm moderate patients"* | **Age is independent of arm** in my data-generating process. Dropping the arm filter changed nothing, so the task couldn't detect a constraint violation at all. |
-# > | *"fraction of patients with severe disease"* | Re-tests were a **random** sample, so deduplicating didn't move any proportion. The duplicate trap didn't bite. |
 # >
-# > Three tasks that looked completely reasonable, and graded **nothing**. I would have shipped
-# > all three and reported a number that meant nothing.
+# > Two tasks that looked completely reasonable, and graded **nothing**. I would have shipped both
+# > and reported a number that meant nothing.
 # >
 # > **The assertion found them. I didn't.**
 
@@ -101,6 +102,37 @@ print("✓ no ground truth appears in any prompt")
 # The ground truth is a lambda the grader calls. It is never rendered into a prompt, never written
 # to the agent's working directory. `test_leak()` asserts the answer doesn't appear in the question
 # string — cheap, and it means "grading theater" is not a thing I have to take on faith.
+#
+# ### Guard 3 — no contamination
+#
+# > ### 🐛 The third bug my own eval caught. This one is the worst.
+# >
+# > Rule 5 of my system prompt used to read:
+# > *`Questions smuggle in assumptions: "which of the FOUR sites...", "WHY do women respond better?"`*
+# > *`...there are only three sites; women do not in fact respond better.`*
+# >
+# > Those are, **verbatim, two of the questions in my own benchmark — followed by their answers.**
+# > The same two examples were in the tool schema and the verifier's rubric. Three channels.
+# >
+# > `test_leak()` **passed the whole time.** It checks that no *numeric* ground truth reaches a
+# > prompt, and it was right — the ground truth of a *behavioural* task is not a number.
+# >
+# > **A leak guard only guards the channel you pointed it at.**
+# >
+# > `test_contamination()` greps every 4-gram of every task question against the entire
+# > model-visible surface — system prompt, tool schemas, verifier rubric. It is the guard I did
+# > not have when I needed it.
+#
+# **And the naive fix made things worse.** I replaced the leaked examples with an abstract
+# description (*"a count, a direction, an existence claim"*) — and the **clean control task fell
+# from 10/10 to 5/10**, while the two *contaminated* ones barely moved. Those examples had been
+# leaking two answers **and** teaching the reflex to every other task.
+#
+# > **Concrete examples teach. Abstract descriptions of examples do not.**
+# > The bug was never "examples in the prompt." It was **examples drawn from my own benchmark.**
+#
+# The shipped prompt uses concrete examples about *warehouses and work shifts* — vivid, and
+# present in neither dataset. The control came back.
 
 # %% [markdown]
 # ---
@@ -117,12 +149,13 @@ print("✓ no ground truth appears in any prompt")
 # > *"an agent that executes several intermediate steps correctly but returns the wrong
 # > decision-relevant answer **has not successfully automated the analysis**."*
 #
-# An LLM judge is used **only** for the three behavioural tasks that no arithmetic can settle (did
-# it flag the false premise? did it state its interpretation?). Binary rubric, temperature 0, and a
+# An LLM judge is used **only** for the 5 behavioural tasks that no arithmetic can settle (did it
+# flag the false premise? did it state its interpretation?). Binary rubric, temperature 0, and a
 # **different model family** from the agent — a model grading its own output shows self-preference
-# bias.
+# bias. **It is not validated against human labels**, which makes it the weakest link in this
+# evaluation — and is exactly why it decides 5 tasks and not one more.
 #
-# ### And: 3 runs per task, at temperature 0.6.
+# ### And: 10 runs per task, at temperature 0.6.
 
 # %% [markdown]
 # > ### 🐛 The second bug my own eval caught — in my eval.
@@ -283,7 +316,7 @@ for cfg_name, row in abl.iterrows():
 # ## 1. The detector is doing the work.
 #
 # Removing the **data briefing** — twenty lines of pandas that profile the files before the model
-# is called even once — costs **−26 points**, CI `[−40%, −13%]`. It is the largest effect in the
+# is called even once — costs **−27 points**, CI `[−43%, −13%]`. It is the largest effect in the
 # study by a wide margin, and it is the mechanism I spent the least time on.
 #
 # ## 2. But the eval *changed its mind about the Findings Ledger.*
@@ -317,8 +350,8 @@ for cfg_name, row in abl.iterrows():
 #
 # | | pass rate |
 # |---|---|
-# | remove **the briefing** | **62%** |
-# | remove **the briefing AND every gate** | **69%** |
+# | remove **the briefing** | **60%** |
+# | remove **the briefing AND every gate** | **65%** |
 #
 # **Removing *more* made it *better*.** If the gates only ever helped, that would be impossible.
 #
@@ -375,7 +408,7 @@ print(f"significant: {sig}")
 # > already doing the job. Take the detector away and the gates have nothing to gate — which is
 # > exactly why `no_briefing` collapses to the same score as `no_guardrails`.
 #
-# This also explains the ambiguity task cleanly (0/3, see §4.4): I have **no detector for
+# This also explains `b3_ambiguous` cleanly (0/10): I have **no detector for
 # ambiguity**. So there is nothing to feed the gate, and the gate does nothing. Same mechanism,
 # same failure, and now I can point at the number.
 
@@ -423,7 +456,7 @@ print(f"significant: {sig}")
 # costs ten lines.
 #
 # **On the trap tasks this is where the effect is unmistakable:** the full agent falls for the
-# documented naive answer in **8%** of runs. Strip the guardrails and it's **38%** — nearly five
+# documented naive answer in **8%** of runs. Strip the guardrails and it's **26%** — three
 # times as often. That is the notice–act gap, measured.
 
 # %%
@@ -488,7 +521,7 @@ plt.tight_layout(); plt.show()
 # > On the **traps**, the gap is enormous. That's exactly the shape you want: a guardrail that fires
 # > when there's nothing to catch is just a tax.
 # >
-# > The biggest single gap is **`trap:duplicates` — 100% vs 17%.** That is the *pre-seeded* ledger
+# > The biggest single gaps are **`trap:units`, `trap:scope` and `holdout_rate` — 100% vs 0%.** That is the *pre-seeded* ledger
 # > finding doing the work. The deterministic profiler spots the duplicate `patient_id`s, files them
 # > as an **open obligation**, and the agent cannot submit past them.
 
@@ -503,7 +536,7 @@ plt.tight_layout(); plt.show()
 # Batch B reports in µg/L instead of ng/mL, so its values are 10× too large. The fix is documented
 # in `data_dictionary.md`, which is *in the context*. The agent still often pools the batches.
 #
-# ### `ambiguous` — **0/3. The mechanism I built for it does not work.**
+# ### `b3_ambiguous` — **0/10. And the fix is not in the agent.**
 #
 # I added a **required** `question_is_precise: bool` to the contract precisely to stop the agent
 # silently picking a reading of *"Did the biomarker improve?"*
@@ -515,7 +548,7 @@ plt.tight_layout(); plt.show()
 # >
 # > ### A gate is only as good as the detector feeding it.
 # >
-# > The Findings Ledger works spectacularly on duplicates (**100% vs 17%**) because a twenty-line
+# > The Findings Ledger works spectacularly on the units trap (**100% vs 0%**) because a twenty-line
 # > script **detects** duplicates and hands the agent an obligation it cannot walk past.
 # >
 # > The same gate does **nothing** for ambiguity — because I have **no detector for ambiguity.**
@@ -573,11 +606,12 @@ print(f"The same run on GLM-5.2 ($1.40/$4.40) would cost ~{1.40/0.10:.0f}x more.
 #
 # | Limitation | Why it matters |
 # |---|---|
-# | **n = 15 tasks, 3 runs** | One task flipping is a 7-point swing. These findings are **directional, not precise.** GeneBench-Pro runs 10 attempts and bootstraps CIs; I can't afford to, and I'm not going to pretend the error bars are tighter than they are. |
-# | **I built the traps, so I know them** | Real overfitting risk in tuning the system prompt. Mitigated by 3 held-out tasks I never looked at — but 3 is not many. |
-# | **One synthetic dataset** | It is not the real world. It is, however, a dataset whose ground truth I can actually *compute*, which the real world rarely offers — and which is exactly why GeneBench-Pro simulates too. |
-# | **The judge is validated on 3 behavioural tasks** | Enough to catch a broken judge. Not enough to certify a good one. |
+# | **The judge is NOT validated** | 5 of 28 tasks are graded by an LLM. DDB validated theirs against two other judges at κ=1.0 on 200 responses. I read mine's calls and they looked right, which is worth what it sounds like. This is the weakest link here and I would rather name it than let the word "judge" imply a rigour I did not buy. |
+# | **My ablation grid cannot separate the ledger from the pre-seeding** | `agent.py` seeds the ledger `if cfg.use_ledger and cfg.use_briefing:` — so `no_ledger` removes the blocking gate **and every pre-seeded finding**. The −2% I report for the Findings Ledger is really "gate + seeded findings", and **no config in this grid pulls them apart.** The clean experiment is a 9th config (briefing on, ledger on, seeding off) and costs about a dollar. I have not run it. |
+# | **"4,480 runs" ≠ 4,480 unique trajectories** | The cache key does not include the config name, so ablations that don't change the prompt until a gate *fires* replay the full agent's cached trajectory. Statistically this is common-random-numbers pairing — it makes the paired CIs **more** precise, not biased — but the run count overstates independent work, and cross-config *cost* comparisons are meaningless. |
+# | **I built the traps, so I know them** | Real overfitting risk. Mitigated by a held-out *domain* — which promptly **caught me** (D29): my one rule of domain knowledge was written in clinical-trial language and did nothing on e-commerce data. That is what the held-out domain is for. |
 # | **Ablations are single-mechanism** | I never tested interactions. The ledger and the verifier might overlap more than these numbers suggest. |
+# | **The central thesis is a bet, not a result** | "Scaffolding beats model size" is why the agent runs on a model 14× cheaper than the best one available. But I never ran the big model *without* scaffolding, so I have not actually demonstrated it. One command, ~$15. It is the first thing I would spend the next budget on. |
 #
 # ### And the biggest one:
 #
@@ -619,7 +653,7 @@ print("\nThat number is the argument. The difficulty was never in the code.")
 # | | Why not now | I'd build it when |
 # |---|---|---|
 # | **A real sandbox** (container, no network, RO mounts) | Out of scope for a prototype; the `run_python` contract is designed so it swaps in behind the same seam | **Before one line of untrusted input.** Non-negotiable in production. |
-# | **A bigger eval set + judge calibration vs human labels** | 15 tasks is small and I say so | Before I iterate on the prompt again — otherwise I'm tuning against noise |
+# | **Judge calibration vs human labels** | 5 of 28 tasks rest on an unvalidated LLM judge | Before I trust any behavioural number |
 # | **DuckDB / lazy reads** | The design is already scale-invariant (the model never sees the data, only summaries) | The first dataset that doesn't fit in RAM |
 # | **Fine-tuning** | No training data, and the gap is procedural, not knowledge-shaped | Once the harness has produced a few hundred graded trajectories — **then the eval set is the training set** |
 # | **Multi-agent** | The state lives in one kernel namespace; every handoff forces it through natural language, the lossiest channel available | The task genuinely decomposes into independent subproblems with narrow interfaces |
@@ -651,7 +685,7 @@ print("\nThat number is the argument. The difficulty was never in the code.")
 #
 # | | |
 # |---|---|
-# | The stack works | On traps: **88% vs 46%**, and it falls for the documented naive answer **5× less often** |
+# | The stack works | On traps: **86% vs 56%**, and it falls for the documented naive answer **3.1× less often** |
 # | The guardrails are well-shaped | They buy **nothing** on clean data and everything on the traps |
 # | **But the load-bearing piece is the detector** | Remove the briefing: **−27 points.** Remove any single gate: **≈0.** |
 #
@@ -669,7 +703,7 @@ print("\nThat number is the argument. The difficulty was never in the code.")
 #
 # Not another gate. **More detectors.** Every one of my remaining failures is a missing detector:
 #
-# - `trap:units` (33%) → flag any column whose distribution is **multi-modal by batch**
+# - `trap:confounding` (10%) → **cross-tab every grouping column against every other; flag imbalance**
 # - `ambiguous` (0%) → check whether the question pins down a **population**, a **direction**, and
 #   a **unit**. Three cheap `if`s.
 #

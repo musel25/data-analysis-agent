@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a79431c22520f17e",
+    "function": {
+     "arguments": "{\"code\": \"from collections import Counter\\n\\n# Step 1: Deduplicate on patient_id, keeping highest sample_seq\\n# First, ensure sample_seq is numeric (it is, but confirm)\\ndf['sample_seq'] = pd.to_numeric(df['sample_seq'], errors='coerce')\\n\\n# Drop rows where sample_seq is not a number (shouldn't happen)\\ndf = df.dropna(subset=['sample_seq'])\\n\\n# Deduplicate: keep the row with the highest sample_seq per patient_id\\ndf_dedup = df.loc[df.groupby('patient_id')['sample_seq'].idxmax()]\\n\\n# Step 2: Exclude rows where biomarker_baseline == -999 (sentinel for QC failure)\\ndf_clean = df_dedup[df_dedup['biomarker_baseline'] != -999]\\n\\n# Step 3: Count patients with severe baseline disease\\nsevere_count = df_clean['severity'].eq('severe').sum()\\ntotal_patients = len(df_clean)\\n\\n# Compute fraction\\nfraction_severe = severe_count / total_patients\\n\\nprint(f\\\"Total deduplicated patients after excluding -999: {total_patients}\\\")\\nprint(f\\\"Number with severe severity: {severe_count}\\\")\\nprint(f\\\"Fraction with severe baseline disease: {fraction_severe:.4f}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3563,
+  "completion_tokens": 309
+ }
+}

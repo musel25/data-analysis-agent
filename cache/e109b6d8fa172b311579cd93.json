@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-abaafc7943508e1d",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales_df = pd.read_csv('data/sales.csv')\\n\\n# Recompute stratified conversion rates\\nstratified_conversion = sales_df.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='channel')\\n\\n# Manually extract columns by position to avoid KeyError\\nemail_conv = stratified_conversion.iloc[:, 0]\\npaid_search_conv = stratified_conversion.iloc[:, 1]\\n\\n# Compute within-segment differences\\ndiffs = email_conv - paid_search_conv\\n\\n# Compute segment sizes per channel\\nsegment_sizes = sales_df.groupby('channel')['customer_segment'].value_counts().unstack(fill_value=0)\\n\\n# Weighted average difference using email channel's segment sizes\\nweighted_diff = (diffs * segment_sizes['email']).sum() / segment_sizes['email'].sum()\\n\\nstratified_conversion, email_conv, paid_search_conv, diffs, weighted_diff\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3792,
+  "completion_tokens": 221
+ }
+}

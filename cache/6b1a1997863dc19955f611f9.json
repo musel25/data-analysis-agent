@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-a382c1ba59f120d6",
+    "function": {
+     "arguments": "{\"code\": \"import numpy as np\\n\\n# Stratify by severity to compute treatment effect within each stratum\\n\\n# Compute response rates within each severity level for both groups\\ndef compute_response_rate(df, severity_level):\\n    subset = df[df['severity'] == severity_level]\\n    return subset['responded'].mean()\\n\\n# Get response rates by severity and arm\\nseverity_levels = trial_df['severity'].unique()\\nresults = []\\n\\nfor s in severity_levels:\\n    r_control = compute_response_rate(control_group, s)\\n    r_treatment = compute_response_rate(treatment_group, s)\\n    effect = r_treatment - r_control\\n    results.append({'severity': s, 'control_rate': r_control, 'treatment_rate': r_treatment, 'effect': effect})\\n\\n# Convert to DataFrame\\nstratified_results = pd.DataFrame(results)\\nprint(stratified_results)\\n\\n# Compute overall treatment effect using weighted average (by group size)\\ntotal_control = len(control_group)\\ntotal_treatment = len(treatment_group)\\n\\n# Weight by total number of patients in each severity level\\nweights = []\\nfor s in severity_levels:\\n    total_in_severity = len(trial_df[trial_df['severity'] == s])\\n    weight = total_in_severity / len(trial_df)\\n    weights.append(weight)\\n\\n# Compute weighted average treatment effect\\nweighted_effect = np.average(stratified_results['effect'], weights=weights)\\nprint(f'Weighted average treatment effect (by severity): {weighted_effect:.4f}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3700,
+  "completion_tokens": 354
+ }
+}

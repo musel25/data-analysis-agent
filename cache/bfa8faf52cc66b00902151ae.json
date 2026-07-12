@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-bfd154fde202ff89",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Clean revenue: remove commas and cast to float\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '').astype(float)\\n\\n# Identify QA orders: revenue = 999999.99\\nqa_mask = (df['revenue_clean'] == 999999.99)\\n\\n# Identify converted customers\\nconverted_mask = (df['converted'] == 1)\\n\\n# Define the valid population: converted AND age not -1 AND not QA order\\nvalid_converted = (converted_mask) & (df['customer_age'] != -1) & (~qa_mask)\\n\\n# Count valid converted customers\\nnum_valid_converted = valid_converted.sum()\\n\\n# Compute mean age for valid converted customers\\nmean_age = df.loc[valid_converted, 'customer_age'].mean()\\n\\n# Print key results\\nprint(f'Number of QA orders: {qa_mask.sum()}')\\nprint(f'Number of converted customers: {converted_mask.sum()}')\\nprint(f'Number of converted customers with valid age (age != -1): {((df[converted_mask] & (df[\\\"customer_age\\\"] != -1))).sum()}')\\nprint(f'Number of converted customers with valid age and not QA: {num_valid_converted}')\\nprint(f'Mean age of converted customers with valid age and not QA: {mean_age}')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7195,
+  "completion_tokens": 345
+ }
+}

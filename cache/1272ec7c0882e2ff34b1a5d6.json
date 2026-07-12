@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-98864d57ebbdb4dd",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Convert revenue from string to float, removing commas\\ndf['revenue_clean'] = df['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Identify the six QA orders (revenue = 999999.99)\\nqa_orders = df[df['revenue_clean'] == 999999.99]\\n\\n# Identify refunded orders\\nrefunded_orders = df[df['status'] == 'refunded']\\n\\n# Create a mask for valid orders\\nvalid_mask = (~df['status'].isin(['refunded'])) & (df['revenue_clean'] != 999999.99)\\n\\n# Apply mask\\ndf_clean = df[valid_mask].copy()\\n\\n# Check the remaining rows\\nprint(f\\\"Total valid orders after filtering: {len(df_clean)}\\\")\\n\\n# Compute conversion rate by channel (raw)\\nraw_conv_by_channel = df_clean.groupby('channel')['converted'].mean()\\nprint(\\\"Raw conversion rates by channel:\\\")\\nprint(raw_conv_by_channel)\\n\\n# Compute conversion rate by channel and segment\\nconv_by_channel_segment = df_clean.groupby(['channel', 'customer_segment'])['converted'].mean().unstack(level='customer_segment')\\nprint(\\\"Conversion rates by channel and segment:\\\")\\nprint(conv_by_channel_segment)\\n\\n# Compute segment counts by channel\\nsegment_counts = df_clean.groupby(['channel', 'customer_segment']).size().unstack(level='customer_segment')\\nprint(\\\"Segment counts by channel:\\\")\\nprint(segment_counts)\\n\\n# Compute weights for each segment within each channel\\nweights = segment_counts.div(segment_counts.sum(axis=1), axis=0)\\nprint(\\\"Segment weights by channel:\\\")\\nprint(weights)\\n\\n# Compute weighted average conversion rate per channel\\nweighted_conv = (conv_by_channel_segment * weights).sum(axis=1)\\nprint(\\\"Weighted conversion rates (stratified by segment):\\\")\\nprint(weighted_conv)\\n\\n# Compute difference\\ndiff = weighted_conv['email'] - weighted_conv['paid_search']\\nprint(f\\\"Difference in conversion rates (email - paid_search): {diff}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 7549,
+  "completion_tokens": 511
+ }
+}

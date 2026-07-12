@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-b468b9121ed2368a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Identify QA orders \u2014 they are '999,999.99' (with comma), not '999999.99'\\nqa_mask = sales['revenue'] == '999,999.99'\\nnum_qa_removed = qa_mask.sum()\\n\\n# Show the QA rows\\nqa_rows = sales[qa_mask]\\nprint(\\\"QA rows found:\\\")\\nprint(qa_rows[['order_id', 'revenue', 'status']])\\n\\n# Step 2: Remove QA orders\\nsales_clean = sales[~qa_mask]\\n\\n# Step 3: Convert revenue to float after removing commas\\nsales_clean['revenue'] = sales_clean['revenue'].str.replace(',', '', regex=False).astype(float)\\n\\n# Step 4: Filter for completed orders\\ncompleted_mask = sales_clean['status'] == 'completed'\\ncompleted_orders = sales_clean[completed_mask]\\nnum_completed = len(completed_orders)\\n\\n# Step 5: Compute mean revenue\\nmean_revenue = completed_orders['revenue'].mean()\\n\\n# Print all required values\\nprint(f\\\"Number of QA orders removed: {num_qa_removed}\\\")\\nprint(f\\\"Number of completed orders: {num_completed}\\\")\\nprint(f\\\"Mean revenue of completed orders: {mean_revenue}\\\")\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6161,
+  "completion_tokens": 338
+ }
+}

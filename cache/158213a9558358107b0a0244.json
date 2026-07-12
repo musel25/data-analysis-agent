@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-809ed4a44c32bdc0",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\nsales = pd.read_csv('data/sales.csv')\\n\\n# Filter for LOYAL customers and completed orders\\nloyal_completed = sales[(sales['customer_segment'] == 'loyal') & (sales['status'] == 'completed')]\\n\\n# Clean revenue: remove commas and cast to float\\nloyal_completed['revenue_clean'] = loyal_completed['revenue'].str.replace(',', '').astype(float)\\n\\n# Check for QA orders (revenue = 999999.99)\\nqa_orders = loyal_completed[loyal_completed['revenue_clean'] == 999999.99]\\nprint(\\\"QA orders found:\\\", len(qa_orders))\\n\\n# Remove QA orders if any\\nif len(qa_orders) > 0:\\n    loyal_completed_clean = loyal_completed[loyal_completed['revenue_clean'] != 999999.99]\\n    mean_revenue = loyal_completed_clean['revenue_clean'].mean()\\n    print(\\\"Mean revenue after removing QA orders:\\\", mean_revenue)\\nelse:\\n    mean_revenue = loyal_completed['revenue_clean'].mean()\\n    print(\\\"No QA orders found. Mean revenue:\\\", mean_revenue)\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 3598,
+  "completion_tokens": 295
+ }
+}

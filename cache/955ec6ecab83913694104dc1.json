@@ -1,0 +1,19 @@
+{
+ "message": {
+  "role": "assistant",
+  "tool_calls": [
+   {
+    "id": "chatcmpl-tool-ba9216a627b9387a",
+    "function": {
+     "arguments": "{\"code\": \"import pandas as pd\\n\\n# Load the data\\ndf = pd.read_csv('data/sales.csv')\\n\\n# Step 1: Filter out refunded orders\\nfiltered_df = df[df['status'] == 'completed']\\n\\n# Step 2: Remove QA test orders (revenue = 999999.99)\\nfinal_df = filtered_df[filtered_df['revenue'] != '999999.99']\\n\\n# Step 3: Convert revenue to float (not needed for conversion, but good hygiene)\\nfinal_df['revenue'] = final_df['revenue'].str.replace(',', '').astype(float)\\n\\n# Step 4: Compute conversion rate by channel, stratified by customer_segment\\nstrata = final_df.groupby(['channel', 'customer_segment'])['converted'].agg(['count', 'sum'])\\nstrata['conversion_rate'] = strata['sum'] / strata['count']\\n\\n# Print stratum-level conversion rates\\nprint('Stratum-level conversion rates:')\\nprint(strata[['count', 'conversion_rate']])\\n\\n# Step 5: Compute adjusted conversion rates using stratified method (weighted average)\\nstrata_counts = final_df.groupby(['channel', 'customer_segment'])['converted'].count()\\n\\nadjusted_conversion = {}\\nfor channel in ['email', 'paid_search']:\\n    total_converted = 0\\n    total_orders = 0\\n    for segment in ['new', 'returning', 'loyal']:\\n        count = strata_counts.get((channel, segment), 0)\\n        rate = strata['conversion_rate'].get((channel, segment), 0)\\n        total_converted += count * rate\\n        total_orders += count\\n    adjusted_rate = total_converted / total_orders\\n    adjusted_conversion[channel] = adjusted_rate\\n\\n# Convert to Series\\nadjusted_df = pd.Series(adjusted_conversion)\\n\\n# Print adjusted conversion rates\\nprint('\\\\nAdjusted conversion rates (stratified):')\\nprint(adjusted_df)\\n\\n# Compute effect\\neffect = adjusted_df['email'] - adjusted_df['paid_search']\\nprint(f'\\\\nEffect of email campaign (adjusted): {effect:.4f} (percentage points)')\"}",
+     "name": "run_python"
+    },
+    "type": "function"
+   }
+  ]
+ },
+ "usage": {
+  "prompt_tokens": 6439,
+  "completion_tokens": 504
+ }
+}
