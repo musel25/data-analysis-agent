@@ -509,7 +509,7 @@ and the confound is channel × customer-segment — **the reflex did not fire.**
 entire design exists to solve, the agent is a **coin flip** (45% at n=20), and when it misses it
 lands *exactly* on the confounded answer.
 
-**The aggregate hid it completely.** The sales domain scored **85%** — the same as the domain the
+**The aggregate hid it completely.** The sales domain scored **88%** — the same as the domain the
 guardrails were *designed* against — and I had written that up as reassurance. Twelve easy sales
 tasks were carrying the average while the crown jewel failed at 10%.
 

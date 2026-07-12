@@ -14,6 +14,10 @@ analysis**.
 *(Part 2, Option A of a take-home: an agent that gets a prompt + files, explores the data, picks an
 approach, writes and runs code, checks intermediate results, and returns a structured answer.)*
 
+*(**Part 1** — the review of the two papers, with the critical assessment — is
+**[docs/PART1_REVIEW.md](docs/PART1_REVIEW.md)**. Two of its criticisms are not opinions: they are
+things that happened to me while building Part 2 on the papers' own protocols.)*
+
 ---
 
 ## The problem, in one picture
@@ -172,8 +176,8 @@ age, and a Simpson's paradox on **channel × segment** instead of arm × severit
 | domain | pass rate | 95% CI | |
 |---|---|---|---|
 | `penguins` | 100% | `[100%, 100%]` | clean data |
-| `trial` | 81% | `[61%, 97%]` | **designed against** |
-| **`sales`** | **90%** | `[80%, 97%]` | **🎯 held-out domain** |
+| `trial` | 82% | `[62%, 97%]` | **designed against** |
+| **`sales`** | **88%** | `[77%, 96%]` | **🎯 held-out domain** |
 
 It holds up on the domain it was never tuned for. Which is reassuring, and which is also — read on —
 **the wrong number to be reassured by.**
@@ -186,12 +190,12 @@ tasks).
 
 | remove this | pass | Δ | 95% CI | verdict |
 |---|---|---|---|---|
-| *(nothing — the full agent)* | **88%** | — | | |
-| **the deterministic data briefing** | 60% | **−28%** | `[−41%, −16%]` | **HURTS** |
-| *every guardrail at once* | 67% | **−21%** | `[−32%, −11%]` | **HURTS** |
-| **the Findings Ledger** — *my centrepiece* | 82% | **−6%** | `[−12%, −1%]` | **HURTS** |
-| the fresh-context verifier | 86% | −1% | `[−6%, +3%]` | no detectable effect |
-| observation truncation | 87% | −1% | `[−4%, +2%]` | no detectable effect |
+| *(nothing — the full agent)* | **87%** | — | | |
+| **the deterministic data briefing** | 60% | **−27%** | `[−40%, −15%]` | **HURTS** |
+| *every guardrail at once* | 67% | **−20%** | `[−32%, −9%]` | **HURTS** |
+| **the Findings Ledger** — *my centrepiece* | 82% | **−6%** | `[−11%, −1%]` | **HURTS** |
+| the fresh-context verifier | 86% | −1% | `[−4%, +3%]` | no detectable effect |
+| observation truncation | 87% | −1% | `[−3%, +3%]` | no detectable effect |
 | the grounding gate | 87% | −1% | `[−4%, +3%]` | no detectable effect |
 | the Question Contract | 88% | +0% | `[−4%, +4%]` | no detectable effect |
 
@@ -242,20 +246,20 @@ gap between the two runs *is* the uncertainty. `uv run python -m evals.report` p
 
 | remove this | run A | run B | **spread** | pooled Δ | |
 |---|---|---|---|---|---|
-| the data briefing | −31% | −25% | **6 pt** | **−28%** | ✅ robust |
-| every guardrail | −26% | −16% | 10 pt | −21% | ✅ robust |
-| **the Findings Ledger** | **−11%** | **−1%** | **10 pt** | **−6%** | ⚠️ real, but I would not bet on the size |
-| the verifier | −3% | −0% | 3 pt | −1% | — |
-| observation truncation | −1% | −1% | 0 pt | −1% | — |
-| the grounding gate | −2% | **+0%** | 2 pt | −1% | 🚩 **sign flips** |
-| the Question Contract | −2% | **+3%** | 4 pt | +0% | 🚩 **sign flips** |
+| the data briefing | −31% | −25% | **6 pt** | **−27%** | ✅ robust |
+| every guardrail | −22% | −18% | 4 pt | −20% | ✅ robust |
+| **the Findings Ledger** | **−9%** | **−3%** | **6 pt** | **−6%** | ⚠️ real, but I would not bet on the size |
+| the verifier | −1% | +1% | 3 pt | −0% | — |
+| observation truncation | +0% | −0% | 1 pt | +0% | — |
+| the grounding gate | −0% | −1% | 1 pt | −0% | 🚩 **sign flips** |
+| the Question Contract | −1% | **+3%** | 4 pt | **+1%** | 🚩 **sign flips** |
 
 Read the *spread* column, not the point estimate. The briefing is the only thing here I would defend
 without hedging.
 
 ### The failure that the average hides
 
-`sales` scores 90%. The one task the entire design exists for scores **45%**.
+`sales` scores 88%. The one task the entire design exists for scores **45%**.
 
 | | full agent | landed on the *documented naive* answer |
 |---|---|---|
@@ -356,7 +360,8 @@ uv run python -m evals.run_eval --ablate    # the full ablation study
 ## Where things are
 
 ```
-docs/DESIGN.md        the proposal — architecture, the papers, the evaluation
+docs/PART1_REVIEW.md  Part 1 — the papers: summary + critical assessment
+docs/DESIGN.md        Part 2 — the proposal: architecture, the papers, the evaluation
 docs/DECISIONS.md     every non-obvious choice, its alternatives, and what would change my mind
 docs/AI_USE.md        where I used AI, and the four bugs it happily wrote for me
 agentlib/             the agent itself (~1,000 lines of code)

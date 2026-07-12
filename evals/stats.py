@@ -46,7 +46,23 @@ import numpy as np
 import pandas as pd
 
 RESAMPLES = 10_000
-RNG = np.random.default_rng(0)
+SEED = 0
+
+
+def _rng() -> np.random.Generator:
+    """A FRESH, identically-seeded generator for every call.
+
+    The first version held one module-level `default_rng(0)` and drew from it across every call. So
+    the CI you got for a config depended on how many bootstraps had run before it — and re-running
+    `evals/report.py` moved the published numbers by a point or two.
+
+    Which is a small bug with a fatal symptom: an interviewer runs the script, gets different numbers
+    from the README, and now *nothing* in the repo is trustworthy. A reproducibility claim that only
+    holds on the first invocation is not a reproducibility claim.
+
+    (And it is D31 wearing a smaller hat: the instrument that measures the noise was itself noisy.)
+    """
+    return np.random.default_rng(SEED)
 
 
 def hierarchical_bootstrap(df: pd.DataFrame, col: str = "passed",
@@ -60,10 +76,11 @@ def hierarchical_bootstrap(df: pd.DataFrame, col: str = "passed",
     if k == 0:
         return (np.nan, np.nan, np.nan)
 
+    rng = _rng()
     means = np.empty(n)
     for i in range(n):
-        picked = RNG.integers(0, k, k)                    # resample TASKS
-        vals = [g[RNG.integers(0, len(g), len(g))].mean() # resample RUNS within each task
+        picked = rng.integers(0, k, k)                    # resample TASKS
+        vals = [g[rng.integers(0, len(g), len(g))].mean() # resample RUNS within each task
                 for g in (groups[j] for j in picked)]
         means[i] = np.mean(vals)
 
@@ -90,15 +107,16 @@ def paired_delta(df: pd.DataFrame, config_a: str, config_b: str,
     gb = {t: b[b.task_id == t][col].to_numpy() for t in tasks}
     k = len(tasks)
 
+    rng = _rng()
     deltas = np.empty(n)
     for i in range(n):
-        picked = RNG.integers(0, k, k)                     # resample TASKS (the pairing unit)
+        picked = rng.integers(0, k, k)                     # resample TASKS (the pairing unit)
         d = []
         for j in picked:
             t = tasks[j]
             va, vb = ga[t], gb[t]
-            d.append(va[RNG.integers(0, len(va), len(va))].mean()
-                     - vb[RNG.integers(0, len(vb), len(vb))].mean())
+            d.append(va[rng.integers(0, len(va), len(va))].mean()
+                     - vb[rng.integers(0, len(vb), len(vb))].mean())
         deltas[i] = np.mean(d)
 
     obs = float(np.mean([ga[t].mean() - gb[t].mean() for t in tasks]))

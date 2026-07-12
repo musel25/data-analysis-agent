@@ -230,7 +230,7 @@ Concretely, four mechanisms keep context honest:
    file." That is a stretch and I should say so before someone says it to me: both of DDB's worked
    Retrieval examples are* wrong-source queries *— hitting RCSB instead of NAKB — not unread local
    files. The briefing attacks a slice of that category, not the bulk of it. Its real justification
-   is the one the ablation later handed me: it is worth **−28%**, which is more than every gate in
+   is the one the ablation later handed me: it is worth **−27%**, which is more than every gate in
    this design combined.)*
 2. **Head+tail truncation** of every observation (~1,500 chars) with an instructive marker:
    `[... 187,321 chars omitted — do not print whole dataframes; assign and inspect selectively]`.
@@ -562,9 +562,9 @@ semantics, traps of the same species and a different animal (see D26).
 | domain | pass rate | 95% CI | |
 |---|---|---|---|
 | `penguins` | 100% | `[100%, 100%]` | clean data, no traps |
-| `trial` | 81% | `[61%, 97%]` | **designed against** |
-| `sales` | **90%** | `[80%, 97%]` | **🎯 held-out domain — never designed against** |
-| held-out *tasks* | 97% | `[92%, 100%]` | never looked at while tuning the prompt |
+| `trial` | 82% | `[62%, 97%]` | **designed against** |
+| `sales` | **88%** | `[77%, 96%]` | **🎯 held-out domain — never designed against** |
+| held-out *tasks* | 96% | `[90%, 100%]` | never looked at while tuning the prompt |
 
 **The agent holds up on the domain it was never tuned for.** Which is reassuring — and which is, as
 §4.5 shows, **exactly the wrong number to be reassured by.** An aggregate is an average, and an
@@ -577,10 +577,10 @@ unambiguous:
 
 | | pass rate | fell for the *documented* naive answer |
 |---|---|---|
-| **full agent** | **88%** | **7%** |
-| **no guardrails** | **60%** | **27%** |
+| **full agent** | **87%** | **7%** |
+| **no guardrails** | **61%** | **24%** |
 
-A **3.8× reduction in the wrong-attractor rate**, all three domains, like for like. That is the
+A **3.3× reduction in the wrong-attractor rate**, all three domains, like for like. That is the
 notice–act gap, measured on my own agent, and it is far larger than the noise.
 
 *(Both arms are all-domain. An earlier draft of this document reported "nearly 5×" by comparing an
@@ -600,12 +600,12 @@ tasks — GeneBench-Pro's scheme; they use 20,000).
 
 | remove this | pass rate | Δ vs full | 95% CI | verdict |
 |---|---|---|---|---|
-| *(nothing — the full agent)* | **88%** | — | | |
-| **the deterministic data briefing** | **60%** | **−28%** | `[−41%, −16%]` | **HURTS** |
-| *every guardrail at once* | 67% | **−21%** | `[−32%, −11%]` | **HURTS** |
-| **the Findings Ledger** — the centrepiece | 82% | **−6%** | `[−12%, −1%]` | **HURTS** |
-| the fresh-context verifier | 86% | −1% | `[−6%, +3%]` | no detectable effect |
-| observation truncation | 87% | −1% | `[−4%, +2%]` | no detectable effect |
+| *(nothing — the full agent)* | **87%** | — | | |
+| **the deterministic data briefing** | **60%** | **−27%** | `[−40%, −15%]` | **HURTS** |
+| *every guardrail at once* | 67% | **−20%** | `[−32%, −9%]` | **HURTS** |
+| **the Findings Ledger** — the centrepiece | 82% | **−6%** | `[−11%, −1%]` | **HURTS** |
+| the fresh-context verifier | 86% | −1% | `[−4%, +3%]` | no detectable effect |
+| observation truncation | 87% | −1% | `[−3%, +3%]` | no detectable effect |
 | the numeric grounding gate | 87% | −1% | `[−4%, +3%]` | no detectable effect |
 | the Question Contract | 88% | +0% | `[−4%, +4%]` | no detectable effect |
 
@@ -687,13 +687,13 @@ halves.** That is not a *model* of the uncertainty. It *is* the uncertainty, obs
 
 | remove this | run A | run B | **spread** | pooled Δ | |
 |---|---|---|---|---|---|
-| **the data briefing** | −31% | −25% | **6 pt** | **−28%** | ✅ **robust** |
-| every guardrail at once | −26% | −16% | 10 pt | −21% | ✅ robust |
-| **the Findings Ledger** | **−11%** | **−1%** | **10 pt** | **−6%** | ⚠️ real, but I would not defend the *size* |
-| the fresh-context verifier | −3% | −0% | 3 pt | −1% | — |
-| observation truncation | −1% | −1% | 0 pt | −1% | — |
-| the grounding gate | −2% | **+0%** | 2 pt | −1% | 🚩 **sign flips** |
-| the Question Contract | −2% | **+3%** | 4 pt | +0% | 🚩 **sign flips** |
+| **the data briefing** | −31% | −25% | **6 pt** | **−27%** | ✅ **robust** |
+| every guardrail at once | −22% | −18% | 4 pt | −20% | ✅ robust |
+| **the Findings Ledger** | **−9%** | **−3%** | **6 pt** | **−6%** | ⚠️ real, but I would not defend the *size* |
+| the fresh-context verifier | −1% | +1% | 3 pt | −0% | — |
+| observation truncation | +0% | −0% | 1 pt | +0% | — |
+| the grounding gate | −0% | −1% | 1 pt | −0% | 🚩 **sign flips** |
+| the Question Contract | −1% | **+3%** | 4 pt | **+1%** | 🚩 **sign flips** |
 
 **Read the spread column, not the point estimate.** The briefing is the only mechanism in this design
 I would defend without hedging. The Findings Ledger is real — the pooled interval excludes zero — but
@@ -766,7 +766,7 @@ sharpens rather than challenges it:
 > practices: the right answer changes when you change the model, and only the harness will tell you.
 
 The falsifiable version of that claim is one command away — re-run this exact ablation grid on
-GLM-5.2 and the briefing's −28% should *shrink*. I have not run it (§6). If it does not shrink, I am
+GLM-5.2 and the briefing's −27% should *shrink*. I have not run it (§6). If it does not shrink, I am
 wrong about the mechanism, and I would want to know.
 
 This also explains the ambiguity failure (§4.5) exactly: there is **no detector for ambiguity**, so
@@ -774,7 +774,7 @@ there is nothing to feed the gate, so the gate does nothing.
 
 #### The honest caveats on that finding
 
-1. **"No measurable benefit" is not "no benefit."** The `−28%` for the briefing is far outside the
+1. **"No measurable benefit" is not "no benefit."** The `−27%` for the briefing is far outside the
    noise. The `≈0`s for the individual gates are **not**: with 28 tasks the intervals are ±5–9
    points, so a real effect of three points would be invisible here.
 2. **The gates may be insurance rather than throughput.** A grounding check that fires on a handful
@@ -797,7 +797,7 @@ If I could ship one mechanism, it would be the one I spent the least time on.
 
 ### 4.5 The failure that matters — and why an average hid it
 
-Go back to §4.4's domain table: `sales` scores **90%** — *better* than the domain the guardrails were
+Go back to §4.4's domain table: `sales` scores **88%** — *better* than the domain the guardrails were
 designed against. That was the number I wanted, and for about a day it was the number I quoted.
 
 Now read the same runs per task.
@@ -892,7 +892,7 @@ better gate, and not a better prompt:
 | **confounding** — cross-tab every candidate grouping column against every other; flag imbalance | ~20 | *"`channel` is imbalanced on `customer_segment` (χ² = …). A raw channel comparison is not a channel effect."* |
 | **ambiguity (surface)** — does the question pin down a population, a measure, and a direction? | 3 `if`s | *"the question does not name a measure."* |
 
-Each is the same twenty lines of deterministic pandas already worth **−28%** everywhere else in this
+Each is the same twenty lines of deterministic pandas already worth **−27%** everywhere else in this
 table. **The detector is the cheapest thing in this design, and it is the only thing that moves the
 number.**
 
