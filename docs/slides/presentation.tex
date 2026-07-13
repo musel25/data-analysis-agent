@@ -100,7 +100,7 @@ happen}.
 \begin{itemize}
   \item $\sim$1{,}000 lines of Python. No framework.
   \item Runs on \textbf{Qwen3-30B-A3B} — an open model at \$0.10 / 1M tokens.
-  \item \textbf{\$0.0005 per analysis.} 11 steps. 87\% on a 28-task benchmark.
+  \item \textbf{Under half a cent per analysis} \sm{(\$0.004)}. 11 steps. 87\% on a 28-task benchmark.
   \item Every claim below is backed by \textbf{4{,}480 graded runs}.
 \end{itemize}
 \pause
@@ -1029,7 +1029,7 @@ The thesis is that \textbf{reliability comes from the scaffolding, not from a bi
 If I run that thesis \textbf{on the strongest model available, I can never test it} — every success
 is attributable to the model, and \textbf{the design proves nothing}.\\[4pt]
 \textbf{Handicapping the base model is what turns the claim into an experiment.}\\[4pt]
-\sm{It is also what makes a 4{,}480-run ablation study cost \textbf{\$3.75} instead of \$110.}
+\sm{It is also what makes a 4{,}480-run ablation study cost \textbf{$\sim$\$16} instead of \$110.}
 \end{alertblock}
 
 \pause
@@ -1044,13 +1044,13 @@ is attributable to the model, and \textbf{the design proves nothing}.\\[4pt]
 \centering
 \medskip
 {\Large \textbf{4{,}480 runs} · \textbf{28 tasks} · \textbf{3 domains} · \textbf{8 configs} ·
-\textbf{20 runs/cell} · \textbf{\$3.75} · \textbf{0 crashes}}
+\textbf{20 runs/cell} · \textbf{$\sim$\$16} · \textbf{0 crashes}}
 
 \medskip
 {\LARGE Full agent: \gd{87\%} \quad\sm{95\% CI [78\%, 95\%]}}
 
 \medskip
-\sm{11.0 steps · \$0.0005 per run}
+\sm{11.0 steps · \$0.004 per run}
 
 \pause
 \medskip
@@ -1394,7 +1394,7 @@ precise.}
 \code{s4\_simpson\_sales} \sm{— Simpson's, held-out domain}     & \rd{35\%} & \rd{50\%} \\
 \code{b3\_ambiguous} \sm{— ``Did the biomarker improve?''}       & \rd{5\%}  & — \\
 \midrule
-\sm{22 other tasks} & \sm{90–100\%} & \sm{0–10\%} \\
+\sm{the other 25 tasks} & \sm{75–100\%} & \sm{0–10\%} \\
 \bottomrule
 \end{tabular}}
 
@@ -1407,7 +1407,7 @@ precise.}
 \pause
 \medskip
 \centering\Large
-\textbf{Twenty-two easy tasks were carrying the 87\%.}
+\textbf{Twenty-five easier tasks were carrying the 87\%.}
 
 \pause
 \medskip
@@ -1429,7 +1429,7 @@ task from a single run — in both directions — was noise.})}
 \normalsize
 \sm{For contrast — and to show the guardrails are not decoration:}\\[6pt]
 \code{trap:units} \sm{(assay batch B reporting 10$\times$ too large)} goes from
-\rd{0/10 without the guardrails} to \gd{10/10 with them}.\\[3pt]
+\rd{0/20 without the guardrails} to \gd{17/20 with them}.\\[3pt]
 \textbf{The largest single-task swing in the study.}
 
 \medskip
@@ -1570,7 +1570,7 @@ and the correct fix is \textbf{one line in the data dictionary}, not one more ga
 \why{Every draft ended on the same self-satisfied sentence. The evidence was overwhelming, and it was mine.}
 
 \begin{itemize}
-  \item sentinels, duplicates, dtype, scope $\to$ \gd{95–100\%} — because a script \textbf{detects}
+  \item sentinels, duplicates, dtype, scope $\to$ \gd{90–100\%} — because a script \textbf{detects}
         them
   \item \textbf{confounding} $\to$ \rd{a coin flip} — because \textbf{nothing detected it}
 \end{itemize}
@@ -1781,18 +1781,24 @@ Questions
 % ===========================================================================
 \appendix
 
-\begin{frame}{Colophon — provenance of every number in this deck}
+\begin{frame}[shrink=12]{Colophon — provenance of every number in this deck}
 \why{So that a sceptical reader can check me.}
 
 \begin{itemize}\small
   \item \textbf{Every quantitative claim} comes from \code{uv run python -m evals.report}, reading
         \code{evals/results.jsonl} \sm{(4{,}480 rows)} — \textbf{not} from the prose in
         \code{docs/DESIGN.md}.
-  \item Where the two disagreed while I was building these slides, \textbf{I used the script} and
-        flagged the drift. \sm{The affected figures: total spend (\textbf{\$3.75}, not \$16.13);
-        \code{t4\_simpson} (\textbf{40\%}, not 50\%); \code{s4\_simpson\_sales} (\textbf{35\%}, not
-        45\%); \code{b3\_ambiguous} (\textbf{5\%}, not 0\%); \code{no\_ledger} (\textbf{81\%}, not
-        82\%).}
+  \item Where the two disagreed, \textbf{I used the script} and flagged the drift.
+        \sm{\code{t4\_simpson} (\textbf{40\%}, not 50\%); \code{s4\_simpson\_sales} (\textbf{35\%},
+        not 45\%); \code{b3\_ambiguous} (\textbf{5\%}, not 0\%); \code{s13\_ambiguous}
+        (\textbf{85\%}, not 90\%); \code{no\_ledger} (\textbf{81\%}, not 82\%);
+        \code{trap:units} with guardrails (\textbf{17/20}, not 10/10).}
+  \item \textbf{With one exception — cost.} \code{report.py} prints \textbf{\$3.75}, but
+        \textbf{77\% of the 4{,}480 rows are cache replays that record \$0}. That figure is the
+        \emph{marginal} cost of re-running the grid, \textbf{not what was spent}. On billed runs
+        only, an analysis costs \textbf{\$0.004}, and the grid cost \textbf{$\sim$\$16} — which is
+        the number \code{DESIGN.md} reports and the number this deck uses.
+        \sm{\textbf{The script is not automatically right either. A cache deflates a sum.}}
   \item \textbf{Separation table} \sm{(§5)}: computed live from \code{evals/tasks.py}.
   \item \textbf{Detector figures} \sm{(§9)}: \code{evals/results\_confound\_detector.jsonl},
         \code{t4\_simpson} \textbf{8/20 $\to$ 13/20}. \textbf{\code{s4\_simpson\_sales} has not been

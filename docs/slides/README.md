@@ -15,19 +15,30 @@ Output lands in `.out/` (set by a global `~/.latexmkrc`).
 **Every quantitative claim in the deck comes from `uv run python -m evals.report`**, which reads
 `evals/results.jsonl` (4,480 runs) — *not* from the prose in `docs/DESIGN.md`.
 
-Where the script and `DESIGN.md` disagreed while these slides were written, **the script won**, and
-the drift is listed on the closing colophon frame:
+Where the script and `DESIGN.md` disagreed while these slides were written, **the script won** —
+`DESIGN.md` states that tie-break rule itself (*"if the prose and the script disagree, the script is
+right"*). The drift is listed on the closing colophon frame:
 
 | | `DESIGN.md` says | the script says |
 |---|---|---|
-| total spend | \$16.13 | **\$3.75** |
 | `t4_simpson` pass rate | 50% | **40%** (8/20) |
 | `s4_simpson_sales` pass rate | 45% | **35%** (7/20) |
 | `b3_ambiguous` pass rate | 0% | **5%** (1/20) |
+| `s13_ambiguous` pass rate | 90% | **85%** (17/20) |
 | `no_ledger` pass rate | 82% | **81%** |
+| `trap:units` *with* guardrails | 10/10 | **17/20** (85%) |
 
-`DESIGN.md` itself states the tie-break rule — *"if the prose and the script disagree, the script is
-right"* — so the deck follows it. **`DESIGN.md` has not been corrected; that is a separate change.**
+### …with one exception, where the script is the one that lies
+
+`report.py` prints a headline cost of **\$3.75**. That number is wrong to quote as *spend*:
+**77% of the 4,480 rows are cache replays that record `$0`**. It is the *marginal* cost of
+re-running the grid, not what it cost to produce.
+
+On **billed runs only**, an analysis costs **\$0.004** and the grid cost **~\$16** — which is what
+`DESIGN.md` says, and what the deck uses. **A cache deflates a sum; the script is not automatically
+right either.**
+
+**`DESIGN.md` has not been corrected. That is a separate change.**
 
 The detector figures (`t4_simpson` 8/20 → 13/20) come from
 `evals/results_confound_detector.jsonl`. Note `s4_simpson_sales` has **not** been re-run with the
