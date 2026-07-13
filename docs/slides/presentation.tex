@@ -1,0 +1,1812 @@
+% ============================================================================
+%  A Data-Analysis Agent, Built From Scratch
+%  Beamer / metropolis.  Compile with:  latexmk -xelatex presentation.tex
+%
+%  EVERY number in this deck is taken from `uv run python -m evals.report`
+%  (evals/results.jsonl, 4,480 runs).  Where DESIGN.md and the script
+%  disagree, the script wins — see the colophon frame at the end.
+% ============================================================================
+\documentclass[9pt,aspectratio=169]{beamer}
+
+\usetheme{metropolis}
+\metroset{sectionpage=progressbar, subsectionpage=none, progressbar=frametitle,
+          numbering=fraction, block=fill}
+
+% ---- tighten the layout: this deck is deliberately dense --------------------
+\usepackage{etoolbox}
+\setbeamersize{text margin left=6mm, text margin right=6mm}
+\setlength{\parskip}{0pt}
+% blocks and lists cost a lot of vertical room by default
+\setbeamertemplate{itemize/enumerate body begin}{\small}
+\setbeamertemplate{itemize/enumerate subbody begin}{\footnotesize}
+\AtBeginEnvironment{block}{\small}
+\AtBeginEnvironment{alertblock}{\small}
+\AtBeginEnvironment{itemize}{\setlength{\itemsep}{2pt}\setlength{\topsep}{2pt}}
+\AtBeginEnvironment{enumerate}{\setlength{\itemsep}{2pt}\setlength{\topsep}{2pt}}
+\AtBeginEnvironment{tabular}{\setlength{\extrarowheight}{1pt}}
+
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage[scale=0.9]{FiraMono}
+\usepackage{amssymb}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, backgrounds}
+
+% ---- palette ---------------------------------------------------------------
+\definecolor{good}{HTML}{1B7F5C}
+\definecolor{bad}{HTML}{B3261E}
+\definecolor{warn}{HTML}{B26B00}
+\definecolor{ink}{HTML}{23373B}
+\definecolor{soft}{HTML}{6C757D}
+\definecolor{wash}{HTML}{EFF3F2}
+\setbeamercolor{frametitle}{bg=ink}
+\setbeamercolor{progress bar}{fg=good}
+\setbeamercolor{alerted text}{fg=bad}
+
+\newcommand{\yes}{\textcolor{good}{$\checkmark$}}
+\newcommand{\no}{\textcolor{bad}{$\times$}}
+\newcommand{\gd}[1]{\textcolor{good}{\textbf{#1}}}
+\newcommand{\rd}[1]{\textcolor{bad}{\textbf{#1}}}
+\newcommand{\wn}[1]{\textcolor{warn}{\textbf{#1}}}
+\newcommand{\sm}[1]{\textcolor{soft}{\small #1}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ---- code listings ---------------------------------------------------------
+\lstdefinestyle{py}{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize\color{ink},
+  commentstyle=\color{soft}\itshape,
+  keywordstyle=\color{ink}\bfseries,
+  stringstyle=\color{good},
+  emphstyle=\color{good}\bfseries,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  aboveskip=2pt, belowskip=2pt,
+  literate={-}{-}1,
+}
+\lstdefinestyle{plain}{
+  basicstyle=\ttfamily\footnotesize\color{ink},
+  showstringspaces=false, columns=fullflexible, keepspaces=true,
+  aboveskip=2pt, belowskip=2pt,
+}
+\lstset{style=py}
+
+% a quiet "why this slide exists" strip under a frametitle
+\newcommand{\why}[1]{{\color{soft}\footnotesize\itshape #1\par\vspace{3pt}}}
+
+\title{A Data-Analysis Agent, Built From Scratch}
+\subtitle{Reading two failure papers, designing against them,\\ and measuring whether it worked}
+\author{Musel Tabares Pardo}
+\date{July 2026}
+\setbeamerfont{title}{size=\LARGE}
+\setbeamerfont{subtitle}{size=\small}
+
+\begin{document}
+
+\maketitle
+
+% ===========================================================================
+\begin{frame}{The one-sentence version}
+\begin{block}{The claim}
+A data-analysis agent is \textbf{a while-loop that writes code, runs it, and reads the
+results}. Everything else is a guardrail that was \textbf{earned from a failure you watched
+happen}.
+\end{block}
+\pause
+\begin{itemize}
+  \item $\sim$1{,}000 lines of Python. No framework.
+  \item Runs on \textbf{Qwen3-30B-A3B} — an open model at \$0.10 / 1M tokens.
+  \item \textbf{\$0.0005 per analysis.} 11 steps. 87\% on a 28-task benchmark.
+  \item Every claim below is backed by \textbf{4{,}480 graded runs}.
+\end{itemize}
+\pause
+\begin{alertblock}{And the punchline, up front}
+I built an elaborate system of \emph{gates}. The ablation says the thing carrying it is a
+\textbf{20-line detector} I barely thought about. The evaluation \emph{inverted my own thesis},
+and this talk is mostly about that.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Where we are going}
+\setbeamertemplate{section in toc}[sections numbered]
+{\footnotesize
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\tableofcontents[hideallsubsections, sections={1-5}]
+\end{column}
+\begin{column}{0.48\textwidth}
+\tableofcontents[hideallsubsections, sections={6-10}]
+\end{column}
+\end{columns}}
+\end{frame}
+
+% ===========================================================================
+\section{1 · The problem}
+% ===========================================================================
+
+\begin{frame}{The assignment, stated plainly}
+\why{Part 2, Option A. Before any design, be precise about what the thing must do.}
+
+\begin{block}{The system under construction}
+Give an agent \textbf{a question in English} and \textbf{a folder of data files}. It must:
+\begin{enumerate}
+  \item \textbf{explore} the data (it has never seen it),
+  \item \textbf{choose} an analytical approach,
+  \item \textbf{write and run code},
+  \item \textbf{check its own intermediate results},
+  \item return a \textbf{structured, defensible answer}.
+\end{enumerate}
+\end{block}
+\pause
+\begin{itemize}
+  \item It is \emph{not} a chatbot, and \emph{not} a literature-search agent.
+  \item It is exactly the system \textbf{both supplied papers evaluate} — which is why the papers
+        are not background reading. They are \textbf{failure data for the thing I am about to
+        build}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The destination — a real question, honestly answered}
+\why{Phase-II clinical trial, 800 patients, four undocumented landmines in the file.}
+
+\begin{quote}
+\large\itshape ``Does the treatment improve the response rate? Report the treatment effect as a
+difference in proportions.''
+\end{quote}
+
+\pause
+\medskip
+The agent returns \textbf{+0.150}, and — the part that matters — \textbf{the audit trail}:
+
+\smallskip
+{\scriptsize
+\begin{tabular}{@{}p{0.10\textwidth}p{0.38\textwidth}p{0.42\textwidth}@{}}
+\toprule
+\textbf{status} & \textbf{what it noticed} & \textbf{what it did about it} \\
+\midrule
+\gd{ACTED}      & \code{biomarker\_baseline} has 88 values of exactly \code{-999} & QC-failure sentinel, not a measurement — excluded before any mean \\
+\gd{ACTED}      & 48 \code{patient\_id}s appear twice & re-tests; kept the last per patient \\
+\gd{ACTED}      & \code{arm} is imbalanced on \code{severity} & \textbf{not randomised} — stratified, reported the conditional effect \\
+\textcolor{soft}{\textbf{DISMISSED}} & assay \code{batch B} is on a shifted scale & does not enter a response \emph{rate} — no effect on this estimand \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{block}{The deliverable is not the number}
+Not \emph{``the model said 0.15''} but \emph{``the model saw the confounding, said what it
+implied, adjusted for it, and here is the step where it did.''}\\[2pt]
+One is an oracle. The other is a \textbf{colleague}.
+\end{block}
+\end{frame}
+
+\begin{frame}{Now here is why that was hard}
+\why{The same question, answered by a competent agent with no guardrails. Its pandas is flawless.}
+
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{What the naive agent computes}
+\medskip
+
+{\footnotesize
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{arm} & \textbf{response rate} \\
+\midrule
+control   & 0.535 \\
+treatment & 0.452 \\
+\midrule
+\textbf{effect} & \rd{$-$0.083} \\
+\bottomrule
+\end{tabular}}
+
+\medskip
+\rd{``THE TREATMENT DOES NOT WORK.''}
+\end{column}
+\pause
+\begin{column}{0.48\textwidth}
+\textbf{What it needed to look at}
+\medskip
+
+{\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{severity} & \textbf{ctrl} & \textbf{treat} & \textbf{diff} \\
+\midrule
+mild     & 0.71 & 0.83 & \gd{+0.12} \\
+moderate & 0.48 & 0.63 & \gd{+0.15} \\
+severe   & 0.21 & 0.38 & \gd{+0.17} \\
+\midrule
+\textbf{adjusted} & & & \gd{+0.150} \\
+\bottomrule
+\end{tabular}}
+
+\medskip
+\gd{The treatment wins in EVERY stratum.}
+\end{column}
+\end{columns}
+
+\pause
+\medskip
+\begin{alertblock}{Opposite signs. \quad naive $-$0.083 \quad vs \quad truth $+$0.150}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Simpson's paradox — the whole talk in one mechanism}
+\why{If you take one idea from the first section, take this one.}
+
+\begin{enumerate}
+  \item The trial was \textbf{not randomised}. Clinicians gave the drug to the patients who were
+        \textbf{already sicker}.\pause
+  \item So the treatment arm is \textbf{loaded with severe cases}, and severe cases respond worse
+        \emph{whatever} you give them.\pause
+  \item The pooled comparison is therefore \textbf{not} comparing treatment vs.\ control.
+        \\ It is comparing \textbf{sick people vs.\ healthy people}.\pause
+  \item Every number the agent printed was \textbf{arithmetically correct}. The code was clean.
+        The conclusion was \textbf{backwards}.
+\end{enumerate}
+
+\pause
+\begin{block}{The lesson that sets up everything else}
+The failure is \textbf{not} in the code. It is in the \textbf{seam between what the data showed
+and what the agent decided}. \\[3pt]
+You cannot fix that with a better programmer. You fix it with \textbf{structure}.
+\end{block}
+\end{frame}
+
+% ===========================================================================
+\section{2 · What an agent actually is}
+% ===========================================================================
+
+\begin{frame}{Step 0 — a language model cannot do anything}
+\why{Beginners skip this and then mis-attribute every later design choice. Ten seconds, no shortcuts.}
+
+\begin{block}{An LLM is a pure function}
+\[
+\texttt{text in} \;\longrightarrow\; \texttt{text out}
+\]
+It cannot read a file. It cannot run Python. It cannot see your dataframe.
+\end{block}
+
+\pause
+So if you ask it \emph{``what is the mean flipper length in \code{penguins.csv}?''} it will
+\textbf{invent a plausible number}. Not because it is lying — because \textbf{inventing plausible
+text is the only operation it has}.
+
+\pause
+\medskip
+\begin{alertblock}{The founding rule of this entire design}
+\textbf{Never ask the model for a number. Ask it for \emph{code that computes} the number.}\\
+The model is a \textbf{bad calculator} and a \textbf{very good programmer}. Use it as the
+programmer.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Step 1 — tool calling: who actually runs the code?}
+\why{The question you asked me, and the one the papers never spell out. The answer is: not the model.}
+
+\begin{enumerate}
+  \item \textbf{You} describe a tool to the model as a JSON schema:
+        \code{run\_python(code: str)}.\pause
+  \item The model \textbf{does not run it}. It emits a \textbf{text request}:
+        \\[3pt]
+        \code{\{"tool": "run\_python", "code": "print(df.mean())"\}}\pause
+  \item \textbf{Your Python program} parses that request, executes the code
+        \textbf{in a process you control}, and captures \code{stdout}.\pause
+  \item You paste the output back into the conversation as a new message.
+        The model reads it on the next turn.
+\end{enumerate}
+
+\pause
+\begin{block}{So ``giving a model tools'' is not a model capability}
+It is \textbf{a loop that you write}. The model only ever produces text; the \emph{harness} gives
+that text consequences.\\[3pt]
+\textbf{Both papers do exactly this} — the difference is only \emph{where} step 3 runs
+(a Docker container, for them).
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Step 2 — the ReAct loop, in full}
+\why{Yao et al., 2022. This is the entire ``agent''. It is about 40 lines.}
+
+\begin{columns}[T]
+\begin{column}{0.52\textwidth}
+\begin{lstlisting}[emph={gates}]
+# messages = the agent's whole memory
+messages = [system, briefing, question]
+
+for step in range(MAX_STEPS):
+
+    reply = llm(messages, tools)   # 1 THINK
+
+    if reply.tool == "submit_answer":
+        ok, why = gates(reply)     # 4 GATE
+        if ok:
+            return reply.report    #   DONE
+        obs = why                  #   rejected
+
+    else:
+        obs = execute(reply.tool)  # 2 ACT
+
+    messages.append(reply)         # 3 OBSERVE
+    messages.append(obs)
+\end{lstlisting}
+\end{column}
+\pause
+\begin{column}{0.44\textwidth}
+\textbf{Three moving parts, that is all:}
+\medskip
+\begin{itemize}
+  \item \textbf{THINK} — one API call. The model picks a tool.
+  \item \textbf{ACT} — \emph{your} code executes it.
+  \item \textbf{OBSERVE} — the result is appended, so the \emph{next} call sees it.
+\end{itemize}
+\medskip
+\pause
+\begin{alertblock}{Where the design lives}
+The loop is \textbf{unremarkable}, and that is the point.\\
+\textbf{All the engineering is in \gd{gates()} and in what goes into \gd{messages}.}
+\end{alertblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Step 3 — exactly three tools, and why not more}
+\why{Every extra tool is surface area for the model to misuse. The papers show it is not failing for lack of affordances.}
+
+\begin{block}{\code{run\_python(code)} — the only capability it needs}
+Executes in a \textbf{persistent namespace}, like Jupyter cells. Variables survive across steps.
+Returns \code{stdout} + truncated traceback.\\[3pt]
+\sm{\textbf{Why one general tool, not many:} \code{value\_counts}, \code{groupby},
+\code{correlate} as separate tools would cap the agent at \textbf{whatever verbs I anticipated}.
+Anything pandas can do, the agent can do.}
+\end{block}
+\pause
+\begin{block}{\code{note\_finding(observation, implication, status)} — the ledger}
+It must \emph{write down} anything it notices. \sm{\textbf{§4.}}
+\end{block}
+\pause
+\begin{block}{\code{submit\_answer(report)} — \alert{a gated action, not a default}}
+Finishing is something the agent must \textbf{earn}. \sm{\textbf{§4.}}
+\end{block}
+\end{frame}
+
+\begin{frame}[shrink=8]{Step 4 — what the model sees, and what it never sees}
+\why{The single most important context rule, and the one that makes the design scale-invariant.}
+
+\begin{alertblock}{The model never sees the data}
+It sees \textbf{metadata}, \textbf{summaries}, and \textbf{the output of code it wrote itself}.
+\end{alertblock}
+
+\pause
+\begin{itemize}
+  \item A 200{,}000-row dataframe and a 200-row one cost \textbf{the same number of tokens} —
+        because in both cases the model is looking at \code{df.dtypes}, \code{df.head(3)}, and
+        whatever it chose to \code{print}.
+  \item The dataframe lives \textbf{in the executor process}. Nothing in the loop or the prompts
+        changes if the CSV becomes a 10\,GB parquet. \textbf{Only the code the agent writes
+        changes.}
+\end{itemize}
+
+\pause
+\medskip
+Four mechanisms keep the context honest:
+\medskip
+
+{\footnotesize
+\begin{tabular}{@{}p{0.26\textwidth}p{0.66\textwidth}@{}}
+\toprule
+\textbf{data briefing} & Plain Python computes shape, dtypes, \code{head(3)}, nulls, cardinality \textbf{before the model is called once}. It never starts blind. \\
+\textbf{head+tail truncation} & $\sim$1{,}500 chars. \textbf{Tail is kept because Python puts the exception on the \emph{last} line} — head-only truncation throws away the only part of a traceback that matters. \\
+\textbf{state banner} & \code{df: DataFrame(1200x9) | clean: DataFrame(1043x9)} — \textbf{recomputed from the live namespace every turn}, so the agent cannot reason about variables that no longer exist. \\
+\textbf{matplotlib guard} & \emph{``2 figures saved; you cannot see images — print the numbers you need.''} Kills plot-instead-of-compute. \\
+\bottomrule
+\end{tabular}}
+\end{frame}
+
+% ===========================================================================
+\section{3 · What the papers found}
+% ===========================================================================
+
+\begin{frame}{The two papers evaluate \emph{exactly this system}}
+\why{Neither is a paper about chatbots. They are failure data for the thing I am building.}
+
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{GeneBench-Pro} \sm{Li \& Ho, OpenAI, 2026}
+\medskip
+\begin{itemize}\footnotesize
+  \item 129 multistage statistical problems, genomics / translational biomedicine
+  \item Messy staged files, \textbf{deliberately minimal prompt}
+  \item Docker, pandas/scipy/statsmodels, \textbf{no internet}
+  \item Returns \textbf{one JSON object}; graded \textbf{binary}, against absolute numeric tolerances
+  \item \textbf{10 attempts} per problem
+\end{itemize}
+\medskip
+\begin{block}{Result}
+Best frontier config: \rd{31.5\%}\\
+Best mainline model: \rd{zero across all 10 attempts on 45.7\% of problems}
+\end{block}
+\end{column}
+\pause
+\begin{column}{0.48\textwidth}
+\textbf{DrugDiscoveryBench} \sm{Akyürek, Tu et al., Scale AI \& Phylo, 2026}
+\medskip
+\begin{itemize}\footnotesize
+  \item 82 \textbf{expert-authored} drug-discovery tasks
+  \item Coding agent in a container with a biomedical tool library
+  \item Graded by \textbf{LLM judge} against weighted expert rubrics
+  \item \textbf{Pass = 100\% of outcome criteria}
+\end{itemize}
+\medskip
+\begin{block}{Result}
+Best agent: \rd{51.6\%}\\
+And — the useful part — they classified \textbf{226 failing runs} into a taxonomy.
+\end{block}
+\end{column}
+\end{columns}
+
+\pause
+\medskip
+\centering\textbf{Same architecture as mine. Same tool contract. This is a like-for-like read.}
+\end{frame}
+
+\begin{frame}{GeneBench-Pro's diagnosis — read it twice}
+\why{This single paragraph is the origin of my entire design.}
+
+\begin{quote}\itshape
+``models often complete substantial portions of the workflow but exhibit a consistent gap between
+\textbf{noticing} and \textbf{acting} — identifying local diagnostic signals but failing to
+propagate the implications to the corresponding analysis decision.'' \sm{(p.\,1)}
+\end{quote}
+
+\pause
+\begin{quote}\itshape
+``In many failures, the agent \textbf{notices} the relevant local diagnostic clue but
+\textbf{treats it as a local data-cleaning issue} rather than as evidence that should
+\textbf{change the downstream statistical method and QC pipeline}.'' \sm{(p.\,13)}
+\end{quote}
+
+\pause
+\begin{alertblock}{Unpack that}
+The model \textbf{sees} the problem. It runs \code{df.describe()}. It observes the \code{-999}s.
+It may even \textbf{print a comment about them}.\\[3pt]
+Then it cleans the column and \textbf{proceeds with the analysis it had already decided on}.\\[5pt]
+\textbf{The observation never reaches the decision.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{DrugDiscoveryBench's taxonomy — 226 failing runs, classified}
+\why{This table is the closest thing either paper gives to a specification for what to build.}
+
+\centering
+{\small
+\begin{tabular}{@{}lrp{0.50\textwidth}@{}}
+\toprule
+\textbf{Failure mode} & \textbf{Share} & \textbf{Their definition} \\
+\midrule
+\rd{Domain reasoning} & \rd{54.0\%} & ``applies an incorrect scientific premise or misinterprets the data it has, \textbf{even though its inputs and tools are correct}'' \\
+\addlinespace
+Derivation error & 18.6\% & ``correct inputs and approach but runs a calculation \dots\ incorrectly'' \\
+\addlinespace
+Retrieval & 16.4\% & ``never obtains or uses the required data'' \\
+\addlinespace
+Constraint & 7.5\% & ``has the data but violates an \textbf{explicit prompt instruction}'' \\
+\addlinespace
+Final-answer slip & 3.5\% & ``performs every step correctly but \textbf{reports the final answer wrongly}'' \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{alertblock}{Read the top row again}
+\textbf{Over half of all failures are not coding failures.} The tools worked. The Python was
+correct. The model \emph{had} everything it needed.\\[3pt]
+\textbf{It just did not let what it saw change what it did.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Two case studies that determined the design}
+\why{Abstract taxonomies are cheap. These two concrete failures are what I actually built against.}
+
+\begin{block}{1. The agent contradicted its own printed output \sm{(DDB, p.\,27)}}
+\itshape ``its own code \textbf{printed the correct} group-level count of \textbf{1}, and the final
+tally \textbf{used} the atom-level count of \textbf{2} \dots\ It reported 8 interactions instead of 7.''
+\medskip\normalfont
+\\ \textbf{$\Rightarrow$ A number in the answer that was never in any output. A regex can catch this.}
+\end{block}
+
+\pause
+\begin{block}{2. The question silently decayed \sm{(DDB, p.\,13)}}
+The agent dropped the ``melanoma'' qualifier partway through a ranking task.
+\medskip
+\itshape ``\textbf{The last chance to catch the slip is at the final answer}: a human who had misread
+the task the same way would look at the result, recognise it as a \textbf{meaningless response to
+the user's actual goal}, and backtrack. \textbf{None of the failing models caught this.}''
+\medskip\normalfont
+\\ \textbf{$\Rightarrow$ Nothing was watching the exit. Something must be.}
+\end{block}
+\end{frame}
+
+\begin{frame}{The finding that says \emph{where to spend the budget}}
+\why{DDB re-ran their 6 unsolved tasks, handing the agent the expert's step-by-step playbook.}
+
+\begin{quote}\itshape
+``76 out of 82 tasks are solved without any hints in at least one of the trials\dots\ After the
+hints, at least 1 of the agents is able to pass \textbf{80 out of 82}. The results suggest that
+\textbf{execution is within reach for today's agents should they be given the expert workflow}.''
+\end{quote}
+
+\pause
+\medskip
+Put the two papers together:
+\medskip
+\begin{itemize}
+  \item The models \gd{CAN execute}. Give them the right plan and they finish the job. \sm{DDB: 80/82 with hints}
+  \item The models \gd{DO notice}. They run the diagnostics and see the anomaly. \sm{GBP: the gap is in \emph{acting}, not \emph{seeing}}
+  \item They fail \rd{in the seam between the two}.
+\end{itemize}
+
+\pause
+\medskip
+\begin{alertblock}{Design thesis}
+The bottleneck is \textbf{not} code generation, \textbf{not} knowledge, \textbf{not} context length.
+It is \textbf{thread-keeping}.\\[4pt]
+So do not spend the engineering budget on making the model smarter. Spend it on making it
+\textbf{structurally impossible to drop the thread}.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Part 1 — three things in these papers I do not accept}
+\why{A review that is all praise is not a review. (And §7 will show I earned the right to say the third one.)}
+
+{\footnotesize
+\begin{tabular}{@{}p{0.40\textwidth}p{0.55\textwidth}@{}}
+\toprule
+\textbf{The claim} & \textbf{Why I do not buy it} \\
+\midrule
+\textbf{DDB's failure taxonomy}\newline (the 54\% table you just saw)
+& It is built from \textbf{ONE run per (model, task)} — by its own caption. But agent runs are
+\emph{enormously} noisy: on \textbf{my} harness the \textbf{same task, same config} gave
+\textbf{1/10} on one run of the benchmark and \textbf{6/10} on the next. A single trajectory is not
+a description of a model — it is \textbf{one draw from a wide distribution}. \\
+\addlinespace
+\textbf{``76/82 — execution is within reach''}
+& That is not a pass rate. It is \textbf{best-of-N across 12 models $\times$ 6 harnesses $\times$
+3 trials}. The best single agent scores \textbf{51.6\%}. And the hint experiment moves
+\textbf{four tasks} ($n{=}6$), unrepeated. \emph{I believe the conclusion. This experiment does not
+establish it.} \\
+\addlinespace
+\textbf{``Our judge agrees at $\kappa = 1.0$''}
+& Against \textbf{two other LLMs}, on 200 items. $\kappa{=}1.0$ is not reassuring, it is
+\textbf{suspicious}: either the rubric is so mechanical the judge is redundant (then grade it
+programmatically), or \textbf{three models share a bias} — which is exactly what inter-rater
+agreement is meant to catch, and exactly what three LLMs cannot catch about each other. \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\centering\wn{My sharpest criticism — that GBP's confidence intervals are broken — needs §7 to land,}\\
+\wn{because I have to show you that the same bug happened to me first.}
+\end{frame}
+
+% ===========================================================================
+\section{4 · The design}
+% ===========================================================================
+
+\begin{frame}[shrink=8]{The move: turn the three dropped things into \emph{state}}
+\why{Every mechanism below is traceable to a specific, quoted failure. Nothing is here because it seemed nice.}
+
+\centering
+{\small
+\begin{tabular}{@{}llp{0.42\textwidth}@{}}
+\toprule
+& \textbf{Mechanism} & \textbf{The documented failure it exists to kill} \\
+\midrule
+\textbf{Ledger 1} & \textbf{Question Contract}
+  & the \emph{question} decays \sm{— DDB \emph{Constraint} 7.5\%; the melanoma case; GBP ``wrong population / wrong scale''} \\
+\addlinespace
+\textbf{Ledger 2} & \textbf{Findings Ledger}
+  & the \emph{finding} is noticed and dropped \sm{— GBP's notice–act gap; DDB \emph{Domain reasoning} 54.0\%} \\
+\addlinespace
+\textbf{Ledger 3} & \textbf{Evidence Grounding}
+  & the \emph{number} reported is not the number printed \sm{— DDB \emph{Derivation} 18.6\% + \emph{Final-answer slip} 3.5\%} \\
+\addlinespace
+\textbf{Gate 4} & \textbf{Fresh-context verifier}
+  & nothing is watching the exit \sm{— ``none of the failing models caught this''} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{alertblock}{The principle behind all four}
+\textbf{Make the omission impossible to express, rather than asking nicely for it not to happen.}\\[3pt]
+A prompt is a \emph{request} — it competes with everything else in the context and \textbf{loses
+ground with every step}. A gate is a \emph{wall}.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[shrink=8,fragile]{Ledger 1 — the Question Contract}
+\why{Before any analysis, the agent's first action must be to fill this in. It is then re-rendered into context EVERY turn, so it cannot decay.}
+
+\begin{lstlisting}[emph={population,premises,question_is_precise}]
+class QuestionContract(BaseModel):
+    estimand:    str        # the exact quantity, in one sentence
+    population:  str        # WHICH ROWS. the denominator. stated explicitly.
+    units:       str        # g? kg? percent? fraction? log-scale?
+    constraints: list[str]  # every explicit filter the user stated
+    premises:    list[str]  # what the QUESTION assumes - and must be checked
+    question_is_precise: bool   # REQUIRED. forces an explicit judgement.
+    ambiguities: list[str]  # if not precise: the readings, and which I chose
+\end{lstlisting}
+
+\pause
+\medskip
+\begin{block}{Two of those fields exist because \emph{the evaluation demanded them}, not because I designed them in}
+\textbf{\code{premises}} — a question can be \emph{wrong}. \emph{``Which of the four sites had the
+highest response rate?''} — there are \textbf{three} sites. Without this field the agent answered
+anyway, fluently, and \textbf{laundered a false premise into a fact}. With it: \rd{0/3} $\to$ \gd{3/3}.
+\end{block}
+\pause
+\begin{block}{\code{question\_is\_precise} is a \emph{required boolean}, and that is the entire trick}
+The contract already had an \code{ambiguities} list, and the agent left it \textbf{empty every
+single time}.\\[3pt]
+\alert{A field the model MAY leave empty is a field the model WILL leave empty.}
+A required boolean \textbf{cannot be skipped} — and a validator forces \code{ambiguities} non-empty
+whenever it is \code{False}.
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Ledger 2 — the Findings Ledger \sm{(the centrepiece — or so I thought)}}
+\why{Attacks GBP's headline finding directly. The mechanism is embarrassingly simple.}
+
+Every time the agent notices \emph{anything} — a sentinel, a wrong dtype, a duplicate, an
+imbalance — it must log it:
+
+\begin{lstlisting}[emph={note_finding}]
+note_finding(
+    observation = "biomarker_x has 47 values of exactly -999.0",
+    implication = "missing-data sentinels, not measurements; "
+                  "they would drag the mean down by ~30%",
+    status      = "open",        # open | acted | dismissed
+)
+\end{lstlisting}
+
+\pause
+\begin{alertblock}{And then the rule that makes it bite}
+\centering\Large \code{submit\_answer} is \textbf{hard-blocked} while \emph{any} finding is
+\code{open}.
+\end{alertblock}
+
+\pause
+To close a finding the agent must either
+\begin{itemize}
+  \item \gd{ACT} on it — pointing at the code step that handled it — or
+  \item \textcolor{soft}{\textbf{DISMISS}} it — \textbf{writing an explicit reason} why it does not affect \emph{this} estimand.
+\end{itemize}
+\textbf{Both are recorded. Both end up in the final report.}
+\end{frame}
+
+\begin{frame}{Why that is the notice--act gap, converted into a wall}
+\why{GBP: the model ``treats it as a local data cleaning issue''. This design does not let ``local cleanup'' be a terminal state.}
+
+\begin{itemize}
+  \item A noticed finding is an \textbf{open obligation}. The obligation must be \textbf{discharged,
+        out loud}, before the agent is permitted to finish.\pause
+  \item The \code{implication} field is \textbf{where the propagation actually happens} — the agent
+        is \emph{forced to write down what this changes}, which is exactly the step the papers
+        observe it skipping.\pause
+  \item It never says what to \emph{conclude}. On the response-rate task the agent looked at the
+        \code{-999} finding and \textbf{correctly dismissed it} — \code{biomarker\_baseline} never
+        enters that calculation.
+\end{itemize}
+
+\pause
+\begin{block}{The distinction that makes this defensible}
+We do not force a \textbf{conclusion}. We force the observation to \textbf{reach the decision}.\\
+What happens when it arrives is still the model's judgement.
+\end{block}
+
+\pause
+\medskip
+\centering\sm{Cost of the mechanism: about 40 lines and one extra tool.}
+\end{frame}
+
+\begin{frame}{The limitation — and what it cost me to learn it}
+\why{I wrote this sentence before I had evidence for it. Then I watched it happen.}
+
+\begin{alertblock}{The ledger cannot force the agent to notice something it never looked at}
+It converts \textbf{noticed-but-not-acted-upon} into a hard stop. It does \textbf{nothing} about
+\textbf{never-noticed}.
+\end{alertblock}
+
+\pause
+On the Simpson's-paradox task, the agent:
+\begin{itemize}
+  \item caught the duplicate patients \yes
+  \item was \textbf{forced} to act on them, and did so correctly \yes
+  \item submitted \rd{$-$0.087}. \no
+\end{itemize}
+It had \textbf{simply never noticed the confounding} — so there was no obligation to discharge, and
+\textbf{the gate had nothing to block}. \emph{The mechanism worked perfectly and the answer was
+still wrong-signed.}
+
+\pause
+\medskip
+\begin{block}{So the ledger is \emph{pre-seeded}}
+Anything a deterministic profiler can find — sentinels, duplicate IDs, numeric-looking strings —
+is entered as an \textbf{open finding before turn one}.\\[4pt]
+Not \emph{printed as a helpful note}. \textbf{Registered as an obligation.}
+\end{block}
+
+\pause
+\centering\Large\gd{Information can be ignored. An obligation cannot.}
+\end{frame}
+
+\begin{frame}{The division of labour the whole design rests on}
+\centering
+\medskip
+{\large
+\begin{tabular}{@{}p{0.30\textwidth}p{0.58\textwidth}@{}}
+\toprule
+\textbf{deterministic code} & finds the \textbf{mechanical} problems, and makes them
+\textbf{un-ignorable} \\
+\addlinespace
+\textbf{the model} & decides what they \textbf{mean} for \emph{this particular question} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{alertblock}{Remember this frame}
+It looks like a throwaway. \textbf{§6 will show it is the single most important claim in the
+project} — and that I had the two halves weighted \textbf{exactly backwards}.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{Ledger 3 — Evidence Grounding (no LLM, no negotiation)}
+\why{Attacks DDB's Derivation error (18.6\%) and Final-answer slip (3.5\%).}
+
+\begin{block}{The rule, stated in the system prompt as an absolute}
+\centering\textbf{Every number you report must have been \emph{printed by code you ran}.}\\
+\sm{Estimating is not a permitted operation.}
+\end{block}
+
+\pause
+\medskip
+And it is \textbf{enforced deterministically}, not requested politely:
+\begin{enumerate}\footnotesize
+  \item regex every number out of the answer's \code{evidence} list;
+  \item normalise \sm{(strip commas and \%, compare at 4 significant figures, also test $\times$100 and $\div$100 for the percent-vs-fraction confusion)};
+  \item require \textbf{set containment} against the concatenated \code{stdout} of the whole run.
+\end{enumerate}
+
+\pause
+\begin{lstlisting}[style=plain, basicstyle=\ttfamily\footnotesize\color{bad}]
+REJECTED: the values {0.62} in your evidence never appeared in any
+executed output. Compute and print them before citing them.
+\end{lstlisting}
+
+\pause
+\begin{alertblock}{Fifteen lines, and it catches a documented frontier-model failure}
+DDB: \emph{``its own code printed the correct group-level count of 1, but the final tally used the
+atom-level count of 2.''}\\[3pt]
+An LLM reviewer \emph{might} catch that. \textbf{A regex catches it every time, for free.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[shrink=8]{Gate 4 — the exit, and the fresh-context verifier}
+\why{``The last chance to catch the slip is at the final answer. None of the failing models caught this.''}
+
+\code{submit\_answer} runs four gates \textbf{in order — cheapest and most deterministic first}.
+\textbf{Never pay for an LLM call to catch what a regex would catch.}
+
+\medskip
+{\small
+\begin{tabular}{@{}rllp{0.36\textwidth}@{}}
+\toprule
+& \textbf{Gate} & \textbf{Cost} & \textbf{Rejects when} \\
+\midrule
+1 & Schema \sm{(pydantic)}   & free & malformed \sm{— the \code{ValidationError} text goes back and the model self-repairs} \\
+2 & Ledger                  & free & any finding still \code{open} \\
+3 & Grounding               & free & a number never appeared in any output \\
+4 & \textbf{Verifier}       & \textbf{1 API call} & only reached if 1–3 passed \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{block}{The critical design detail: \alert{the verifier does not see the agent's reasoning}}
+It sees \textbf{only} the Question Contract, the briefing, \textbf{the executed code and its
+outputs}, and the draft answer.\\[3pt]
+Show it the chain of thought and it gets \textbf{anchored by the agent's own narrative and
+rubber-stamps}. \textbf{A verifier that reads the transcript is a verifier that measures nothing.}
+\emph{The fresh context IS the mechanism.}\\[3pt]
+It is also a \textbf{different model family} \sm{(agent: Qwen3-30B; verifier: gpt-oss-120b)} — a
+model grading its own work is subject to self-preference bias \sm{(Zheng et al., 2023)}.
+\end{block}
+\end{frame}
+
+\begin{frame}{Why this is \emph{not} a multi-agent system}
+\why{The most common thing people build here, and I want to justify not building it.}
+
+\begin{block}{The argument against planner / coder / critic}
+The state that matters — the dataframes — \textbf{lives in one kernel namespace}. Every handoff
+forces it through \textbf{the lossy channel of natural language} — \emph{which is the exact channel
+this entire design works to minimise}.\\[3pt]
+Both papers evaluate \textbf{single agents}. DDB gets 51.6\% with one.
+\end{block}
+
+\pause
+\begin{block}{And note what the verifier already buys me}
+The \textbf{only} genuine benefit of a second agent here is \textbf{an un-anchored second opinion}
+— and that is purchasable for \textbf{one API call}, with none of the coordination overhead.
+\end{block}
+
+\pause
+\begin{alertblock}{I would change my mind when\dots}
+the task genuinely decomposes into \textbf{independent subproblems with narrow interfaces} —
+DDB's own future-work suggestion: route \emph{``structural reasoning, database retrieval, patent
+mining, target genetics, and verification''} to different stacks.\\[3pt]
+\sm{\textbf{Restraint is only credible if it comes with a trigger.} Same for: no framework, no RAG, no fine-tuning — each has a written condition that would reverse it.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{The unglamorous rails \sm{(table stakes — but they are why it never crashes)}}
+\begin{itemize}
+  \item \textbf{Step budget (20).} At 3 remaining, every observation is suffixed
+        \emph{``(3 steps remaining — converge)''}, so it degrades like an \textbf{anytime
+        algorithm} instead of being guillotined mid-thought. On exhaustion it is \textbf{forced} to
+        submit with \code{confidence="low"}.\pause
+  \item \textbf{Error fingerprinting.} \code{hash(exception\_type, offending\_line)}. Same
+        fingerprint \textbf{twice} $\to$ \emph{``state the root cause in one sentence before writing
+        more code.''} \textbf{Three} times $\to$ \emph{``choose a different strategy.''}
+        \sm{(Reflexion, Shinn et al. 2023, in ten lines.)}\\
+        \sm{The two-stage design is deliberate: jumping straight to ``try something else'' makes the
+        agent \textbf{abandon a 95\%-correct approach over a typo}.}\pause
+  \item \textbf{Duplicate-code short-circuit.} Byte-identical code twice $\to$ return the cached
+        observation \textbf{without executing}. Breaks the tightest death loops for free.\pause
+  \item \textbf{Kernel preamble.} \code{pd.set\_option('display.max\_rows', 20)} — caps accidental
+        dumps \textbf{at the source}.
+\end{itemize}
+\pause
+\medskip
+\begin{alertblock}{Honest scoping}
+\textbf{This is not a sandbox, and the notebooks say so in a red box.} It is an isolated namespace
+in a throwaway venv. Both papers use Docker; \textbf{that is the correct production answer}, and
+the \code{run\_python} contract \sm{(code in, stdout out)} is \textbf{deliberately identical} to what
+a container-backed executor exposes — so the swap is \textbf{one class, not a redesign}.
+\end{alertblock}
+\end{frame}
+
+% ===========================================================================
+\section{5 · How would I know it works?}
+% ===========================================================================
+
+\begin{frame}[shrink=8]{The benchmark}
+\why{Both papers are, fundamentally, evaluation papers. I steal their design and say so.}
+
+\begin{itemize}
+  \item \textbf{28 tasks, 3 domains.} Ground truth is a \textbf{pandas callable that only the grader
+        ever invokes} — it never goes near the agent.
+  \item \textbf{Binary, all-or-nothing, programmatic} grading with \textbf{pre-specified absolute
+        tolerances} \sm{(GBP)}. No LLM judge for anything \code{math.isclose} can decide.
+\end{itemize}
+
+\pause
+\medskip
+{\small
+\begin{tabular}{@{}lp{0.62\textwidth}@{}}
+\toprule
+\code{penguins.csv} & real, clean, familiar \sm{(344 rows)} — chapters 1–3, where the agent looks
+great and \textbf{the mechanics are the lesson} \\
+\addlinespace
+\code{trial.csv} & synthetic clinical data with a \textbf{known data-generating process}, built so
+that \textbf{plausible-but-wrong analyses give materially different answers} \\
+\addlinespace
+\code{sales.csv} & \textbf{e-commerce. A held-out domain} — same species of trap, a different animal \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{block}{GBP defends the strictness, and I agree}
+\itshape ``an agent that executes several intermediate steps correctly but returns the wrong
+\textbf{decision-relevant} answer \textbf{has not successfully automated the analysis}.''
+\medskip\normalfont\\
+Partial credit measures \emph{effort}. \textbf{Binary measures usefulness.}
+\end{block}
+\end{frame}
+
+\begin{frame}{The planted decision points — each one is a documented failure}
+\why{GBP's term: ``substantive inferential forks where a plausible wrong choice leads to a qualitatively different downstream answer.''}
+
+\centering
+{\footnotesize
+\begin{tabular}{@{}p{0.26\textwidth}p{0.21\textwidth}p{0.24\textwidth}l@{}}
+\toprule
+\textbf{The trap} & \textbf{The naive path} & \textbf{The correct path} & \textbf{Paper} \\
+\midrule
+\code{-999} sentinels in a biomarker column & mean over raw column & recognise as missing, exclude & GBP notice–act \\
+\addlinespace
+re-tested patients appear twice & count rows & deduplicate on \code{patient\_id} & DDB derivation \\
+\addlinespace
+assay batch B on a shifted scale & pool all batches & correct or exclude batch B & GBP ``wrong scale'' \\
+\addlinespace
+question restricts to one arm & compute over everyone & honour the stated filter & DDB constraint \\
+\addlinespace
+\rd{Simpson's paradox} & report the marginal effect & \textbf{stratify}; report the conditional effect & GBP ``wrong level'' \\
+\addlinespace
+a question with a \textbf{false premise} & answer it anyway & \textbf{flag the false premise} & DDB scope \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+The Simpson's task is the one I care most about: it is \textbf{the purest possible test of the
+notice--act gap.} The agent \textbf{will see} the imbalance if it looks, and \textbf{the entire
+question is whether seeing it changes what it computes.}
+\end{frame}
+
+\begin{frame}{The guard that makes the benchmark mean anything}
+\why{A benchmark where the lazy path accidentally lands inside the tolerance band is a benchmark that grades nothing.}
+
+Every trap task records its \textbf{plausible-but-wrong} answer, and a test \textbf{asserts} it lies
+far outside the tolerance band. \sm{Real, verified values:}
+
+\medskip
+\centering
+{\footnotesize
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{task} & \textbf{truth} & \textbf{the naive answer} & \textbf{tolerance band} \\
+\midrule
+\code{t1\_sentinel}     & 50.46   & $-$63.99     & $\pm$1.51 \\
+\code{t3\_batch\_units} & 40.21   & 152.78       & $\pm$1.21 \\
+\code{t4\_simpson}      & \gd{+0.1501} & \rd{$-$0.0826} & $\pm$0.045 \\
+\code{s1\_text\_numbers}& 25{,}915 & 6{,}027{,}931 & $\pm$518 \\
+\code{s4\_simpson\_sales} & \gd{$-$0.1246} & \rd{+0.0785} & $\pm$0.037 \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{alertblock}{This guard rejected \textbf{three of my own tasks}}
+{\footnotesize
+\begin{tabular}{@{}p{0.36\textwidth}p{0.54\textwidth}@{}}
+\emph{median baseline biomarker} & \textbf{the median is robust to outliers} — 11\% sentinels barely move it. \textbf{Graded nothing.} \\
+\emph{mean age of control patients} & \textbf{age is independent of arm} in my DGP. Dropping the filter changed nothing. \\
+\emph{fraction with severe disease} & re-tests were a random sample — deduplication moved no proportion. \\
+\end{tabular}}
+\smallskip\\
+All three looked \textbf{perfectly reasonable}. \textbf{The assertion found them. I didn't.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{What gets measured}
+\why{20 runs per (task, config). GBP uses 10, DDB uses 3. §7 will show why even 10 is not enough.}
+
+\begin{itemize}
+  \item \textbf{pass rate} — binary, all-or-nothing.\pause
+  \item \textbf{\gd{wrong-attractor rate}} — \emph{did it land on the \textbf{known naive answer}?}\\
+        \sm{Because every task has a documented plausible-but-wrong path with a numerically distinct
+        answer, a failure is not just ``wrong'' — \textbf{I can tell you \emph{which} wrong}. An
+        agent that lands on the naive answer has \textbf{fallen into the notice–act gap}; an agent
+        that lands elsewhere has simply erred.}\\
+        \sm{\textbf{No standard harness reports this, and it takes ten lines.}}\pause
+  \item \textbf{failure taxonomy} — every failing run hand-classified into \textbf{DDB's five
+        categories}, so my failure profile is \textbf{directly comparable to theirs}.\pause
+  \item \textbf{process metrics} — steps, execution errors, errors \emph{recovered from}, tokens, \$.\pause
+  \item \textbf{consistency} — pass@5 vs 5-of-5. \emph{Which tasks are flaky, and are they the ones
+        you would expect?}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Model choice — and why I deliberately did \emph{not} pick the best one}
+\why{This is the whole argument of the project, in one decision.}
+
+Token Factory hosts GLM-5.2, Kimi-K2.7, DeepSeek-V4-Pro\dots\ which is almost exactly DDB's
+open-model leaderboard. \textbf{On the evidence, the pick is GLM-5.2.}
+
+\pause
+\medskip
+\centering\Large\textbf{I did not pick GLM-5.2.}
+
+\medskip
+\normalsize
+\textbf{Agent: \code{Qwen3-30B-A3B}} — \textbf{14$\times$ cheaper} and several rungs down the ladder.
+
+\pause
+\medskip
+\raggedright
+\begin{alertblock}{Why}
+The thesis is that \textbf{reliability comes from the scaffolding, not from a bigger base model}.\\[4pt]
+If I run that thesis \textbf{on the strongest model available, I can never test it} — every success
+is attributable to the model, and \textbf{the design proves nothing}.\\[4pt]
+\textbf{Handicapping the base model is what turns the claim into an experiment.}\\[4pt]
+\sm{It is also what makes a 4{,}480-run ablation study cost \textbf{\$3.75} instead of \$110.}
+\end{alertblock}
+
+\pause
+\centering\emph{The cheapest demonstration and the most rigorous one are, here, the same demonstration.}
+\end{frame}
+
+% ===========================================================================
+\section{6 · The evidence}
+% ===========================================================================
+
+\begin{frame}{Headline}
+\centering
+\medskip
+{\Large \textbf{4{,}480 runs} · \textbf{28 tasks} · \textbf{3 domains} · \textbf{8 configs} ·
+\textbf{20 runs/cell} · \textbf{\$3.75} · \textbf{0 crashes}}
+
+\medskip
+{\LARGE Full agent: \gd{87\%} \quad\sm{95\% CI [78\%, 95\%]}}
+
+\medskip
+\sm{11.0 steps · \$0.0005 per run}
+
+\pause
+\medskip
+\begin{block}{Does it \emph{generalise}? — the question more runs cannot answer}
+Every trap in \code{trial.csv} is one \textbf{I} planted while designing the guardrails. Passing it
+proves they work on the failures \textbf{I already knew about}.\\[3pt]
+\textbf{More runs shrink the \emph{variance} of that claim. They do nothing about its \emph{bias}.}\\[3pt]
+So \code{sales.csv} is a \textbf{held-out domain} — e-commerce, not medicine.
+\end{block}
+\end{frame}
+
+\begin{frame}{By domain}
+\centering
+\medskip
+{\small
+\begin{tabular}{@{}lrlrl@{}}
+\toprule
+\textbf{domain} & \textbf{pass} & \textbf{95\% CI} & \textbf{n} & \\
+\midrule
+\code{penguins}      & 100\% & [100\%, 100\%] & 80  & \sm{clean data, no traps} \\
+\code{trial}         & 82\%  & [62\%, 97\%]   & 220 & \sm{\textbf{DESIGNED AGAINST}} \\
+\code{sales}         & \gd{88\%} & [77\%, 96\%] & 260 & \sm{\gd{HELD-OUT DOMAIN — never designed against}} \\
+\addlinespace
+held-out \emph{tasks} & 96\% & [90\%, 100\%]  & 120 & \sm{never looked at while tuning the prompt} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\centering\textbf{It does \emph{better} on the domain it was never tuned for.}
+
+\pause
+\medskip
+\begin{alertblock}{And this is \emph{exactly the wrong number to be reassured by}}
+That was the number I wanted, and for about a day it was the number I quoted.\\[4pt]
+\textbf{An aggregate is an average, and an average is where a failure goes to hide.}\\[4pt]
+\sm{Hold that thought for four slides.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[shrink=8]{On the trap tasks, the stack works — and it is not close}
+\why{Trap tasks only: the ones with a planted decision point, where a guardrail can actually bite.}
+
+\centering
+\medskip
+{\large
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& \textbf{pass rate} & \textbf{fell for the \emph{documented} naive answer} \\
+\midrule
+\textbf{full agent}     & \gd{87\%} & \gd{7\%} \\
+\textbf{no guardrails}  & \rd{61\%} & \rd{24\%} \\
+\bottomrule
+\end{tabular}}
+
+\medskip
+\pause
+{\Large A \gd{3.3$\times$ reduction} in the wrong-attractor rate.}
+
+\medskip
+\sm{All three domains, like for like. That is the notice--act gap, measured on my own agent,
+and it is far larger than the noise.}
+
+\pause
+\medskip
+\begin{block}{The \emph{shape} matters as much as the size}
+On \textbf{clean} data \sm{(lookup, aggregation, groupby, correlation)} \textbf{both configs score
+100\%}.\\[3pt]
+\textbf{The guardrails buy nothing where there is nothing to catch} — which is exactly what a
+guardrail should do.
+\end{block}
+
+\pause
+\medskip
+\sm{\emph{An earlier draft reported ``nearly 5$\times$'' by comparing an all-domain \code{full} arm
+against a trial-only \code{no\_guardrails} arm — two different denominators, which is how you
+accidentally flatter yourself. Every number here now comes out of \code{evals.report}, and if the
+prose and the script disagree, \textbf{the script is right}.}}
+\end{frame}
+
+\begin{frame}{The ablation grid — one mechanism removed at a time}
+\why{The deal I made with myself: if an ablation shows a mechanism does not pay for itself, IT GETS CUT.}
+
+\centering
+{\small
+\begin{tabular}{@{}lrrlc@{}}
+\toprule
+\textbf{remove this} & \textbf{pass} & \textbf{$\Delta$ vs full} & \textbf{95\% CI} & \textbf{verdict} \\
+\midrule
+\emph{(nothing — the full agent)} & \textbf{87\%} & — & & \\
+\midrule
+\rd{the deterministic data briefing} & \rd{60\%} & \rd{$-$27\%} & [$-$40\%, $-$15\%] & \rd{HURTS} \\
+\emph{every guardrail at once}      & 67\%     & \rd{$-$20\%} & [$-$32\%, $-$9\%]  & \rd{HURTS} \\
+\wn{the Findings Ledger} \sm{— my centrepiece} & 81\% & \wn{$-$6\%} & [$-$11\%, $-$1\%] & \wn{HURTS} \\
+\midrule
+the numeric grounding gate  & 87\% & $-$0\% & [$-$3\%, $+$3\%] & \sm{no detectable effect} \\
+the fresh-context verifier  & 87\% & $-$0\% & [$-$4\%, $+$3\%] & \sm{no detectable effect} \\
+observation truncation      & 87\% & $+$0\% & [$-$3\%, $+$3\%] & \sm{no detectable effect} \\
+the Question Contract       & 88\% & $+$1\% & [$-$2\%, $+$5\%] & \sm{no detectable effect} \\
+\bottomrule
+\end{tabular}}
+
+\medskip
+\sm{Paired hierarchical bootstrap vs.\ the full agent — resample tasks, then runs within tasks.
+10{,}000 resamples. \sm{(GBP's scheme; they use 20{,}000.)}}
+
+\pause
+\medskip
+\begin{alertblock}{If the 95\% CI crosses zero, I \textbf{cannot distinguish that mechanism from doing nothing} — and I say so, instead of reporting a point estimate and hoping nobody checks.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{The result that inverted my own thesis}
+\centering
+\medskip
+{\Large Removing \textbf{twenty lines of pandas} is the \\ \textbf{single largest effect in the study}.}
+
+\medskip
+\pause
+{\large I built this design around \rd{gates}.}\\[6pt]
+{\large The thing carrying it is the \gd{detector}.}
+
+\medskip
+\pause
+\begin{alertblock}{\centering\Large A gate is only as good as the detector feeding it.}
+\end{alertblock}
+
+\pause
+\medskip
+\raggedright
+GBP observes that models \emph{``notice the clue but treat it as local cleanup.''} \\
+I read that as a failure to \textbf{ACT} — so I built machinery to \textbf{force action}.
+
+\medskip
+\textbf{The ablation says the leverage is on the \gd{NOTICE} side.}
+
+\medskip
+When the agent is simply \textbf{told} what is in the data — \emph{``\code{biomarker\_baseline} has
+88 values of exactly $-$999''}, \emph{``\code{patient\_id} has 48 duplicates''} — \textbf{it acts on
+it.} \\[3pt]
+\textbf{It did not need to be forced. It needed to be \emph{informed}.}
+\end{frame}
+
+\begin{frame}{``But GeneBench-Pro says the opposite'' — the objection, raised before you do}
+\why{GBP is explicit that frontier models CONSISTENTLY notice; the headroom is in acting. So how can the detector be the whole story for me?}
+
+\begin{block}{Because we are not talking about the same model}
+GBP's subjects are \textbf{GPT-5.6-class frontier systems.} My agent is \textbf{Qwen3-30B-A3B} — a
+model I chose \emph{precisely because it is weak}.\\[4pt]
+For a frontier model, \code{df.describe()} runs and the sentinel is spotted.\\
+For a 30B model at \$0.10/1M, \textbf{noticing is genuinely not reliable} — and the deterministic
+profiler is \textbf{substituting for a capability the base model does not have}.
+\end{block}
+
+\pause
+\begin{alertblock}{So this is not a contradiction of GBP. It is a \emph{boundary condition} on it}
+\centering\large
+The \textbf{notice--act} gap is a \textbf{frontier-model} problem.\\
+The \textbf{notice} gap is a \textbf{small-model} problem.
+\end{alertblock}
+
+\pause
+\raggedright
+Which half of the scaffolding earns its keep depends on \textbf{which half of the job your base
+model already does for free} — so \emph{``what should I build on top of the base model?''} has
+\textbf{no model-independent answer}.
+
+\medskip
+\sm{\textbf{The falsifiable version is one command away:} re-run this grid on GLM-5.2 and the
+briefing's $-$27\% should \emph{shrink}. I have not run it. \textbf{If it does not shrink, I am
+wrong about the mechanism, and I want to know.}}
+\end{frame}
+
+% ===========================================================================
+\section{7 · The instrument lied}
+% ===========================================================================
+
+\begin{frame}{Every number you just saw carried a 95\% CI. Watch this.}
+\why{I ran the IDENTICAL benchmark twice, either side of a change I had already proved was inert.}
+
+\sm{Same error rate (0.27 vs 0.23), same step count (11.4 vs 11.6), same budget-exhaustion rate.
+\textbf{The prompt differs by one path string.}}
+
+\medskip
+\centering
+{\large
+\begin{tabular}{@{}lrlc@{}}
+\toprule
+\textbf{removing the Findings Ledger} & \textbf{$\Delta$} & \textbf{95\% CI} & \textbf{verdict} \\
+\midrule
+\textbf{run A} & \rd{$-$9\%} & [$-$17\%, $-$2\%] & \rd{``SIGNIFICANT''} \\
+\textbf{run B} & \wn{$-$3\%} & [$-$10\%, $+$4\%] & \wn{``no detectable effect''} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\raggedright
+\textbf{Same code. Same tasks. Same ten runs per cell.}\\
+\textbf{Opposite conclusions, from 95\% intervals that barely overlap.}\\
+Individual tasks swung \textbf{30--50 points} between the two runs. One task read \rd{1/10} on one
+run and \gd{6/10} on the next.
+
+\pause
+\medskip
+\centering\Large\alert{At least one of those intervals is wrong, and I have no way to tell which.}\\
+\alert{So as stated, \textbf{both are worthless}.}
+\end{frame}
+
+\begin{frame}{Why it lied — and it is not a coding bug}
+\why{The hierarchical bootstrap is implemented correctly. It is a bug in what I ASKED it.}
+
+\begin{block}{With 10 runs per cell}
+The bootstrap resamples \textbf{with replacement} from \textbf{the ten outcomes I happened to
+observe}.\\[5pt]
+A cell that came back \rd{1/10} therefore has a bootstrap distribution \textbf{centred near 10\%} —
+and it \textbf{cannot reach the 60\% the next run produced}.\\[5pt]
+The empirical distribution is \textbf{degenerate near $p{=}0$ and $p{=}1$} — and \textbf{those are
+exactly where the hard tasks live.}
+\end{block}
+
+\pause
+\begin{alertblock}{A bootstrap gives you the sampling variance of \emph{the data you have}}
+It knows \textbf{nothing whatever} about the data you did not collect.\\[3pt]
+At $n{=}10$, near the extremes, that gap is \textbf{enormous} — and the interval it hands back is
+\textbf{too narrow in a way that feels rigorous}.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Why this is the worst bug in the project}
+\code{evals/stats.py} opens with a sentence \textbf{I wrote myself}:
+
+\medskip
+\centering
+\emph{``Confidence intervals, because a point estimate is how you fool yourself.''}
+
+\medskip
+\pause
+\raggedright
+And then I fooled myself \textbf{from inside the confidence interval} — \textbf{twice, in opposite
+directions}, and wrote up \textbf{both} as findings.
+
+\medskip
+A previous decision log congratulates me for catching \emph{a point estimate masquerading as a
+result}. \textbf{This is the same error one level up: a confidence interval masquerading as a
+result.}
+
+\pause
+\medskip
+\begin{alertblock}{}
+\centering\large
+\textbf{An error bar is not automatically an honest number.}\\
+\textbf{It is honest only if the error bar is} — and mine was computed from too little data to know.\\[6pt]
+The instrument you build to stop yourself believing noise \textbf{is itself an instrument}, and it
+also has to be checked — \textbf{by the only method that has ever worked here:}\\[3pt]
+\emph{run it again and see if it says the same thing.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[shrink=8]{The error bar I actually report now}
+\why{Doubled to 20 runs/cell. And alongside every CI, the number I trust more: split the runs in half, compute the ablation on EACH, and report the SPREAD.}
+
+\centering
+{\small
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+\textbf{remove this} & \textbf{run A} & \textbf{run B} & \textbf{spread} & \textbf{pooled} & \\
+\midrule
+\gd{the data briefing}   & $-$29\% & $-$25\% & \gd{4 pt} & \gd{$-$27\%} & \gd{ROBUST} \\
+every guardrail at once & $-$22\% & $-$18\% & 4 pt & $-$20\% & \gd{robust} \\
+\addlinespace
+\wn{the Findings Ledger} & \wn{$-$9\%} & \wn{$-$3\%} & \wn{6 pt} & \wn{$-$6\%} & \wn{real — but I would not defend the \emph{size}} \\
+\addlinespace
+the grounding gate      & $-$0\% & $-$1\% & 1 pt & $-$0\% & \sm{—} \\
+the fresh-context verifier & $-$1\% & \rd{$+$1\%} & 3 pt & $-$0\% & \rd{SIGN FLIPS} \\
+observation truncation  & $+$0\% & \rd{$-$0\%} & 1 pt & $+$0\% & \rd{SIGN FLIPS} \\
+the Question Contract   & $-$1\% & \rd{$+$3\%} & 4 pt & $+$1\% & \rd{SIGN FLIPS} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\raggedright
+\textbf{Read the spread column, not the point estimate.} That is not a \emph{model} of the
+uncertainty. \textbf{It \emph{is} the uncertainty, observed.}
+
+\pause
+\medskip
+And the mechanisms whose \textbf{sign flips} between halves of the same experiment are \textbf{not
+weak findings}:
+
+\medskip
+\centering
+\begin{alertblock}{\centering\large If a verdict changes when you run the same experiment again, it was never a verdict. \\ \textbf{It was weather.}}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{And this is not just my problem. It is GeneBench-Pro's.}
+\why{This is the Part-1 criticism I could not have made without building the thing.}
+
+\begin{itemize}
+  \item GBP computes its confidence intervals by \textbf{the same hierarchical bootstrap}, over
+        \textbf{10 attempts per problem}.\pause
+  \item And their \textbf{headline finding} is that the best mainline model \textbf{scores zero
+        across all ten attempts on 45.7\% of problems}.\pause
+  \item \textbf{Those are \code{0/10} cells.} Their bootstrap resamples \textbf{ten zeros}.
+\end{itemize}
+
+\pause
+\medskip
+\centering
+\begin{alertblock}{The interval on nearly \emph{half} their benchmark is \code{[0, 0]}}
+Which is \textbf{certainly wrong}: a problem solved 5\% of the time shows \code{0/10} about
+\textbf{60\% of the time}.
+\end{alertblock}
+
+\pause
+\medskip
+\raggedright
+\centering\large
+\textbf{Their error bars are tightest precisely where their argument leans hardest —}\\
+\textbf{and they are tight because \emph{the data is degenerate}, not because the estimate is
+precise.}
+\end{frame}
+
+% ===========================================================================
+\section{8 · The failure the average hid}
+% ===========================================================================
+
+\begin{frame}{Go back to the domain table. \code{sales} scored 88\%.}
+\why{Now read the same runs PER TASK.}
+
+\centering
+\medskip
+{\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& \textbf{full agent} & \textbf{landed on the \emph{documented naive} answer} \\
+\midrule
+\code{t4\_simpson} \sm{— Simpson's, medical (designed against)} & \rd{40\%} & \rd{55\%} \\
+\code{s4\_simpson\_sales} \sm{— Simpson's, held-out domain}     & \rd{35\%} & \rd{50\%} \\
+\code{b3\_ambiguous} \sm{— ``Did the biomarker improve?''}       & \rd{5\%}  & — \\
+\midrule
+\sm{22 other tasks} & \sm{90–100\%} & \sm{0–10\%} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\raggedright
+\begin{alertblock}{On the confounded comparison — the failure \emph{both supplied papers were written about} — the agent is \textbf{worse than a coin flip}. And when it fails, it lands \emph{exactly} on the confounded answer.}
+\end{alertblock}
+
+\pause
+\medskip
+\centering\Large
+\textbf{Twenty-two easy tasks were carrying the 87\%.}
+
+\pause
+\medskip
+\normalsize\sm{(\code{s4} is also the task that read 1/10 on one run of $n{=}10$ and 6/10 on the
+next. The truth, at $n{=}20$, is \textbf{7/20}. \textbf{Every strong sentence I wrote about this
+task from a single run — in both directions — was noise.})}
+\end{frame}
+
+\begin{frame}{The methodological point, and it is worth more than any gate in §4}
+\centering
+\medskip
+{\Huge An aggregate is an average,}
+
+\medskip
+{\Huge and \textbf{an average is where a failure goes to hide.}}
+
+\medskip
+\pause
+\normalsize
+\sm{For contrast — and to show the guardrails are not decoration:}\\[6pt]
+\code{trap:units} \sm{(assay batch B reporting 10$\times$ too large)} goes from
+\rd{0/10 without the guardrails} to \gd{10/10 with them}.\\[3pt]
+\textbf{The largest single-task swing in the study.}
+
+\medskip
+\sm{The detector sees the batch, seeds the finding, and the gate will not let the agent submit until
+it has been discharged.}\\[3pt]
+\textbf{The machinery works \emph{exactly as designed} — \gd{wherever a detector feeds it}.}
+\end{frame}
+
+\begin{frame}{So I tried to fix Simpson's with the prompt. It did not move.}
+\why{Always try the cheap explanation first — and report it when it fails.}
+
+The obvious suspect was \textbf{rule 4} of the system prompt — the one piece of domain knowledge I
+allow the agent. It was phrased in \textbf{the language of a clinical trial}:
+
+\medskip
+\sm{\emph{``If the groups were \textbf{not randomly assigned}, a raw comparison between them is not a
+\textbf{treatment effect}\dots''}}
+
+\medskip
+\pause
+Nothing in an e-commerce table is \emph{``randomly assigned''} and there is no \emph{``treatment''} —
+so the reflex had \textbf{nothing to attach to}. Plausible. \textbf{Testable.}
+
+\medskip
+I rewrote it in fully domain-neutral terms — \emph{``this applies to EVERY grouped comparison: arm
+vs arm, channel vs channel, segment vs segment''} — and re-ran the benchmark.
+
+\pause
+\medskip
+\centering\Large\rd{It bought nothing measurable.}
+
+\pause
+\medskip
+\raggedright
+\normalsize
+Which is a \textbf{negative result}, and \textbf{the most useful one in the project} — because it
+\textbf{forecloses the cheap explanation} and leaves only the expensive one.
+\end{frame}
+
+\begin{frame}{Why no prompt was ever going to fix it}
+\centering
+\medskip
+\begin{alertblock}{\centering\Large You cannot close the \emph{notice} gap with better advice.}
+\end{alertblock}
+
+\medskip
+\raggedright
+\begin{itemize}
+  \item The Findings Ledger works on sentinels and duplicates \gd{(95–100\%)} because a twenty-line
+        profiler \textbf{DETECTS} them and hands the agent \textbf{an obligation it cannot walk
+        past}.\pause
+  \item There was \textbf{no detector for confounding}. Nothing computed \emph{``are these groups
+        imbalanced on some third variable?''}\pause
+  \item So \textbf{nothing was seeded}, so \textbf{the gate had nothing to gate}, so \textbf{the
+        agent never noticed} — and \textbf{rewording the instruction does not manufacture an
+        observation}.
+\end{itemize}
+
+\pause
+\medskip
+\centering
+\begin{block}{}
+\centering\large
+A structural gate can force an observation to \textbf{REACH} a decision.\\
+It cannot \textbf{CREATE an observation that was never made}.
+\end{block}
+\end{frame}
+
+\begin{frame}{The ambiguity pair — which says the same thing, more precisely}
+\why{Two under-specified questions that behave completely differently. More informative than either alone.}
+
+\centering
+{\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+& & \textbf{full agent} \\
+\midrule
+\code{s13\_ambiguous} & \emph{``Was the campaign successful?''} — successful \textbf{by which measure}? & \gd{85\%} \\
+\code{b3\_ambiguous}  & \emph{``Did the biomarker improve?''} — and for a biomarker, \textbf{lower is better} & \rd{5\%} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\raggedright
+\textbf{On \code{s13} the gate works.} The ambiguity is \textbf{right on the surface} \sm{(revenue?
+conversion? per-customer?)}, the model sees it, declares the question imprecise, and states its
+reading.
+
+\pause
+\medskip
+\textbf{On \code{b3} it fills the field in and answers \code{True}.} It \emph{sincerely believes}
+\emph{``did the biomarker improve?''} is a precise question — because \textbf{the thing that makes it
+imprecise is not in the question at all}. It is \textbf{in the semantics of the column}: for this
+assay, \textbf{a FALL is an improvement}. Nothing in the data profile says so.
+
+\pause
+\medskip
+\begin{alertblock}{So it is not that ``there is no detector for ambiguity''}
+\code{s13} \textbf{proves the gate works when the ambiguity is visible.} \code{b3} fails because the
+ambiguity is \textbf{invisible from the data}.\\[4pt]
+\centering\textbf{Same lesson, one level down: \emph{the gate is fine. The observation never arrived.}}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{And one failure I would \emph{not} fix in the agent at all}
+\why{The reflex in a project like this is to attribute every red cell to the model. Some of them are yours.}
+
+\code{b3\_ambiguous} scores \rd{5\%}, and \textbf{no detector will save it}.
+
+\medskip
+The fact that makes \emph{``did the biomarker improve?''} ambiguous — \textbf{that a fall in this
+assay is an improvement} — is:
+\begin{itemize}
+  \item \no\ not in the data
+  \item \no\ not in the column names
+  \item \no\ not in the question
+  \item \no\ \textbf{and not in \code{data\_dictionary.md} either. I checked.}
+\end{itemize}
+\textbf{It exists nowhere in anything the agent is given.}
+
+\pause
+\medskip
+\begin{alertblock}{}
+\centering\large
+\textbf{That is not an agent failure. It is a \emph{documentation} failure} —\\
+and the correct fix is \textbf{one line in the data dictionary}, not one more gate in the agent.\\[6pt]
+\textbf{An agent cannot notice what nobody wrote down.}\\
+\emph{If your answer to that is ``a cleverer agent'', you have misdiagnosed the bug.}
+\end{alertblock}
+\end{frame}
+
+% ===========================================================================
+\section{9 · So I built the detector}
+% ===========================================================================
+
+\begin{frame}{I stopped \emph{writing} ``what I'd build next is the detector''}
+\why{Every draft ended on the same self-satisfied sentence. The evidence was overwhelming, and it was mine.}
+
+\begin{itemize}
+  \item sentinels, duplicates, dtype, scope $\to$ \gd{95–100\%} — because a script \textbf{detects}
+        them
+  \item \textbf{confounding} $\to$ \rd{a coin flip} — because \textbf{nothing detected it}
+\end{itemize}
+
+\pause
+\medskip
+And it was \textbf{not a failure of acting}. I watched the agent, at temperature 0,
+\textbf{notice} the imbalance, \textbf{log} it, and then \textbf{dismiss} it:
+
+\medskip
+\centering\itshape ``the question asks for the difference in proportions, so no adjustment is
+needed.''
+
+\pause
+\medskip
+\raggedright\normalfont
+\begin{alertblock}{Read that again}
+That is \textbf{GeneBench-Pro's notice--act gap, verbatim, in my own trace} — the agent letting
+\textbf{the question's phrasing overrule the data's warning}.\\[3pt]
+Rewording the prompt did not fix it. \textbf{Nothing in a prompt was ever going to.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{The detector, in full: $\sim$20 lines of \code{pd.crosstab}}
+\why{The mechanism, stated so you could reimplement it from this slide.}
+
+\begin{enumerate}
+  \item For every \textbf{pair of low-cardinality categorical columns}, cross-tabulate.
+  \item If one's \textbf{conditional} distribution departs from its \textbf{marginal} by
+        \textbf{$\geq$15 points}, the groups \textbf{are not comparable}.
+  \item \textbf{Seed it as an \code{open} finding} the agent cannot submit past.
+\end{enumerate}
+
+\pause
+\begin{block}{It names \textbf{no column, no dataset, no domain}}
+It finds \code{arm $\times$ severity} in a clinical trial and \code{channel $\times$ customer\_segment} in an
+e-commerce export \textbf{by exactly the same arithmetic}.
+\end{block}
+
+\pause
+\medskip
+\begin{lstlisting}[style=plain]
+penguins (clean)   : 0 finding(s)
+trial    (medical) : 1 finding(s) -> "arm is imbalanced on severity ..."
+sales    (held-out): 1 finding(s) -> "channel is imbalanced on customer_segment ..."
+\end{lstlisting}
+
+\medskip
+\centering\textbf{Exactly one finding per trap domain — and in both cases \emph{it is the planted
+trap}.}\\
+\sm{The outcome columns and the sequence artefacts drop out on their own.}
+\end{frame}
+
+\begin{frame}{What it did}
+\centering
+\medskip
+{\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& \textbf{before} & \textbf{after} \\
+\midrule
+\textbf{the demo from slide 3} & \rd{$-$0.087} \sm{(confounded, after burning all 20 steps)} & \gd{$+$0.150} \sm{(the truth, in 13 steps, \gd{ACTED} not \textcolor{soft}{dismissed})} \\
+\addlinespace
+\code{t4\_simpson}, 20 runs & \rd{8/20} & \gd{13/20} \\
+\bottomrule
+\end{tabular}}
+
+\pause
+\medskip
+\begin{alertblock}{}
+\centering\large
+\textbf{The gate was never the problem. \emph{The gate had nothing to gate.}}\\[6pt]
+Twenty lines of \code{pd.crosstab} did what no prompt, no ledger, no verifier and no bigger model
+was ever going to do — \textbf{because none of them can manufacture an observation that was never
+made.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{And here is exactly where my evidence stops}
+\why{The most important slide in the deck for anyone who has to trust these numbers.}
+
+\begin{alertblock}{The 4{,}480-run grid was measured \emph{before} the detector existed}
+I built the detector \textbf{because that grid told me to}, watched it turn the flagship failure
+into a pass — and then \textbf{ran out of API budget} before I could re-run the grid with it.
+\end{alertblock}
+
+\pause
+So, plainly:
+\begin{itemize}
+  \item Every ablation number in this talk describes the shipped system \textbf{minus its newest
+        and, on the evidence, most important component}. \textbf{They are a lower bound.}\pause
+  \item The detector is \textbf{on by default}. The grid stays reproducible with
+        \code{--no-confound}, and the harness now \textbf{refuses to mix the two} — every result row
+        is stamped with a \textbf{fingerprint of the prompt}.\pause
+  \item The evidence I \emph{do} have: \code{t4\_simpson} \rd{8/20} $\to$ \gd{13/20}, and the demo.\pause
+  \item \textbf{The held-out domain never ran with it. I do not know what it does there — and that
+        is the number I most want.}
+\end{itemize}
+
+\pause
+\medskip
+\centering\emph{I could have shipped the old code so the table matched, and said nothing.}\\
+\emph{This seemed better.}
+\end{frame}
+
+% ===========================================================================
+\section{10 · Closing}
+% ===========================================================================
+
+\begin{frame}{Known limits of this evaluation, stated plainly}
+\why{The papers are scrupulous about theirs. Being caught hiding one is worse than having one.}
+
+\begin{itemize}\small
+  \item \textbf{The judge is not validated at all.} 5 of 28 tasks are graded by an LLM. DDB
+        validated theirs at $\kappa{=}1.0$ against two other judges; \textbf{I read mine's calls and
+        they looked right}, which is worth precisely what it sounds like. \textbf{This is the
+        weakest link} — and it is why the judge decides five tasks and \textbf{not one more}.
+  \item \textbf{The grid cannot separate the ledger from the seeding it feeds.} \code{agent.py}
+        seeds \code{if cfg.use\_ledger and cfg.use\_briefing}, so \code{no\_ledger} removes
+        \textbf{the gate AND every pre-seeded finding}. \textbf{No config in this grid pulls the two
+        apart.} The clean experiment is \textbf{a ninth config, one flag, about a dollar. I have not
+        run it.}
+  \item \textbf{``4{,}480 runs'' is not 4{,}480 independent trajectories.} The cache key omits the
+        config name, so ablations that do not change the prompt \textbf{until a gate fires} replay
+        the full agent's cached trajectory. This is \textbf{common-random-numbers pairing} — it makes
+        the paired CIs \emph{more} precise, not biased — but \textbf{cross-config \emph{cost}
+        comparisons are meaningless}.
+  \item \textbf{The central thesis is a bet, not a result.} \emph{``Scaffolding beats model size''}
+        is why this runs on a model 14$\times$ cheaper than the best available. \textbf{I never ran
+        the big model with no scaffolding, so I have not shown it.} One command, $\sim$\$15.
+  \item \textbf{I built the traps, so I know them.} The mitigation is the held-out domain — which
+        \textbf{caught me twice}, which is the only evidence I have that the mitigation works.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The six times my own harness caught me lying to myself}
+\why{None of these was findable by reading the code. Every one surfaced by RUNNING something and looking hard at a number that was wrong.}
+
+{\scriptsize
+\begin{tabular}{@{}p{0.44\textwidth}p{0.48\textwidth}@{}}
+\toprule
+\textbf{the bug} & \textbf{what gave it away} \\
+\midrule
+My cache replayed \textbf{one run three times} and I reported it as three independent samples & attempts 2 and 3 cost \code{\$0.0000} \\
+\addlinespace
+Two benchmark questions — \textbf{and their answers} — were in my own system prompt as ``examples''. Those tasks scored 100\% and 90\%. & my leak guard passed the whole time. It guards the \emph{numeric} channel; a \emph{behavioural} task's ground truth is not a number. \\
+\addlinespace
+My one rule of domain knowledge named no column and was \textbf{still overfit} — clinical language, useless on an e-commerce confound & \textbf{the held-out domain} \\
+\addlinespace
+``Runs offline from the cache with no API key'' was true on \textbf{exactly one computer: mine} — absolute paths went into the prompt, so the cache was keyed to my home directory & cloning it somewhere else \\
+\addlinespace
+\textbf{The instrument lied} \sm{(§7)} & running the same benchmark twice \\
+\addlinespace
+My most-trusted gate \textbf{rejected numbers the agent had just printed} — 4 sig figs on one side, 4 decimals on the other. Fired on \textbf{26.6\%} of runs; caused \textbf{54\% of all budget blowouts}. & watching one trajectory eat itself \\
+\bottomrule
+\end{tabular}}
+
+\medskip
+\centering\Large\textbf{The scoreboard: \gd{running things — 6}. \rd{reading things — 0}.}
+\end{frame}
+
+\begin{frame}{In one paragraph}
+\begin{quote}\normalsize
+A data-analysis agent is \textbf{a while-loop that writes code, runs it, and reads the results}. The
+base model is a \textbf{bad calculator and a great programmer}, so you never ask it for a number —
+you ask it for \textbf{code}. What it \emph{actually} fails at is \textbf{keeping the thread}:
+carrying what it was asked, and what it found, into every decision that follows. I built
+\textbf{three ledgers and four gates} to stop it dropping that thread, \textbf{measured all of
+them}, and found that \textbf{the cheapest, dumbest piece — a deterministic look at the data before
+the model sees it — was doing most of the work.}
+\end{quote}
+
+\pause
+\medskip
+\centering\Large
+\textbf{That is the only thing here I could not have got by thinking harder.}
+
+\medskip
+\textbf{It came from running the eval.}
+\end{frame}
+
+\begin{frame}{What I would do next, in priority order}
+\begin{enumerate}
+  \item \textbf{Re-run the ablation grid with the confounding detector on.} \sm{$\sim$\$30. It is the
+        one number I am missing, and the one that would confirm or kill the central claim of §9.}
+  \item \textbf{The ninth config} — briefing on, ledger on, \textbf{seeding off}. \sm{One flag,
+        about a dollar. It is the single cheapest thing anyone could do to improve this evaluation.}
+  \item \textbf{Run GLM-5.2 with no scaffolding.} \sm{One command, $\sim$\$15. It is the direct test
+        of ``scaffolding beats model size'', and until I run it, that sentence is \textbf{a design
+        bet with supporting evidence, not a demonstrated fact}.}
+  \item \textbf{Validate the judge against a human.} \sm{Not against two more LLMs.}
+  \item \textbf{Build the surface-ambiguity detector.} \sm{Three \code{if}s: does the question pin
+        down a \emph{population}, a \emph{measure}, and a \emph{direction}?}
+\end{enumerate}
+
+\pause
+\medskip
+\begin{alertblock}{The real roadmap}
+\centering\textbf{The evaluation harness is the thing you build first —}\\
+\textbf{because it is also the thing that tells you what to build next.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[standout]
+Questions
+\end{frame}
+
+% ===========================================================================
+\appendix
+
+\begin{frame}{Colophon — provenance of every number in this deck}
+\why{So that a sceptical reader can check me.}
+
+\begin{itemize}\small
+  \item \textbf{Every quantitative claim} comes from \code{uv run python -m evals.report}, reading
+        \code{evals/results.jsonl} \sm{(4{,}480 rows)} — \textbf{not} from the prose in
+        \code{docs/DESIGN.md}.
+  \item Where the two disagreed while I was building these slides, \textbf{I used the script} and
+        flagged the drift. \sm{The affected figures: total spend (\textbf{\$3.75}, not \$16.13);
+        \code{t4\_simpson} (\textbf{40\%}, not 50\%); \code{s4\_simpson\_sales} (\textbf{35\%}, not
+        45\%); \code{b3\_ambiguous} (\textbf{5\%}, not 0\%); \code{no\_ledger} (\textbf{81\%}, not
+        82\%).}
+  \item \textbf{Separation table} \sm{(§5)}: computed live from \code{evals/tasks.py}.
+  \item \textbf{Detector figures} \sm{(§9)}: \code{evals/results\_confound\_detector.jsonl},
+        \code{t4\_simpson} \textbf{8/20 $\to$ 13/20}. \textbf{\code{s4\_simpson\_sales} has not been
+        re-run with the detector.}
+  \item \textbf{Paper figures} are quoted with page numbers and are \emph{theirs}, not mine.
+\end{itemize}
+
+\medskip
+\begin{block}{Repository}
+\code{docs/DESIGN.md} — the design \quad\textbullet\quad \code{docs/DECISIONS.md} — every decision,
+and what would change my mind\\
+\code{notebooks/01–07} — the buildup, from one API call to the whole agent \quad\textbullet\quad
+\code{agentlib/} — $\sim$1{,}000 lines \quad\textbullet\quad \code{evals/} — the benchmark
+\end{block}
+\end{frame}
+
+\end{document}
