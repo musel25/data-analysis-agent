@@ -14,6 +14,15 @@ pointed at a vLLM server running on a GPU I rented myself. The diff needed to mo
 
 Two environment variables. No adapter, no provider class, no code change. That is the whole point.
 
+VERIFIED. The full agent — contract, ledger, all four gates, the death-loop guards — ran end to end
+against this endpoint on the flagship Simpson's-paradox task and returned **+0.1507** (the truth;
+the confounded trap is -0.087). On a **4-billion-parameter** model, which is 7x smaller than the one
+the evaluation was measured on. The verifier bounced its first answer and it reopened three findings
+and fixed them.
+
+That is n=1 and I will not build a thesis on it. But it is a rather good advertisement for spending
+the budget on scaffolding rather than on parameters.
+
 ────────────────────────────────────────────────────────────────────────────────────────────────
 WHAT THIS IS NOT
 ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -53,9 +62,22 @@ import modal
 #
 # This serves the portability claim, not the evaluation. Do not mix them. (The harness will not let
 # you do it by accident — every result row carries a prompt fingerprint. See D31/D33.)
-MODEL = "cyankiwi/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit"
-SERVED_AS = "Qwen/Qwen3-30B-A3B-Instruct-2507"   # so AGENT_MODEL needs no change
-GPU = "A10G"                                     # 23 GB; 4-bit 30B is ~17 GB + KV cache
+# I tried the 4-bit AWQ quant of the exact eval model first. It loads — 20.1 GB of the A10G's
+# 22 GB — and then dies in vLLM's sampler warmup with CUDA OOM, because there is nothing left for a
+# KV cache. A 30B model does not fit on a 23 GB card, and no amount of quantisation talks it into
+# fitting *with room to actually generate*. That is physics, not configuration.
+#
+# So: Qwen3-4B-Instruct-2507. Same family, same NON-THINKING Instruct behaviour as the eval model
+# (which matters — the hybrid Qwen3 checkpoints emit <think> blocks that would wreck the agent's
+# tool-calling), ~8 GB in bf16, comfortable on an A10G with a large KV cache.
+#
+# It is a SMALLER MODEL. Say so. Numbers from this endpoint are not comparable to
+# evals/results.jsonl, the committed cache will not replay against it, and the harness's prompt
+# fingerprint (D31/D33) will refuse to mix the two. It exists to demonstrate that the provider is
+# two environment variables — nothing more, and nothing less.
+MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+SERVED_AS = MODEL
+GPU = "A10G"                                     # 23 GB; 4B in bf16 is ~8 GB + a fat KV cache
 PORT = 8000
 
 app = modal.App("research-agent-vllm")
@@ -103,9 +125,9 @@ def serve():
             "--port", str(PORT),
             "--api-key", os.environ["LLM_API_KEY"],
             "--served-model-name", SERVED_AS,
-            "--max-model-len", "16384",        # 17 GB of weights in 23 GB of VRAM: be modest
-            "--gpu-memory-utilization", "0.93",
-            "--quantization", "compressed-tensors",
+            "--max-model-len", "32768",
+            "--gpu-memory-utilization", "0.90",
+            "--max-num-seqs", "16",
             "--enable-auto-tool-choice",       # the agent is nothing without tool calling
             "--tool-call-parser", "hermes",    # Qwen3 emits Hermes-style tool calls
         ]
