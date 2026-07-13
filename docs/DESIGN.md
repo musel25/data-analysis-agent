@@ -527,8 +527,9 @@ than let the word "judge" imply a rigour I did not buy.
 
 ### 4.3 What gets measured
 
-Per task, **10 runs** (GBP uses 10, DDB uses 3; agent evals are noisy and a single run proves
-nothing — see D24 for the version of this I got wrong):
+Per (task, config), **20 runs** (GBP uses 10, DDB uses 3; agent evals are noisy and a single run
+proves nothing — see D24 for the version of this I got wrong). *I started at 10, like GBP. §4.4.1 is
+the story of why 10 is not enough, and why this now says 20:*
 
 - **pass rate** — the headline, binary, all-or-nothing.
 - **wrong-attractor rate** — *did the agent land on the known naive answer?* This is the metric I am
@@ -603,11 +604,11 @@ tasks — GeneBench-Pro's scheme; they use 20,000).
 | *(nothing — the full agent)* | **87%** | — | | |
 | **the deterministic data briefing** | **60%** | **−27%** | `[−40%, −15%]` | **HURTS** |
 | *every guardrail at once* | 67% | **−20%** | `[−32%, −9%]` | **HURTS** |
-| **the Findings Ledger** — the centrepiece | 82% | **−6%** | `[−11%, −1%]` | **HURTS** |
-| the fresh-context verifier | 86% | −1% | `[−4%, +3%]` | no detectable effect |
-| observation truncation | 87% | −1% | `[−3%, +3%]` | no detectable effect |
-| the numeric grounding gate | 87% | −1% | `[−4%, +3%]` | no detectable effect |
-| the Question Contract | 88% | +0% | `[−4%, +4%]` | no detectable effect |
+| **the Findings Ledger** — the centrepiece | 81% | **−6%** | `[−11%, −1%]` | **HURTS** |
+| the fresh-context verifier | 87% | −0% | `[−4%, +3%]` | no detectable effect |
+| observation truncation | 87% | +0% | `[−3%, +3%]` | no detectable effect |
+| the numeric grounding gate | 87% | −0% | `[−3%, +3%]` | no detectable effect |
+| the Question Contract | 88% | +1% | `[−2%, +5%]` | no detectable effect |
 
 **And do not read that `95% CI` column without reading §4.4.1 first.** It is narrower than the truth,
 and I only found that out by accident.
@@ -687,7 +688,7 @@ halves.** That is not a *model* of the uncertainty. It *is* the uncertainty, obs
 
 | remove this | run A | run B | **spread** | pooled Δ | |
 |---|---|---|---|---|---|
-| **the data briefing** | −31% | −25% | **6 pt** | **−27%** | ✅ **robust** |
+| **the data briefing** | −29% | −25% | **4 pt** | **−27%** | ✅ **robust** |
 | every guardrail at once | −22% | −18% | 4 pt | −20% | ✅ robust |
 | **the Findings Ledger** | **−9%** | **−3%** | **6 pt** | **−6%** | ⚠️ real, but I would not defend the *size* |
 | the fresh-context verifier | −1% | +1% | 3 pt | −0% | — |
@@ -782,7 +783,7 @@ there is nothing to feed the gate, so the gate does nothing.
    filing) is not one you price by frequency. The right test for a gate is adversarial, not average.
 3. **The detector and the gate are not separable in this grid, and that is a flaw.**
    `agent.py` seeds the ledger `if cfg.use_ledger and cfg.use_briefing:` — so `no_ledger` removes
-   the blocking gate **and every pre-seeded finding.** The `−2%` I report for the Findings Ledger is
+   the blocking gate **and every pre-seeded finding.** The `−6%` I report for the Findings Ledger is
    really "gate + seeded findings", and **no configuration in this grid pulls the two apart.** The
    clean experiment is a ninth config — briefing on, ledger on, *seeding off* — which is one flag and
    about a dollar. I have not run it. It is the single cheapest thing anyone could do to improve this
@@ -804,21 +805,22 @@ Now read the same runs per task.
 
 | | full agent | landed on the *documented naive* answer |
 |---|---|---|
-| `t4_simpson` — Simpson's paradox, **medical** (designed against) | 50% | 50% |
-| **`s4_simpson_sales`** — Simpson's paradox, **held-out domain** | **45%** | **40%** |
-| `b3_ambiguous` — *"Did the biomarker improve?"* | **0%** | — |
+| `t4_simpson` — Simpson's paradox, **medical** (designed against) | 40% | 55% |
+| **`s4_simpson_sales`** — Simpson's paradox, **held-out domain** | **35%** | **50%** |
+| `b3_ambiguous` — *"Did the biomarker improve?"* | **5%** | — |
 
 **On the confounded comparison — the failure both supplied papers were written about — the agent is
-a coin flip.** And when it fails it lands *exactly* on the confounded answer. Twenty-two easy tasks
-carry the 90%.
+worse than a coin flip.** And when it fails it lands *exactly* on the confounded answer: it is
+**more likely to land on the naive answer (50–55%) than on the right one (35–40%)**. Twenty-five
+easier tasks — spanning 75–100% — carry the 87%.
 
 *(`s4` is also the task that read **1/10** on one run of n=10 and **6/10** on the next. The truth,
-at n=20, is **9/20**. Every strong sentence I wrote about this task from a single run — in both
+at n=20, is **7/20**. Every strong sentence I wrote about this task from a single run — in both
 directions — was noise. See §4.4.1, and note that I am only able to say this because I ran it
 twice.)*
 
 *(For contrast, and to show the guardrails are not decoration: `trap:units` — assay batch B reporting
-10× too large — goes from **0/10 without the guardrails to 10/10 with them**. That is the largest
+10× too large — goes from **0/20 without the guardrails to 17/20 with them**. That is the largest
 single-task swing in the study. The detector sees the batch, seeds the finding, and the gate will not
 let the agent submit until it has been discharged. The machinery works **exactly as designed —
 wherever a detector feeds it.**)*
@@ -849,7 +851,7 @@ explanation and leaves only the expensive one:
 
 > ## You cannot close the *notice* gap with better advice.
 >
-> The Findings Ledger works on sentinels and duplicates (**90–100%**) because a twenty-line profiler
+> The Findings Ledger works on sentinels and duplicates (**95–100%**) because a twenty-line profiler
 > **detects** them and hands the agent an obligation it cannot walk past.
 >
 > There is **no detector for confounding.** Nothing computes *"are these groups imbalanced on some
@@ -866,8 +868,8 @@ informative than either alone:
 
 | | | full |
 |---|---|---|
-| `s13_ambiguous` | *"Was the campaign successful?"* — successful by **which measure**? | **90%** |
-| `b3_ambiguous` | *"Did the biomarker improve?"* — and for a biomarker, **lower is better** | **0%** |
+| `s13_ambiguous` | *"Was the campaign successful?"* — successful by **which measure**? | **85%** |
+| `b3_ambiguous` | *"Did the biomarker improve?"* — and for a biomarker, **lower is better** | **5%** |
 
 The `question_is_precise` boolean is a *required* field, so the model cannot skip the judgement. On
 `s13` it works: the ambiguity is right on the surface (revenue? conversion? per-customer?), the model
@@ -898,7 +900,8 @@ number.**
 
 #### And one failure I would not try to fix in the agent at all
 
-`b3_ambiguous` is 0%, and no detector will save it. The fact that makes *"did the biomarker improve?"*
+`b3_ambiguous` is 5% — one run in twenty, which is indistinguishable from luck — and no detector
+will save it. The fact that makes *"did the biomarker improve?"*
 ambiguous — **that a fall in this assay is an improvement** — is not in the data, not in the column
 names, not in the question, and **not in `data_dictionary.md` either.** I checked. It exists nowhere
 in anything the agent is given.
@@ -927,6 +930,17 @@ than having one:
   trajectory at the same nonce. This is common-random-numbers pairing — it makes the paired CIs
   *more* precise, not biased — but the headline count overstates independent work, and cross-config
   **cost** comparisons are meaningless.
+- **And the same cache makes `evals/report.py` lie about money — including to me.** It prints
+  `$3.75`, because **77% of the rows are cache replays that record `$0`.** That is the *marginal*
+  cost of re-running the grid, **not what it cost to produce.** On billed runs only, an analysis
+  costs **$0.004** and the grid cost **~$16** — the number reported in §4.4.
+  > I nearly "corrected" §4.4 *down* to $3.75 on the grounds that **the script is right and the
+  > prose is stale** — the tie-break rule I state in §4.4 and mean. It is still the right rule for
+  > every *rate* in this document. It is the wrong rule for a *sum*, because **a cache deflates a
+  > sum and cannot deflate a proportion.**
+  >
+  > Which is the lesson of §4.4.1 arriving a third time, wearing yet another hat: **the instrument
+  > needs checking too, and "trust the script" is itself an instrument.**
 - **The central thesis is a bet, not a result.** *"Scaffolding beats model size"* is why this runs on
   a model 14× cheaper than the best one available (§6). I never ran the big model with no
   scaffolding, so I have not shown it. One command, ~$15.
@@ -981,8 +995,8 @@ Here is why, and it is the whole argument of this document in one move.
 The thesis is that **reliability comes from the scaffolding, not from a bigger base model.** If I
 run that thesis on the strongest model available, I can never test it — every success is
 attributable to the model, and the design proves nothing. **Handicapping the base model is what
-turns the claim into an experiment.** It is also what makes a 2,240-run ablation study cost $8
-instead of $110.
+turns the claim into an experiment.** It is also what makes a 4,480-run ablation study cost about
+$16 instead of $110.
 
 > The cheapest demonstration and the most rigorous one are, here, the same demonstration.
 

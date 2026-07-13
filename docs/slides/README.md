@@ -15,30 +15,37 @@ Output lands in `.out/` (set by a global `~/.latexmkrc`).
 **Every quantitative claim in the deck comes from `uv run python -m evals.report`**, which reads
 `evals/results.jsonl` (4,480 runs) — *not* from the prose in `docs/DESIGN.md`.
 
-Where the script and `DESIGN.md` disagreed while these slides were written, **the script won** —
-`DESIGN.md` states that tie-break rule itself (*"if the prose and the script disagree, the script is
-right"*). The drift is listed on the closing colophon frame:
+Building this deck surfaced **seven stale figures in `DESIGN.md`** — the prose had drifted from the
+script. **`DESIGN.md` has been corrected; the two now agree.**
 
-| | `DESIGN.md` says | the script says |
+| | was | now (verified) |
 |---|---|---|
-| `t4_simpson` pass rate | 50% | **40%** (8/20) |
-| `s4_simpson_sales` pass rate | 45% | **35%** (7/20) |
-| `b3_ambiguous` pass rate | 0% | **5%** (1/20) |
-| `s13_ambiguous` pass rate | 90% | **85%** (17/20) |
-| `no_ledger` pass rate | 82% | **81%** |
-| `trap:units` *with* guardrails | 10/10 | **17/20** (85%) |
+| `t4_simpson` | 50% / 50% naive | **40% / 55%** (8/20) |
+| `s4_simpson_sales` | 45% / 40% naive | **35% / 50%** (7/20) |
+| `s4` "the truth at n=20" | 9/20 | **7/20** |
+| `b3_ambiguous` | 0% | **5%** (1/20) |
+| `s13_ambiguous` | 90% | **85%** (17/20) |
+| `no_ledger` | 82% | **81%** |
+| `trap:units` *with* guardrails | "0/10 → 10/10" | **0/20 → 17/20** |
+| §4.4 caveat 3 | "the −2% I report" | **−6%** — it contradicted its own table |
 
-### …with one exception, where the script is the one that lies
+Correcting `s4` **strengthens** the argument rather than weakening it: on the held-out Simpson's
+task the agent is not a coin flip, it is **worse** than one — more likely to land on the naive answer
+(50%) than the right one (35%).
 
-`report.py` prints a headline cost of **\$3.75**. That number is wrong to quote as *spend*:
-**77% of the 4,480 rows are cache replays that record `$0`**. It is the *marginal* cost of
-re-running the grid, not what it cost to produce.
+### …with one exception, where the *script* is the liar
 
-On **billed runs only**, an analysis costs **\$0.004** and the grid cost **~\$16** — which is what
-`DESIGN.md` says, and what the deck uses. **A cache deflates a sum; the script is not automatically
-right either.**
+`report.py` prints a headline cost of **\$3.75**. That is wrong to quote as *spend*: **77% of the
+4,480 rows are cache replays that record `$0`**, so it is the *marginal* cost of re-running the grid,
+not what it cost to produce. On **billed runs only**, an analysis costs **\$0.004** and the grid cost
+**~\$16** — which is what `DESIGN.md` said all along.
 
-**`DESIGN.md` has not been corrected. That is a separate change.**
+> I nearly "corrected" `DESIGN.md` *down* to \$3.75 on the rule *"if the prose and the script
+> disagree, the script is right."* That rule is right for every **rate** in this project and wrong
+> for a **sum** — **a cache deflates a sum and cannot deflate a proportion.**
+>
+> Which is §4.4.1's lesson arriving a third time: **the instrument needs checking too, and "trust
+> the script" is itself an instrument.**
 
 The detector figures (`t4_simpson` 8/20 → 13/20) come from
 `evals/results_confound_detector.jsonl`. Note `s4_simpson_sales` has **not** been re-run with the
