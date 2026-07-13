@@ -50,23 +50,40 @@
 # This is the actual HTTP request to Nebius Token Factory, in full. Nothing is hidden.
 
 # %%
-import os
+import os, sys
+sys.path.insert(0, os.path.abspath(".."))
+
 from dotenv import load_dotenv
 from openai import OpenAI
+
+from agentlib import config as cfg
 
 load_dotenv("../.env")
 
 client = OpenAI(
-    base_url="https://api.tokenfactory.nebius.com/v1/",   # ← Nebius, not OpenAI
-    api_key=os.environ["NEBIUS_API_KEY"],
+    base_url=cfg.BASE_URL,               # ← Nebius, or your own GPU, or anyone's free tier.
+    api_key=cfg.api_key() or "no-key",   #    It is an HTTP endpoint. That is the whole integration.
 )
 
-response = client.chat.completions.create(
-    model="Qwen/Qwen3-30B-A3B-Instruct-2507",
-    messages=[{"role": "user", "content": "In one sentence: what is a p-value?"}],
-)
+MESSAGES = [{"role": "user", "content": "In one sentence: what is a p-value?"}]
 
-print(response.choices[0].message.content)
+try:
+    response = client.chat.completions.create(model=cfg.AGENT_MODEL, messages=MESSAGES)
+    print(response.choices[0].message.content)
+
+except Exception as e:
+    # THIS IS THE ONLY CELL IN THE SERIES THAT CANNOT REPLAY FROM THE COMMITTED CACHE, and it is
+    # deliberate: the whole point of the chapter is to show you the NAKED protocol, so it bypasses
+    # the cached `llm()` helper that every later notebook uses.
+    #
+    # So if you have no key, we do the honest thing — say so, then replay the identical request
+    # through the cache, so you still see the output and the series still runs end to end for free.
+    print(f"[no live endpoint — {type(e).__name__}]")
+    print("Replaying the identical request from the committed cache instead:\n")
+    from agentlib import set_live
+    from agentlib.llm import llm
+    set_live(False)
+    print(llm(MESSAGES).content)
 
 # %% [markdown]
 # **That is the whole thing.** `base_url` + `api_key` was the entire integration with Nebius — the

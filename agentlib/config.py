@@ -1,6 +1,33 @@
-"""Configuration: the client, the models, and the money.
+"""Configuration: the provider, the models, and the money.
 
-Everything that talks to Nebius Token Factory goes through here.
+Everything that talks to an LLM goes through here — and there is exactly one thing to configure,
+which is the whole point of D01.
+
+    THE PROVIDER IS A BASE_URL AND A KEY. THAT IS THE ENTIRE INTEGRATION.
+
+No framework, no adapter layer, no provider abstraction. The `openai` package speaks to anything
+OpenAI-compatible, and essentially everything is. Swap the two env vars and the agent — the loop,
+the ledgers, the gates, the cache, the eval harness — does not know or care:
+
+    # Nebius Token Factory (what the 4,480-run evaluation was measured on)
+    LLM_BASE_URL=https://api.tokenfactory.nebius.com/v1/
+    LLM_API_KEY=...
+    AGENT_MODEL=Qwen/Qwen3-30B-A3B-Instruct-2507
+
+    # your own GPU, self-hosted on Modal (see infra/modal_vllm.py — one command to deploy)
+    LLM_BASE_URL=https://<you>--research-agent-vllm-serve.modal.run/v1
+    LLM_API_KEY=...
+    AGENT_MODEL=Qwen/Qwen3-30B-A3B-Instruct-2507
+
+    # a free tier, if you just want to run the notebooks
+    LLM_BASE_URL=https://api.groq.com/openai/v1        AGENT_MODEL=qwen/qwen3-32b
+    LLM_BASE_URL=https://openrouter.ai/api/v1          AGENT_MODEL=qwen/qwen3-30b-a3b:free
+    LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+
+⚠️ A MODEL SWAP INVALIDATES THE CACHE. The cache key hashes the model name, so pointing at a
+different model means every request is a miss and the committed responses cannot replay. Keep
+`AGENT_MODEL` on Qwen3-30B-A3B if you want the notebooks to replay offline for free; change it only
+when you actually want to spend money on new inference.
 """
 from __future__ import annotations
 
@@ -13,7 +40,12 @@ from openai import OpenAI
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
+# `NEBIUS_*` kept as a fallback so an existing .env keeps working unchanged.
+BASE_URL = os.getenv("LLM_BASE_URL") or "https://api.tokenfactory.nebius.com/v1/"
+
+
+def api_key() -> str | None:
+    return os.getenv("LLM_API_KEY") or os.getenv("NEBIUS_API_KEY")
 
 # --- Model choice -----------------------------------------------------------------------
 #
@@ -76,18 +108,28 @@ _client: OpenAI | None = None
 
 
 def client() -> OpenAI:
-    """The Token Factory client. OpenAI-compatible, so the `openai` package works unchanged —
-    base_url + api_key is the entire integration."""
+    """The LLM client. OpenAI-compatible, so the `openai` package works unchanged against Nebius,
+    a self-hosted vLLM on your own GPU, or anyone's free tier — `base_url` + `api_key` is the
+    entire integration. That is not a boast; it is the reason D01 refuses a framework."""
     global _client
     if _client is None:
-        key = os.getenv("NEBIUS_API_KEY")
+        key = api_key()
         if not key:
             raise RuntimeError(
-                "NEBIUS_API_KEY is not set. Copy .env.example to .env and paste your key.\n"
-                "(You can still run every notebook without a key: set LIVE=False to replay "
-                "the committed cache.)"
+                "No API key. Set LLM_API_KEY (or NEBIUS_API_KEY) in .env.\n"
+                "\n"
+                "  You almost certainly do not need one. 7 of the 8 notebooks replay from the\n"
+                "  committed cache with no key and no network:\n"
+                "\n"
+                "      from agentlib import set_live\n"
+                "      set_live(False)\n"
+                "\n"
+                "  A key is only needed to (a) run notebook 01, which deliberately makes one RAW\n"
+                "  uncached API call to show the unwrapped protocol, or (b) ask the agent something\n"
+                "  new. Any OpenAI-compatible endpoint works — set LLM_BASE_URL. See the module\n"
+                "  docstring, or `infra/modal_vllm.py` to serve the exact model on your own GPU."
             )
-        _client = OpenAI(base_url=BASE_URL, api_key=key, timeout=180.0, max_retries=0)
+        _client = OpenAI(base_url=BASE_URL, api_key=key, timeout=600.0, max_retries=0)
     return _client
 
 

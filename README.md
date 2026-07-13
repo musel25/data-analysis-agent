@@ -338,9 +338,10 @@ from agentlib import set_live
 set_live(False)          # replay from cache; no key, no network, no cost
 ```
 
-*(One exception, deliberately: notebook `01` opens with a **raw** `client.chat.completions.create()`
-call — the point of that chapter is to show the unwrapped protocol — so that one cell alone needs a
-key. Everything from notebook `02` onward goes through the cached `llm()` helper and replays.)*
+**All eight of them.** Notebook `01` opens with a deliberately *raw* `client.chat.completions.create()`
+call — the point of that chapter is the unwrapped protocol — so it cannot hit the cache. It now says
+so out loud and replays the identical request through the cached helper instead, rather than
+crashing. Verified from a fresh clone, at a foreign path, with the environment scrubbed.
 
 *That sentence has now been false twice.* Once because the flag could not actually be flipped
 ([D25](docs/DECISIONS.md)), and once because the cache was keyed to **absolute file paths**, which
@@ -374,6 +375,24 @@ evals/report.py       every number in this README, printed from the results file
 Every figure quoted here comes out of `uv run python -m evals.report`. If a number in the prose and
 a number in that script disagree, **the script is right and the prose is a bug** — which is not a
 hypothetical, and is why the script exists.
+
+### Want to run it on your own GPU?
+
+```bash
+uv run modal deploy infra/modal_vllm.py     # vLLM, the same model, scale-to-zero
+```
+
+Then two environment variables — `LLM_BASE_URL` and `LLM_API_KEY` — and **nothing else changes**.
+Not the loop, not the ledgers, not the gates, not the cache, not the eval harness. That is
+[D01](docs/DECISIONS.md) ("no framework — there is precisely one integration to write") stated as a
+command rather than as a claim. Any OpenAI-compatible endpoint works, including free tiers; see
+`.env.example`.
+
+*(Caveat, stated in the script: a Modal account with no card can't get an 80 GB GPU, so it serves a
+**4-bit** quant of the eval model. Quantisation is not a no-op — numbers from that endpoint are not
+comparable to the grid below, and the harness's prompt fingerprint will refuse to mix them.)*
+
+---
 
 Built on **Nebius Token Factory** — `base_url` + `api_key` was the entire integration. Agent:
 `Qwen3-30B-A3B`, chosen because it is **14× cheaper than the best model available** and therefore
