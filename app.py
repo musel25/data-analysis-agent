@@ -351,11 +351,27 @@ test for a gate is adversarial, not average.
 # ══════════════════════════════════════════════════════════════════════════════════════
 
 st.title("A data-analysis agent, built from scratch")
+
+# The provider is a base_url (D01), so the footer must READ it rather than assert it. It used to
+# say "at Nebius Token Factory - about half a cent per analysis", which silently became false the
+# moment the endpoint changed. A hardcoded cost claim is the kind of thing this project exists to
+# not do.
+_HOSTS = {
+    "tokenfactory.nebius.com": "Nebius Token Factory",
+    "generativelanguage.googleapis.com": "the Google Gemini API",
+    "api.groq.com": "Groq",
+    "openrouter.ai": "OpenRouter",
+}
+_provider = next((name for host, name in _HOSTS.items() if host in cfg_mod.BASE_URL),
+                 "a self-hosted OpenAI-compatible endpoint")
+_p_in, _p_out = cfg_mod.PRICES.get(cfg_mod.AGENT_MODEL, cfg_mod.DEFAULT_PRICE)
+
 st.markdown(
     f'<p class="lede">An agent that gets a prompt and some files, explores the data, writes and '
     f'runs code, <b>checks its own intermediate results</b>, and returns a structured, audited '
     f'answer.<br>No framework. ~885 lines. Running on '
-    f'<b>{cfg_mod.AGENT_MODEL}</b> at Nebius Token Factory — about half a cent per analysis.</p>',
+    f'<b>{cfg_mod.AGENT_MODEL}</b> at {_provider} '
+    f'— ${_p_in:.2f}/${_p_out:.2f} per 1M tokens in/out.</p>',
     unsafe_allow_html=True)
 
 t1, t2 = st.tabs(["🔬  Run the agent", "📊  The evidence"])

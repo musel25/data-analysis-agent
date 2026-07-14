@@ -98,6 +98,23 @@ PRICES = {
     "moonshotai/Kimi-K2.7-Code":                (0.95, 4.00),
     "zai-org/GLM-5.2":                          (1.40, 4.40),   # <- 14x the agent, per run
     "deepseek-ai/DeepSeek-V4-Pro":              (1.75, 3.50),
+
+    # Google Gemini, via the OpenAI-compatible endpoint. FREE-TIER USE COSTS $0 — these are the
+    # PAID-tier list prices, so the meter tells the truth the moment you upgrade rather than
+    # printing a comforting zero.
+    #
+    # Note what these numbers say: gemini-3.5-flash at $9.00/1M output is more expensive than
+    # GLM-5.2 ($4.40), the model this design deliberately refused as the "heavyweight". A Gemini
+    # swap is a free-tier convenience, NOT a cheaper agent. Hence the agent runs on flash-lite.
+    # And the cheap Gemini is NOT a drop-in: gemini-3.1-flash-lite could not drive the agent loop
+    # at all (t1_sentinel: 17 steps, wandered off the question, submitted a null value), while
+    # gemini-3.5-flash lands the exact truth in 9. Under Gemini you pay for the strong model or
+    # you get nothing — which is itself a data point for the scaffolding-vs-model-size thesis:
+    # the scaffolding did NOT rescue the weak Gemini the way it carries Qwen3-30B.
+    "gemini-3.5-flash":                         (1.50, 9.00),   # <- the agent, under Gemini
+    "gemini-3-flash-preview":                   (0.50, 3.00),
+    "gemini-3.1-flash-lite":                    (0.25, 1.50),   # <- the verifier, under Gemini
+    "gemini-2.5-flash-lite":                    (0.10, 0.40),
 }
 DEFAULT_PRICE = (0.20, 0.60)   # unlisted model: assume mid-range rather than free
 
