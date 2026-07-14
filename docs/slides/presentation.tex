@@ -96,14 +96,6 @@
 
 % ===========================================================================
 \begin{frame}{What this talk is}
-\begin{block}{Two papers, one system}
-Both supplied papers evaluate \textbf{the same thing}: a single LLM agent, alone in a container,
-writing and running code against messy scientific data, returning one structured answer.
-\end{block}
-\medskip
-That is \emph{exactly} the system Part 2 asks me to build. So the papers are not background
-reading --- they are \textbf{failure data for the thing I am about to construct}.
-\medskip
 \begin{columns}[T]
 \begin{column}{0.48\textwidth}
 \textbf{Part 1 --- the papers}
@@ -155,9 +147,7 @@ reading --- they are \textbf{failure data for the thing I am about to construct}
 \begin{frame}[plain]
 \centering\vfill
 {\usebeamercolor[fg]{structure}\Huge\textbf{Part I}}\\[10pt]
-{\Large The papers}\\[16pt]
-{\color{unigrey}\normalsize Two benchmarks for autonomous scientific analysis ---\\
-what they found, and where I think they are wrong}
+{\Large The papers}
 \vfill
 \end{frame}
 
@@ -165,62 +155,79 @@ what they found, and where I think they are wrong}
 % ###########################################################################
 
 \begin{frame}{The system under evaluation --- concretely}
-\why{Before any result, be precise about what is actually being tested. Neither paper is about chatbots.}
+\why{Neither paper evaluates a bare LLM. What is measured is a \textbf{model $+$ a harness}, inside a container.}
 
-\begin{block}{An ``autonomous scientific analysis agent''}
-\begin{enumerate}
-  \item An LLM is dropped into a \textbf{sandboxed container} with Python, \code{pandas}/\code{scipy}/\code{statsmodels}, and scientific data files.
-  \item It is given a scientific question \textbf{stated at a high level} --- and \emph{deliberately not} told how to answer it.
-  \item It must \textbf{decide the method itself}: which rows to keep, which estimator, which filters, when the evidence suffices.
-  \item It \textbf{writes and executes its own code}, in a loop, reading its own output.
-  \item It returns \textbf{one machine-checkable answer} --- a JSON object, or a file.
+\begin{block}{What is actually run, per task}
+\begin{enumerate}\footnotesize
+  \item A \textbf{Docker container} is provisioned: Python, the scientific stack, the data files staged on disk.
+  \item A \textbf{harness} --- the agent scaffold --- drives the loop: it sends the prompt to the model, \textbf{executes the code the model emits}, feeds stdout back, manages context. \sm{The model never touches the machine.}
+  \item The model gets the question \textbf{at a high level}, and is \emph{deliberately not} told the method: which rows to keep, which estimator, when the evidence suffices.
+  \item It writes and runs its own code, in a loop, reading its own output. \textbf{No human, no hints.}
+  \item It emits \textbf{one machine-checkable answer} --- GBP: a JSON object. DDB: \code{/workspace/answer.md}.
 \end{enumerate}
 \end{block}
 \pause
+\centering\scriptsize
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{GeneBench-Pro} & \textbf{DrugDiscoveryBench} \\
+\midrule
+\textbf{Harness} & One, \textbf{fixed}; never ablated & \gd{\textbf{Six} --- and it is a \emph{variable}} \\
+\textbf{Tools}   & Plain scientific stack \sm{($+$ PLINK)} & \textbf{BIOMNI} \sm{--- 226 importable functions} \\
+\textbf{Internet}& \gd{Off} & \rd{On} \\
+\bottomrule
+\end{tabular}
+\src{GBP Methods, p.\,15; DDB \S3--4, pp.\,6--7}
+
+\pause
+\raggedright
+\begin{alertblock}{So ``the model scored $X$'' means ``the model, \emph{in this harness}, scored $X$''}
+Not pedantry --- DDB measures it: swapping the harness moves one model by \textbf{11 points}, more than the
+gap between the \#1 and \#2 \emph{models}. \textbf{GBP ranks 60 configurations on one fixed harness.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{The two papers, and how to read a benchmark number}
+\why{What a ``pass rate'' actually is, mechanically. Both papers work the same way; only the knobs differ.}
+
+\begin{block}{The machinery, in five lines}
 \begin{itemize}
-  \item No human in the loop. No hints. \textbf{Grading is all-or-nothing} in both papers.
-  \item \textbf{GeneBench-Pro} (Li \& Ho, OpenAI --- bioRxiv preprint, 30 June 2026): 129 problems, genomics and translational biomedicine.
-  \item \textbf{DrugDiscoveryBench} (Aky\"urek, Tu et al., Scale AI \& Phylo, 2026): 82 tasks, early-stage drug discovery.
+  \item A \textbf{benchmark} $=$ a fixed set of problems $+$ an automatic grader.
+  \item One \textbf{attempt} $=$ one (configuration, problem) run $\to$ \textbf{pass or fail}. \textbf{Binary}: all graded fields right, or the run is a failure. No partial credit.
+  \item Agents are \textbf{stochastic}, so every pair is run repeatedly: \textbf{GBP 10 attempts} per (model, problem); \textbf{DDB 3 trials} per (setting, task).
+  \item \textbf{Per-problem pass rate} $=$ attempts passed $/$ attempts run \sm{(GBP: $k/10$)}. \textbf{Headline} $=$ the mean of that over all problems.
+  \item A \textbf{configuration / setting} is \emph{not} just a model. GBP: model $\times$ \emph{reasoning effort} $\Rightarrow$ \textbf{60 rows} from $\sim$20 models. \sm{GPT-5.6 Sol at none/low/medium/high/xhigh/max is six separate rows.} DDB: model $\times$ \emph{harness} $\times$ effort $\Rightarrow$ \textbf{29 settings}.
+\end{itemize}
+\end{block}
+\pause
+\smallskip
+\begin{itemize}
+  \item \textbf{GeneBench-Pro} \sm{(Li \& Ho, OpenAI --- bioRxiv, 30 June 2026)}: \textbf{129 problems}, genomics and translational biomedicine. Graded by \textbf{deterministic Python}.
+  \item \textbf{DrugDiscoveryBench} \sm{(Aky\"urek, Tu et al., Scale AI \& Phylo, 2026)}: \textbf{82 tasks}, early-stage drug discovery. Graded by an \textbf{LLM judge} against expert rubrics.
 \end{itemize}
 \sm{Both are preprints --- GBP explicitly ``not certified by peer review''; DDB prints no venue at all.}
 \end{frame}
 
 \begin{frame}{Why anyone is asking this question}
-\why{The motivation is economic, and both papers reach for the same argument.}
+\why{The motivation is economic. Both papers reach for the same argument.}
 
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\textbf{The bottleneck moved.}
-\medskip
-
-Sequencing got cheap. Generating data is no longer the hard part.
-\medskip
-
-\begin{quote}\footnotesize\itshape
-``as sequencing has scaled, downstream computation and analysis, rather than data generation, have
-become the central scientific bottleneck.''
-\end{quote}
-\src{GeneBench-Pro, p.\,2}
-\end{column}
-\begin{column}{0.5\textwidth}
-\textbf{And the stakes are real.}
-\medskip
-
-Drug targets with human genetic evidence are
-\medskip
-
-\begin{quote}\footnotesize\itshape
-``roughly 2.6 times more likely to succeed in the clinic''
-\end{quote}
-\src{DrugDiscoveryBench, p.\,2 (Minikel et al., \emph{Nature} 2024)}
-\medskip
-
-\sm{GBP costs it out: one of their problems takes a human expert \textbf{10--40 hours} at \$100--200/hr
---- ``on the order of a few thousand dollars'' each (p.\,14, and they flag it as illustrative).}
-\end{column}
-\end{columns}
+\begin{itemize}
+  \item \textbf{The bottleneck moved.} Sequencing got cheap; the analysis did not.
+        \smallskip
+        \sm{``as sequencing has scaled, downstream computation and analysis, rather than data generation,
+        have become the central scientific bottleneck.'' --- GBP, p.\,2}
+  \pause
+  \medskip
+  \item \textbf{The stakes are real.} Drug targets with human genetic evidence are
+        \emph{``roughly 2.6 times more likely to succeed in the clinic''}. \sm{--- DDB, p.\,2}
+  \pause
+  \medskip
+  \item \textbf{And the step is slow and expensive.} One GBP problem costs a human expert
+        \textbf{10--40 hours} at \$100--200/hr --- \emph{``on the order of a few thousand dollars''}.
+        \sm{--- GBP, p.\,14 (their own illustrative figure)}
+\end{itemize}
 \pause
-\medskip
+\vfill
 \begin{alertblock}{So the question is worth a benchmark}
 If an agent could reliably do this analysis, it would compress the slowest, most expensive step in
 data-rich biology. \textbf{Can it?}
@@ -236,7 +243,7 @@ data-rich biology. \textbf{Can it?}
 \centering\footnotesize
 curated dataset\\ $\downarrow$ \\ a well-defined, routine analysis \\ $\downarrow$ \\ a result
 \end{block}
-\sm{The method is \emph{given}. The agent executes it. This measures \textbf{execution}.}
+\centering\sm{The method is \emph{given}. This measures \textbf{execution}.}
 \end{column}
 \begin{column}{0.53\textwidth}
 \begin{block}{What real scientific analysis is}
@@ -244,7 +251,7 @@ curated dataset\\ $\downarrow$ \\ a well-defined, routine analysis \\ $\downarro
 data of \textbf{unknown quality}\\ $\downarrow$ \\ EDA / QC / preprocessing \\ $\downarrow$ \\
 modelling \& inference $\rightleftarrows$ \textbf{diagnostics} \\ $\downarrow$ \\ a decision-relevant conclusion
 \end{block}
-\sm{The method must be \textbf{chosen}, and re-chosen as diagnostics come back. This measures \textbf{judgement}.}
+\centering\sm{The method must be \textbf{chosen}. This measures \textbf{judgement}.}
 \end{column}
 \end{columns}
 \pause
@@ -252,16 +259,21 @@ modelling \& inference $\rightleftarrows$ \textbf{diagnostics} \\ $\downarrow$ \
 \begin{quote}\small\itshape
 ``Its core challenges stem not from the execution of analytical workflows, but from the importance
 of scientific intuition or \textbf{`research taste'}: chains of judgment calls about what question the
-data can support, what data to include, which estimand or model is appropriate, whether diagnostics
-invalidate initial hypotheses, and when the evidence is strong enough to support a conclusion.''
+data can support, what data to include, which estimand or model is appropriate\ldots{} and when the
+evidence is strong enough to support a conclusion.''
 \end{quote}
 \src{GeneBench-Pro, p.\,2 --- verbatim}
+\pause
+\smallskip
+\centering\sm{Note the consequence: a benchmark can be hard because the arithmetic is fiddly --- and that
+tells you \emph{nothing}. These are hard at the \textbf{judgement calls}, which is what makes them worth
+studying.}
 \end{frame}
 
-\begin{frame}{The one idea that makes the benchmark diagnostic}
-\why{GBP's central construct. It is the reason the benchmark is hard \emph{in an interesting way}.}
+\begin{frame}{The \emph{decision point} --- GBP's central construct}
+\why{The unit these problems are built out of, and the one idea I took wholesale.}
 
-\begin{block}{The \emph{decision point}}
+\begin{block}{A \emph{decision point}}
 \begin{quote}\itshape
 ``substantive inferential forks where a plausible wrong choice leads to a qualitatively different
 downstream answer''
@@ -270,11 +282,8 @@ downstream answer''
 \end{block}
 \pause
 \medskip
-This is the difference between a benchmark that is \textbf{hard} and one that is \textbf{diagnostic}:
-\medskip
 \begin{itemize}
-  \item A problem can be hard because the arithmetic is fiddly. That tells you nothing.
-  \item A GBP problem is hard because there are \textbf{six places to take a defensible-looking wrong turn} --- and the wrong turn lands you somewhere \emph{measurably} else.
+  \item Every GBP problem has $\sim$\textbf{six places to take a defensible-looking wrong turn} --- and the wrong turn lands the answer somewhere \emph{measurably} else.
   \item And the errors \textbf{cascade}: \sm{``an incorrect choice at any stage propagates into downstream errors and ultimately failure to recover the final correct target'' (p.\,5)}.
 \end{itemize}
 \pause
@@ -291,91 +300,215 @@ wrong, but \textbf{which wrong}.
 
 \begin{frame}{GeneBench-Pro --- the setup}
 \begin{columns}[T]
-\begin{column}{0.54\textwidth}
+\begin{column}{0.55\textwidth}
 \begin{itemize}
   \item \textbf{129 problems}, 10 primary domains, 21 subdomains.
-  \item \textbf{Fully simulated} data --- so the causal structure is known and nothing can be memorised.
-  \item Docker, \textbf{no internet}. A deliberately minimal prompt.
-  \item \textbf{Binary, programmatic grading.} Pre-specified target fields, absolute numeric tolerances. \textbf{No LLM judge anywhere.}
-  \item \textbf{10 attempts} per model--problem \sm{(5 for the GPT Pro (Extended) and Claude Opus rows --- 11 of 60)}.
-  \item 60 model configurations; 95\% CIs by hierarchical bootstrap, 20,000 resamples.
+  \item \textbf{Fully simulated} data --- so the causal structure is \emph{known}, and nothing can be memorised from the literature.
+  \item Docker, \textbf{no internet}, one fixed harness. A deliberately minimal prompt.
+  \item \textbf{Binary, programmatic grading}: pre-specified target fields, absolute numeric tolerances. \textbf{No LLM judge anywhere.}
+  \item \textbf{60 configurations} \sm{(model $\times$ reasoning effort)}, \textbf{10 attempts} each per problem \sm{(5 for the GPT Pro (Extended) and Claude Opus rows --- 11 of the 60)}.
   \item 82 of 129 problems reviewed by \textbf{11 external domain experts}.
 \end{itemize}
 \end{column}
-\begin{column}{0.46\textwidth}
-\begin{block}{The best design choice in either paper}
-They simulate the data --- but they \textbf{do not grade against the simulation parameter}. They grade
-against \emph{the estimate a correct analyst could actually recover from the staged files}.
-\medskip
-
-\sm{Otherwise sampling noise in the DGP marks a correct analysis wrong. Table 1 (p.\,6) names that
-exact failure mode. This is subtle, and right.}
+\begin{column}{0.45\textwidth}
+\begin{block}{What ``simulated'' buys them}
+\begin{enumerate}\footnotesize
+  \item You can \textbf{compute} the truth instead of assuming it.
+  \item You can \textbf{plant} a decision point and \emph{prove} the naive path lands elsewhere.
+  \item No model can have seen the answer.
+\end{enumerate}
 \end{block}
+\smallskip
+\sm{The staged files are built to look like what an analyst actually receives: batch effects, sentinel
+values, missingness, mixed ancestry --- the defects are \emph{deliberate}, and they are the point.}
 \end{column}
 \end{columns}
 \end{frame}
 
+\begin{frame}{The subtlest design choice in either paper --- \emph{what do you grade against?}}
+\why{Easy to skim past. It is the difference between a benchmark that works and one that is broken.}
+
+You simulated the data, so you know the true parameter you dialled in. \textbf{Grade against that?}
+\textbf{No} --- and this is the whole point.
+
+\medskip
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{alertblock}{The naive way (broken)}
+\footnotesize
+Simulator knob: true effect $\beta = \mathbf{0.30}$.
+\smallskip
+
+But the staged files are a \emph{finite sample} drawn from it. In \emph{those files}, the effect a
+\textbf{flawless} analyst recovers is $\hat\beta = \mathbf{0.283}$ --- sampling noise.
+\smallskip
+
+Grade against $0.30$, tolerance $\pm 0.01$:
+\smallskip
+
+\centering\rd{a perfect analysis is marked WRONG.}
+\end{alertblock}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{exampleblock}{What GBP does (right)}
+\footnotesize
+Grade against \textbf{the estimate a correct analysis can actually recover from the staged files} ---
+$\mathbf{0.283}$.
+\smallskip
+
+The target is the \textbf{recoverable estimand}, not the generating parameter.
+\smallskip
+
+\centering\gd{Now the grader tests the \emph{analysis}, not the dice.}
+\end{exampleblock}
+\end{column}
+\end{columns}
+\pause
+\medskip
+\begin{block}{And two more guards that make the tolerances mean something}
+\begin{itemize}\footnotesize
+  \item \textbf{Ablation-verify the separation:} for every trap, assert the plausible-but-\emph{wrong} answer falls \emph{far outside} the tolerance band. \sm{Otherwise the lazy analysis lands inside the band, is graded correct, and the benchmark measures nothing.}
+  \item \textbf{Robust to defensible variation:} \emph{``nearby reasonable thresholds lead to the same graded outcome''} (p.\,6). \sm{Otherwise you are measuring luck at the cutoff lottery.}
+\end{itemize}
+\end{block}
+\src{GeneBench-Pro, Table 1, p.\,6 --- which names this exact failure mode. Subtle, and right.}
+\end{frame}
+
 \begin{frame}{GeneBench-Pro --- the results are brutal}
+\why{The last column is the one to look at, and it is not the headline.}
+
 \centering
 \small
-\begin{tabular}{@{}lrl@{}}
+\begin{tabular}{@{}lrlr@{}}
 \toprule
-\textbf{Configuration} & \textbf{Pass rate} & \textbf{95\% CI} \\
+\textbf{Configuration} & \textbf{Pass rate} & \textbf{95\% CI} & \textbf{Problems never solved} \\
+                       &                    &                  & \sm{(0\% pass, all attempts)} \\
 \midrule
-GPT-5.6 Sol Pro (Extended) --- \emph{best in paper} & \textbf{31.5\%} & [24.3, 38.9] \\
-GPT-5.6 Sol (max) --- \emph{best mainline}          & \textbf{28.7\%} & [22.5, 35.1] \\
-GPT-5.6 Terra (max)                                  & 23.3\% & [17.8, 29.2] \\
-GPT-5.6 Luna (max)                                   & 16.5\% & [11.6, 21.7] \\
-Claude Opus 4.8 (max) --- \emph{strongest non-GPT}   & 16.0\% & [11.0, 21.2] \\
-GPT-5.5 (xhigh)                                      & 12.0\% & \\
+GPT-5.6 Sol Pro (Extended) --- \emph{best in paper} & \textbf{31.5\%} & [24.3, 38.9] & 55.8\% \\
+GPT-5.6 Sol (max) --- \emph{best mainline}          & \textbf{28.7\%} & [22.5, 35.1] & \rd{45.7\%} \\
+GPT-5.6 Terra (max)                                  & 23.3\% & [17.8, 29.2] & 49.6\% \\
+GPT-5.6 Luna (max)                                   & 16.5\% & [11.6, 21.7] & 64.3\% \\
+Claude Opus 4.8 (max) --- \emph{strongest non-GPT}   & 16.0\% & [11.0, 21.2] & 67.4\% \\
+GPT-5.5 (xhigh)                                      & 12.0\% & [8.2, 16.1]  & 64.3\% \\
 \midrule
-\multicolumn{3}{@{}l@{}}{\sm{Non-GPT range across all rows: \textbf{0.6\%} (MiniMax M2.7) to 16.0\% (Claude Opus 4.8)}}\\
+\multicolumn{4}{@{}l@{}}{\sm{Non-GPT range across all rows: \textbf{0.6\%} (MiniMax M2.7) to 16.0\% (Claude Opus 4.8)}}\\
 \bottomrule
 \end{tabular}
-\src{Supplementary Table 1, p.\,21}
+\src{Supplementary Table 1, p.\,21 --- the last column is a \emph{separate column} in their table, not derivable from the pass rate.}
 
 \pause
 \medskip
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\begin{alertblock}{The number that should stop you}
-The best mainline model scores \rd{zero across all ten attempts on 45.7\% of problems.}
+\begin{alertblock}{The number that should stop you --- and it is not 28.7\%}
+\textbf{28.7\%} is an \emph{average over problems}. Read casually, it sounds like ``passes about 29\% of
+the time, on everything''. \textbf{It does not.}
 \medskip
-\sm{Nearly half the benchmark is never solved once, by the best model, in ten tries.}
+
+The best mainline model scores \rd{zero across all ten attempts on 45.7\% of problems} --- nearly half
+the benchmark is \textbf{never solved once, in ten tries}. \textbf{The score is concentrated in the
+problems it can already do}, and there is a large tail it simply cannot touch.
 \end{alertblock}
-\end{column}
-\begin{column}{0.5\textwidth}
-\begin{block}{Reasoning effort buys a lot --- then saturates}
-GPT-5.6 Sol, \emph{none} $\to$ \emph{max}:
-\smallskip
+\end{frame}
 
-\centering
-3.7\% $\to$ 14.4 $\to$ 22.5 $\to$ 24.4 $\to$ 26.8 $\to$ \textbf{28.7\%}
-\smallskip
+\begin{frame}{How to read those two columns}
+\why{Two things the table is quietly telling you. Both matter more than the ranking.}
 
-\raggedright\sm{An 8$\times$ gain from inference compute alone --- but high$\to$max buys only 1.9 points.}
+\begin{block}{1. The 95\% CI --- and what a ``resample'' is}
+The 129 problems are only \emph{a sample} of the problems they could have written, and each run is
+noisy. So the CI asks: \textbf{if we redrew the problem set and re-ran everything, where would the
+headline land?}
+\medskip
+
+They answer it by \textbf{hierarchical bootstrap}: draw a fake problem set by sampling the 129 problems
+\emph{with replacement}, then resample the runs within each drawn problem, recompute the mean --- and do
+that \textbf{20,000 times}. Those 20,000 synthetic redraws are the \emph{resamples}. The CI is the middle
+95\% of the resulting spread.
+\medskip
+
+\centering\rd{The bars are $\sim\pm 6$ points wide. So \textbf{28.7\% vs 31.5\% is not a real gap.}}
 \end{block}
-\end{column}
-\end{columns}
+\pause
+\begin{block}{2. Reasoning effort buys a lot --- then saturates}
+\centering
+GPT-5.6 Sol, \emph{none} $\to$ \emph{max}:\quad
+3.7 $\to$ 14.4 $\to$ 22.5 $\to$ 24.4 $\to$ 26.8 $\to$ \textbf{28.7\%}
+\smallskip
+
+\raggedright\sm{An \textbf{8$\times$} gain from inference compute alone --- but \emph{high}$\to$\emph{max}
+buys only \textbf{1.9 points}. You cannot spend your way out of this benchmark.}
+\end{block}
 \end{frame}
 
 \begin{frame}{DrugDiscoveryBench --- the setup}
 \begin{columns}[T]
-\begin{column}{0.54\textwidth}
+\begin{column}{0.55\textwidth}
 \begin{itemize}
-  \item \textbf{82 expert-authored tasks}, target identification $\to$ patent mining $\to$ structure--activity analysis.
-  \item Grounded in \textbf{real artifacts}: granted patents, PDB structures, papers, database records.
-  \item Environment: an adaptation of Stanford's \textbf{BIOMNI} --- 226 functions across 22 domains, a 76-file data lake. \textbf{Internet on.}
-  \item Graded by an \textbf{LLM judge} (GPT-5.4) against weighted expert rubrics. \textbf{Pass = 100\% of outcome criteria.}
-  \item \textbf{12 models $\times$ 6 harnesses}, 29 settings, \textbf{3 trials} each.
-  \item Six-gate authoring pipeline, with a \emph{drop rule} for tasks that cannot be made robust.
+  \item \textbf{82 tasks written by pharmaceutical scientists}, spanning the four early-discovery stages: target ID $\to$ hit ID $\to$ hit-to-lead $\to$ lead optimisation.
+  \item Each task is anchored to \textbf{one specific real artifact} --- \sm{a granted patent, a PDB entry, a paper, a database record (UniProt / ChEMBL / OpenTargets), or a file shipped in the container.} \textbf{The answer is checkable against that object.}
+  \item Environment: \textbf{BIOMNI} \sm{(Stanford SNAP lab's biomedical agent framework)}, exposed to the agent as \textbf{an importable Python library}:
+        \smallskip
+        \sm{\code{from biomni.tool.database import query\_uniprot}}
+        \smallskip
+        226 functions, 22 domains, a 76-file data lake. \textbf{Internet on.} 120 min/task.
+  \item Answer written to \code{/workspace/answer.md}; graded by an \textbf{LLM judge} (GPT-5.4) against the author's weighted rubric. \textbf{Pass $=$ 100\% of \emph{outcome} criteria.}
 \end{itemize}
 \end{column}
-\begin{column}{0.46\textwidth}
+\begin{column}{0.45\textwidth}
+\begin{block}{What they vary --- 29 settings, 3 trials each}
+\footnotesize
+\textbf{Model} --- 12 frontier, incl. open-weight.\\
+\textbf{Harness} --- 6 \sm{(native where it exists: Codex, Claude Code, Gemini CLI; else mini-SWE-agent, Pi, OpenCode)}.\\
+\textbf{Reasoning effort} --- low / medium / \emph{ceiling} \sm{(swept for GPT-5.5, Opus 4.8, Gemini 3.5 Flash)}.
+\end{block}
+\pause
+\begin{exampleblock}{A sample task \sm{(lead optimisation)}}
+\footnotesize
+Two KRAS G12C co-crystal structures (\code{6USX}, \code{6UT0}). \emph{Why is compound B more potent?}
+\smallskip
+
+Agent must fetch both PDB entries, superimpose, find the residue whose conformation shifts, verify it
+contacts compound B. \textbf{Answer: \code{THR58}.}
+\end{exampleblock}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{How a DDB task was built --- and the rule that will come back to bite them}
+\why{Six gates. Gate 4 is the one to remember: it decides which tasks are \emph{allowed} into the benchmark.}
+
+\begin{block}{The authoring pipeline \sm{(DDB, Figure 2 and \S2.2, p.\,5)}}
+\begin{enumerate}\footnotesize
+  \item A \textbf{domain expert authors} a candidate task, its answer, and a \textbf{playbook} --- a step-by-step guide to the solution.
+  \item A \textbf{second expert reviews} and edits it.
+  \item \textbf{BenchGuard} \sm{(automated)} --- checks prompt/answer fidelity, flags ambiguous wording. \hfill\sm{$\Big\}$ run in parallel}
+  \item \textbf{Solvability assessment} --- hand the agent the \textbf{playbook as a hint}, and confirm it \emph{can} reach the answer when given the detailed steps.
+  \item An \textbf{SME reviews} whatever gates 3--4 surfaced and fixes it --- \rd{\textbf{dropping the task entirely if it cannot be made robust}}. $\leftarrow$ \textbf{the drop rule}
+  \item An \textbf{independent QC team} signs off before release.
+\end{enumerate}
+\end{block}
+\pause
+\medskip
+\begin{alertblock}{Gates 4 and 5 together are an \emph{inclusion criterion}}
+A task only enters the benchmark if an agent \textbf{can} solve it \emph{when handed the expert's playbook}.
+\medskip
+
+\centering\textbf{Hold on to that.} \sm{It quietly determines what the paper's headline finding can possibly show ---
+and I come back to it in the critique.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{DrugDiscoveryBench --- the results}
+\begin{columns}[T]
+\begin{column}{0.42\textwidth}
 \begin{block}{Best agent: \textbf{51.6\%}}
 \centering\small
-GPT-5.5 + mini-SWE-agent (xhigh)
+GPT-5.5 $+$ mini-SWE-agent (xhigh)
+\smallskip
+
+\raggedright\sm{Gemini 3.5 Flash (Gemini CLI) 50.0\%; Opus 4.8 (mini-SWE-agent) 46.8\%. Open-weight trails
+sharply: GLM 5.2 37.8\%, Kimi 2.7 35.3\%.}
 \end{block}
+\end{column}
+\begin{column}{0.58\textwidth}
 \begin{block}{Two findings worth the price of admission}
 \footnotesize
 \textbf{1. Test-time compute scales} --- within a family.\\
@@ -383,11 +516,20 @@ GPT-5.5 (Codex): 27.6 $\to$ 39.8 $\to$ \textbf{43.9\%}
 \medskip
 
 \textbf{2. The harness matters as much as the model.}\\
-GPT-5.5 swings \textbf{40.6 $\to$ 51.6\%} across harnesses --- an 11-point spread. The gap between
+GPT-5.5 swings \textbf{40.6 $\to$ 51.6\%} across harnesses --- an \textbf{11-point spread}. The gap between
 the \#1 and \#2 \emph{models} is \textbf{1.6 points}.
 \end{block}
 \end{column}
 \end{columns}
+\pause
+\medskip
+\begin{alertblock}{Finding 2 is the one most papers cannot report --- and it indicts GBP}
+The \textbf{scaffold} is a first-class experimental variable here, and it turns out to matter
+\textbf{more than the choice of model}.
+\medskip
+
+\centering\textbf{GBP ranks 60 configurations on a single, fixed, unablated harness.}
+\end{alertblock}
 \end{frame}
 
 \begin{frame}{The two, side by side --- and a warning}
@@ -628,29 +770,28 @@ The bottleneck is not code generation, not knowledge, and not context length. It
 \begin{frame}{What is convincing --- GeneBench-Pro's benchmark design}
 \why{This is the best thing in either paper, and I copied it wholesale.}
 
-\begin{enumerate}
-  \item \textbf{Simulate, so you can \emph{compute} the truth.} Real data gives ground truth you can
-        \emph{assume}. Simulation gives ground truth you can \emph{calculate} --- and it is the only way
-        to \emph{plant} a decision point and be certain the naive path lands somewhere else.
-  \pause
-  \item \textbf{Grade the recoverable estimate, not the generating parameter.} Subtle and correct:
-        otherwise sampling noise in your own simulator marks a \emph{correct} analysis wrong.
-  \pause
-  \item \textbf{Ablation-verify the separation.} For every trap, assert that the plausible-but-wrong
-        answer lies \emph{far outside} the tolerance band. Otherwise a lazy analysis lands inside the
-        band and is graded correct --- and \textbf{the benchmark measures nothing.}
-  \pause
-  \item \textbf{Be robust to defensible analyst variation.} \emph{``nearby reasonable thresholds lead to
-        the same graded outcome''} (p.\,6). Otherwise you are measuring luck at the cutoff lottery
-        rather than recognition of the problem.
-  \pause
-  \item \textbf{Binary, all-or-nothing grading}, and they defend it better than I could:
-        \begin{quote}\footnotesize\itshape
-        ``an agent that executes several intermediate steps correctly but returns the wrong
-        decision-relevant answer has not successfully automated the analysis.'' \src{(p.\,14)}
-        \end{quote}
-        Partial credit measures effort. Binary measures usefulness.
+\begin{block}{The four principles, recapped \sm{--- all of them from the design slide earlier}}
+\begin{enumerate}\footnotesize
+  \item \textbf{Simulate, so you can \emph{compute} the truth} --- and so you can \emph{plant} a decision point and be certain the naive path lands elsewhere.
+  \item \textbf{Grade the recoverable estimate}, not the generating parameter.
+  \item \textbf{Ablation-verify the separation} --- the wrong answer must land \emph{far outside} the tolerance band.
+  \item \textbf{Be robust to defensible analyst variation} --- nearby reasonable thresholds must grade the same.
 \end{enumerate}
+\end{block}
+\pause
+\medskip
+\begin{alertblock}{And the fifth --- \textbf{binary, all-or-nothing grading}, which they defend better than I could}
+\begin{quote}\itshape
+``an agent that executes several intermediate steps correctly but returns the wrong
+decision-relevant answer \textbf{has not successfully automated the analysis}.'' \src{(p.\,14)}
+\end{quote}
+\centering\medskip
+\textbf{Partial credit measures effort. Binary measures usefulness.}
+\end{alertblock}
+\pause
+\medskip
+\centering\sm{Together these are why I trust GBP's \emph{numbers} --- whatever I go on to say about its
+\emph{story}.}
 \end{frame}
 
 \begin{frame}{What is convincing --- the unglamorous, expensive, right things}
