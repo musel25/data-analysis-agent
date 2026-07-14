@@ -131,7 +131,9 @@ def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_
             if m is not None:
                 m.add(model, payload["usage"]["prompt_tokens"],
                       payload["usage"]["completion_tokens"], cached=True)
-        return _Msg(payload["message"])
+        return _Msg(payload["message"], meta={"cached": True, "model": model,
+                                              "duration_s": 0.0, "retries": 0, "slept_s": 0.0,
+                                              **payload["usage"]})
 
     if not LIVE:
         raise RuntimeError(
@@ -141,6 +143,8 @@ def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_
         )
 
     last_err = None
+    t0 = time.monotonic()
+    retries, slept = 0, 0.0
     for attempt in range(max_retries):
         try:
             resp = config.client().chat.completions.create(**kwargs)
@@ -154,7 +158,10 @@ def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_
             # agent, which quietly cost it ~1.8 points of pass rate against its own ablations.
             # Infrastructure noise must never land in the numerator. Back off hard instead.
             rate_limited = "429" in str(e) or "ratelimit" in type(e).__name__.lower()
-            time.sleep((5 * 2 ** attempt) if rate_limited else (2 ** attempt))
+            pause = (5 * 2 ** attempt) if rate_limited else (2 ** attempt)
+            retries += 1
+            slept += pause
+            time.sleep(pause)
     else:                                            # pragma: no cover
         raise last_err
 
@@ -168,7 +175,10 @@ def llm(messages, tools=None, model=None, temperature=0.0, force_tool=None, max_
     for m in (METER, meter):
         if m is not None:
             m.add(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
-    return _Msg(payload["message"])
+    return _Msg(payload["message"], meta={"cached": False, "model": model,
+                                          "duration_s": time.monotonic() - t0,
+                                          "retries": retries, "slept_s": slept,
+                                          **payload["usage"]})
 
 
 class _Msg:
@@ -178,10 +188,14 @@ class _Msg:
     call site would need to branch. One small class beats fifty `if isinstance` checks.)
     """
 
-    def __init__(self, d: dict):
+    def __init__(self, d: dict, meta: dict | None = None):
         self._d = d
         self.content = d.get("content") or ""
         self.tool_calls = [_ToolCall(tc) for tc in (d.get("tool_calls") or [])]
+        # Per-call telemetry: duration, retries, backoff sleeps, token usage. This is how a
+        # 40-second turn stops being a mystery — the loop can SAY where the time went.
+        self.meta = meta or {}
+        self.reasoning = d.get("reasoning") or ""   # thinking models (Gemini) return this
 
     def raw(self) -> dict:
         """The exact dict to append to `messages` when replaying the assistant's turn."""

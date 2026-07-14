@@ -189,6 +189,69 @@ def _render_run(run):
     with st.expander("The full structured report (JSON)"):
         st.json(r)
 
+    _render_debug(run)
+
+
+def _render_debug(run):
+    """Turn-by-turn X-ray: exactly what went into the model, what came out, and how long the
+    API call took. This is where 'why is it slow' and 'why did it do that' both get answered."""
+    dbg = getattr(run, "debug", None)
+    if not dbg or not dbg.get("steps"):
+        return
+
+    st.divider()
+    st.markdown("##### 🩻 Debug — what the model saw, step by step")
+
+    steps = dbg["steps"]
+    api_s = sum(s["llm"].get("duration_s", 0) for s in steps)
+    slept = sum(s["llm"].get("slept_s", 0) for s in steps)
+    retries = sum(s["llm"].get("retries", 0) for s in steps)
+    thinking = sum(len(s.get("reasoning") or "") for s in steps)
+    st.caption(f"{len(steps)} LLM calls · {api_s:.0f}s total in the API"
+               + (f" · **{slept:.0f}s of that asleep in {retries} rate-limit retries**" if retries else "")
+               + (f" · {thinking:,} chars of hidden thinking" if thinking else ""))
+
+    with st.expander("📜 System prompt (constant, every turn)"):
+        st.code(dbg["system"], language="text")
+    with st.expander("📊 First user message — the briefing + the question (as the model gets it)"):
+        st.code(dbg["first_user_message"], language="text")
+    if run.contract:
+        with st.expander("📋 Question Contract — every field"):
+            st.json(run.contract.model_dump())
+            st.markdown("**Rendered form, as pinned to the end of context each turn:**")
+            st.code(run.contract.render(), language="text")
+
+    for s in steps:
+        names = ", ".join(t["name"] for t in s["tool_calls"]) or "no tool call"
+        mt = s["llm"]
+        label = f"step {s['step']} · {names}"
+        if mt.get("cached"):
+            label += " · cached"
+        elif mt:
+            label += f" · {mt.get('duration_s', 0):.1f}s · {mt.get('prompt_tokens', 0):,}→{mt.get('completion_tokens', 0):,} tok"
+            if mt.get("retries"):
+                label += f" · ⚠ slept {mt.get('slept_s', 0):.0f}s on retries"
+        with st.expander(label):
+            if s["pinned"]:
+                st.markdown("**Pinned to the end of context this turn** (regenerated from live "
+                            "state — this is what 'the ledger is pinned' actually means):")
+                st.code(s["pinned"], language="text")
+            if s.get("reasoning"):
+                st.markdown("**Model thinking** (hidden from the transcript, returned by the API):")
+                st.code(s["reasoning"], language="text")
+            if s.get("content"):
+                st.markdown("**Model text:**")
+                st.write(s["content"])
+            for tc, res in zip(s["tool_calls"], s["results"] + [""] * len(s["tool_calls"])):
+                st.markdown(f"**→ `{tc['name']}`**")
+                if tc["name"] == "run_python":
+                    st.code(tc["args"].get("code", ""), language="python")
+                else:
+                    st.json(tc["args"])
+                if res:
+                    st.markdown("**← result:**")
+                    st.code(res, language="text")
+
 
 # ══════════════════════════════════════════════════════════════════════════════════════
 #  TAB 2 — the evidence

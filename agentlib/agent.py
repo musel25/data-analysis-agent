@@ -195,6 +195,10 @@ class Run:
     cost_usd: float = 0.0
     tokens: int = 0
     trace: Trace | None = None
+    # Full per-turn debug record: exactly what the model saw (system prompt, briefing, the pinned
+    # state block), what it thought, what it called, and how long the API call took. The dashboard
+    # renders this so a slow or wrong run can be read turn by turn.
+    debug: dict = field(default_factory=dict)
     _code_cache: dict = field(default_factory=dict)   # death-loop guard 1
     _error_fp: dict = field(default_factory=dict)     # death-loop guard 2
 
@@ -268,6 +272,9 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
 
     tools = [t for t in TOOLS if _enabled(t["function"]["name"], cfg)]
 
+    run.debug = {"system": SYSTEM, "briefing": brief,
+                 "first_user_message": messages[1]["content"], "steps": []}
+
     def say(*a):
         # The trajectory is narration, not debug output. Send it wherever the caller wants it:
         # stdout in a notebook, a Streamlit placeholder in the dashboard, a log in production.
@@ -300,6 +307,22 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
                   temperature=cfg.temperature, nonce=cfg.attempt, meter=run_meter)
         messages.append(msg.raw())
 
+        # Narrate where the wall-clock went. A 40-second turn with zero visible output is
+        # indistinguishable from a hang unless the loop says what it was doing.
+        mt = msg.meta
+        if mt and not mt.get("cached"):
+            wait = (f"  ⚠ retried {mt['retries']}× (rate-limited?), slept {mt['slept_s']:.0f}s"
+                    if mt.get("retries") else "")
+            say(f"  [{run.steps}] ⏱ llm call {mt['duration_s']:.1f}s | "
+                f"{mt.get('prompt_tokens', 0):,} in → {mt.get('completion_tokens', 0):,} out"
+                + (" (incl. thinking)" if msg.reasoning else "") + wait)
+
+        dbg_step = {"step": run.steps, "pinned": "\n\n".join(pinned), "llm": dict(mt or {}),
+                    "reasoning": msg.reasoning, "content": msg.content,
+                    "tool_calls": [{"name": c.name, "args": c.args} for c in msg.tool_calls],
+                    "results": []}
+        run.debug["steps"].append(dbg_step)
+
         if not msg.tool_calls:
             # No tool call and no answer: the model is chatting. Push it back to work.
             say(f"  [{run.steps}] (no tool call — nudging)")
@@ -309,6 +332,7 @@ def run_agent(question: str, files: list[str], cfg: Config | None = None,
 
         for call in msg.tool_calls:
             result = _dispatch(call, run, ex, cfg, brief, code_log, all_stdout, say, run_meter)
+            dbg_step["results"].append(result)
             messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
             if run.report is not None:
                 run.stopped = "submitted"
