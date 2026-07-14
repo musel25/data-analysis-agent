@@ -118,6 +118,19 @@ PRICES = {
 }
 DEFAULT_PRICE = (0.20, 0.60)   # unlisted model: assume mid-range rather than free
 
+# --- Self-hosted endpoints have no per-token price ----------------------------------------
+#
+# When the model runs on a GPU you rented (infra/modal_vllm.py), you are billed by the SECOND for
+# the GPU — not by the token. Multiplying tokens by a made-up $/1M rate would print a confident
+# dollar figure that corresponds to nothing, and inventing a number that looks measured is the
+# single thing this project exists not to do. (DEFAULT_PRICE would have quoted $0.0113 for the
+# demo run below. That number is fiction.)
+#
+# So: per-token cost is zero here, and the UI says "self-hosted" and quotes the GPU-hour instead.
+SELF_HOSTED_HOSTS = ("modal.run", "localhost", "127.0.0.1", "0.0.0.0")
+SELF_HOSTED = any(h in BASE_URL for h in SELF_HOSTED_HOSTS)
+GPU_HOURLY_USD = 1.10          # Modal A10G, the GPU infra/modal_vllm.py asks for
+
 CACHE_DIR = ROOT / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
@@ -151,6 +164,9 @@ def client() -> OpenAI:
 
 
 def price_of(model: str, prompt_tokens: int, completion_tokens: int) -> float:
-    """Dollars for one call."""
+    """Dollars for one call. Zero on a self-hosted endpoint — see SELF_HOSTED above: there the
+    meter is the GPU clock, not the token count, and a per-token figure would be invented."""
+    if SELF_HOSTED:
+        return 0.0
     p_in, p_out = PRICES.get(model, DEFAULT_PRICE)
     return (prompt_tokens * p_in + completion_tokens * p_out) / 1_000_000

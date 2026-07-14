@@ -92,8 +92,10 @@ def tab_run():
         use_verifier = g5.toggle("Verifier", True, help="Fresh eyes, different model family.")
 
     if not st.button("Run the agent", type="primary"):
-        st.info("Pick a question and hit **Run the agent**. "
-                "A run takes 30–90 seconds and costs about half a cent.")
+        st.info("Pick a question and hit **Run the agent**. A run takes 30–90 seconds."
+                + (" The GPU scales to zero when idle, so the **first** run of the session also "
+                   "pays a cold start (~1 min) while vLLM boots."
+                   if cfg_mod.SELF_HOSTED else " It costs about half a cent."))
         return
 
     conf = Config(
@@ -134,7 +136,14 @@ def _render_run(run):
     m1.metric("Answer", r.get("value") if r.get("value") is not None else "—")
     m2.metric("Confidence", r.get("confidence", "—"))
     m3.metric("Steps", run.steps)
-    m4.metric("Cost", f"${run.cost_usd:.4f}")
+    # On a self-hosted GPU there is no per-token price, so report what was actually measured —
+    # the tokens — rather than multiplying them by a rate that does not exist.
+    if cfg_mod.SELF_HOSTED:
+        m4.metric("Tokens", f"{run.tokens:,}",
+                  help="Self-hosted: the GPU is billed by the second, not by the token, so a "
+                       "dollar figure here would be invented. This is the number actually measured.")
+    else:
+        m4.metric("Cost", f"${run.cost_usd:.4f}")
 
     st.markdown(f"### {r['answer']}")
 
@@ -424,18 +433,36 @@ _HOSTS = {
     "generativelanguage.googleapis.com": "the Google Gemini API",
     "api.groq.com": "Groq",
     "openrouter.ai": "OpenRouter",
+    "modal.run": "a GPU I rented on Modal",
 }
 _provider = next((name for host, name in _HOSTS.items() if host in cfg_mod.BASE_URL),
                  "a self-hosted OpenAI-compatible endpoint")
-_p_in, _p_out = cfg_mod.PRICES.get(cfg_mod.AGENT_MODEL, cfg_mod.DEFAULT_PRICE)
+
+# A self-hosted endpoint is billed by the GPU-second, not by the token. Quoting a $/1M rate here
+# would be a fabricated number — see config.SELF_HOSTED.
+if cfg_mod.SELF_HOSTED:
+    _price = (f"self-hosted with vLLM — billed by the GPU-second "
+              f"(~\\${cfg_mod.GPU_HOURLY_USD:.2f}/hour for an A10G), <b>not</b> per token")
+else:
+    _p_in, _p_out = cfg_mod.PRICES.get(cfg_mod.AGENT_MODEL, cfg_mod.DEFAULT_PRICE)
+    _price = f"\\${_p_in:.2f}/\\${_p_out:.2f} per 1M tokens in/out"
 
 st.markdown(
     f'<p class="lede">An agent that gets a prompt and some files, explores the data, writes and '
     f'runs code, <b>checks its own intermediate results</b>, and returns a structured, audited '
     f'answer.<br>No framework. ~885 lines. Running on '
-    f'<b>{cfg_mod.AGENT_MODEL}</b> at {_provider} '
-    f'— ${_p_in:.2f}/${_p_out:.2f} per 1M tokens in/out.</p>',
+    f'<b>{cfg_mod.AGENT_MODEL}</b> at {_provider} — {_price}.</p>',
     unsafe_allow_html=True)
+
+if cfg_mod.SELF_HOSTED:
+    st.caption(
+        "⚠️ **The live demo is not the measured system.** The 4,480-run evaluation on the "
+        "*Evidence* tab ran on **Qwen3-30B-A3B** at Nebius, with a **cross-family** verifier "
+        "(gpt-oss-120b). This endpoint serves **one** model — a **4B**, seven times smaller — so "
+        "the verifier here reviews work from its own family, which the design explicitly argues "
+        "against. Numbers produced live are **not** comparable to the evaluation. "
+        "That the 4B still lands the Simpson's task is a nice advertisement for scaffolding over "
+        "parameters — and it is n=1, so it is an advertisement, not a result.")
 
 t1, t2 = st.tabs(["🔬  Run the agent", "📊  The evidence"])
 with t1:
