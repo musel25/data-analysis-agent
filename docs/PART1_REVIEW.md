@@ -23,10 +23,12 @@ are things that happened to me** while building Part 2 on their protocols, and I
 **129 problems** in genomics and translational biomedicine, across 10 domains. The agent gets messy
 staged files and a deliberately minimal prompt, works in Docker with pandas/scipy/statsmodels and no
 internet, and must return one JSON object. Grading is **binary, programmatic, all-or-nothing**,
-against pre-specified absolute numeric tolerances. **10 independent attempts per problem** (5 for two
-of the heaviest configurations). Confidence intervals by hierarchical bootstrap, 20,000 resamples.
+against pre-specified absolute numeric tolerances — and, notably, **there is no LLM judge anywhere**.
+**10 independent attempts per problem** for standard evaluations, and **5 for the GPT Pro (Extended)
+and Claude Opus rows** — 11 of the 60 evaluated configurations. Confidence intervals by hierarchical
+bootstrap, 20,000 resamples.
 
-The organising construct is the **decision point** — *"a substantive inferential fork where a
+The organising construct is the **decision point** — *"substantive inferential forks where a
 plausible wrong choice leads to a qualitatively different downstream answer"* (3–13 per problem,
 median 6). Problems are **fully simulated**, so the causal structure is known and nothing can be
 memorised; and every plausible-but-wrong path is **ablation-verified to be numerically distinct from
@@ -38,7 +40,7 @@ model reaches **28.7%** — and **scores literally zero across all ten attempts 
 The diagnosis is the paper's real contribution:
 
 > *"models often complete substantial portions of the workflow but exhibit a consistent gap between
-> **noticing** and **acting** — identifying local diagnostic signals but failing to propagate the
+> **noticing** and **acting** by identifying local diagnostic signals but failing to propagate the
 > implications to the corresponding analysis decision."* (p. 1)
 
 > *"the agent notices the relevant local diagnostic clue but **treats it as a local data cleaning
@@ -50,8 +52,10 @@ The diagnosis is the paper's real contribution:
 **82 expert-authored tasks** spanning target identification → patent mining → structure-activity
 analysis, each grounded in real artifacts (patents, papers, database records). Agents work inside an
 adaptation of Stanford's **BIOMNI** environment — 226 functions across 22 domains, exposed as an
-ordinary Python library rather than as tools, plus a 76-file data lake. **12 frontier models × 6
-agentic harnesses**, reasoning effort swept low → ceiling.
+ordinary Python library rather than as tools, plus a 76-file data lake. **12 frontier models across 6
+agentic harnesses** — but *not* a full grid: **29 settings**, unevenly distributed (GPT-5.5 got 6
+settings across 4 harnesses; six models got exactly **one** setting each), with reasoning effort swept
+low → ceiling for only **3** families. **3 trials** per setting.
 
 Grading is by **LLM judge** (GPT-5.4) against expert-written rubrics, and **pass requires 100% of the
 outcome criteria.** Best agent: **51.6%** (GPT-5.5 + mini-SWE-agent, xhigh).
@@ -138,17 +142,31 @@ cell**, it resamples with replacement *from the ten outcomes actually observed*.
 back `1/10` therefore has a bootstrap distribution centred near 10% — and it **cannot reach the 60%
 the next run produced.** The empirical distribution is degenerate near `p=0` and `p=1`.
 
-**Now apply that to GBP.** Their headline finding is that the best mainline model **scores zero
-across all ten attempts on 45.7% of problems.** Those are `0/10` cells. Their within-problem
-bootstrap resamples ten zeros and can only ever produce zero. **The interval on nearly half their
-benchmark is [0, 0]** — which is certainly wrong, because a problem the model solves 5% of the time
-will show `0/10` about 60% of the time.
+**Now apply that to GBP.** I first wrote here that "the interval on nearly half their benchmark is
+[0, 0]". **That was an inference, not a quotation** — GBP never publishes *per-problem* intervals, and
+its *aggregate* CIs are not degenerate (GPT-5.6 Sol is 28.7% `[22.5, 35.1]`). So I have replaced my
+inference with **what the paper literally prints**, which is worse and cannot be argued with:
 
-> **The error bars are tightest precisely on the problems the paper is about**, and they are tightest
-> because the data there is degenerate, not because the estimate is precise.
+**Supplementary Table 2 (p. 22) reports uncertainty as "the half-width of a 95% hierarchical bootstrap
+confidence interval" — a symmetric `±` on a quantity bounded below by zero.** Read it literally:
+
+| row | reported 95% CI | implied lower bound |
+|---|---|---|
+| Claude Opus 4.8 (max), public subset | `18.0 ± 22.0%` | **−4.0%** |
+| Gemini 3.1 Pro, public subset | `7.0 ± 11.5%` | **−4.5%** |
+| MiniMax M2.7, **full suite** | `0.6 ± 0.7%` | **−0.1%** |
+| MiniMax M2.7, GLM 5.1, Grok 4.3, Kimi K2.7 (+4 more) | **`0.0 ± 0.0%`** | — |
+
+**Eight rows report a zero-width 95% confidence interval.** That is not a confidence interval. It is
+the nonparametric bootstrap **degenerating on all-zero data** — resample ten zeros, get zero, every
+time. A Clopper–Pearson interval on the same runs would put the upper bound near 3%.
+
+> **The error bars are tightest precisely where the data carries no information**, and the paper
+> prints that as `0.0 ± 0.0%`.
 
 This is not a nitpick about a supplementary figure. It is the paper's central statistical apparatus,
-and it under-reports uncertainty in exactly the regime the paper's argument depends on.
+and it under-reports uncertainty in exactly the regime the paper's argument depends on — the 45.7% of
+problems the best mainline model never solves.
 
 **The fix is not more resamples — it is more runs, or a different estimator.** A hierarchical
 beta-binomial would shrink the extreme cells instead of pretending they are certain. Cheaper and more
@@ -200,19 +218,29 @@ ordering is never justified.
 
 This is the line everyone will quote, including me:
 
-> *"76 out of 82 tasks are solved without any hints in at least one of the trials… After the hints, at
-> least 1 of the agents is able to pass 80 out of 82. The results suggest that **execution is within
-> reach for today's agents should they be given the expert workflow**."* (p. 14)
+> *"76 out of 82 tasks are solved without any hints in at least one of the trials… After the hints,
+> **we find that** at least 1 of the agents is able to pass 80 out of 82 **and near-pass 1**. The
+> results suggest that **execution is within reach for today's agents should they be given the expert
+> workflow**."* (p. 14)
 
-Two problems.
+Three problems.
 
-**First, "76/82" is not a pass rate — it is an oracle.** It means *at least one* of 12 models × 6
-harnesses × 3 trials got it. The actual best single agent scores **51.6%**. Reporting best-of-N
-alongside a pass rate, in the same paragraph, invites exactly the misreading that the gap is small.
+**First, "76/82" is not a pass rate — it is an oracle.** It means *at least one* run got it, across
+**29 settings × 3 trials ≈ 87 runs per task**. The actual best single agent scores **51.6%**.
+Reporting best-of-N alongside a pass rate, in the same paragraph, invites exactly the misreading that
+the gap is small.
 
 **Second, the hint experiment moves four tasks.** 76 → 80, on the six that were unsolved. **n = 6.**
 The paper's central claim about where the headroom lies — the one that most directly tells a builder
-what to do — is supported by four task flips, unrepeated.
+what to do — is supported by four task flips, unrepeated. (The Introduction calls this "flips the
+majority of tasks to solved". The majority of six is four.)
+
+**Third — and this is the one that actually worries me — the experiment is close to circular.** A
+**solvability assessment against the expert's playbook was an *inclusion criterion*** when the tasks
+were authored (p. 5), and tasks that could not be made robust were **dropped**. So the benchmark
+contains, *by construction*, tasks that an agent can solve when handed the playbook — and the
+headline finding is that handing agents the playbook lets them solve the tasks. How many candidates
+were dropped at that gate is **not stated**.
 
 I believe the conclusion, incidentally. I just do not think this experiment establishes it.
 
@@ -244,7 +272,8 @@ exactly the hard problems**. Neither paper checks this, and it would cost them o
 ### 3.7 DDB's judge has never been shown a human
 
 > *"we ran Inter-Rater Agreement with **two other LLM judges**, Claude Sonnet 4.6 and Gemini 3.5
-> Flash, on a random subset of 200 responses and found **perfect agreement** (κ = 1.0)."*
+> Flash, on a random subset of 200 responses and found **perfect agreement with respect to binary
+> labels** (κ = 1.0)."*
 
 Every headline number in DDB flows through a single LLM judge, and the only validation is **against
 other LLMs.**
@@ -253,7 +282,13 @@ other LLMs.**
 labs, on 200 items, means either the rubric items are so mechanical that the judge is redundant —
 in which case grade them programmatically and remove the judge — or the three models share a
 systematic bias, which is exactly what inter-rater agreement is supposed to detect and exactly what
-three LLMs cannot detect about each other.
+three LLMs cannot detect about each other. **And note the qualifier I have now restored to the quote:
+agreement was measured on the *binary* pass/fail label only, not on the continuous outcome score —
+which makes the "the rubric is mechanical" horn of that dilemma *more* likely, not less.**
+
+Two more things the paper does not mention. **Both validating judges are themselves models under
+evaluation in the benchmark.** And the default judge, GPT-5.4, is **the same family as the
+leaderboard winner**, GPT-5.5 — a self-preference risk that is never discussed.
 
 The missing experiment is small and obvious: **have a domain expert grade 50 of them.** DDB has the
 experts on staff — they wrote the tasks.
@@ -268,13 +303,22 @@ benchmark; theirs decides 100% of DDB.)*
 
 **GBP's central diagnosis is scoped to frontier models, and the paper never says so.**
 
-GBP is explicit that models *do* notice — the gap is in *acting*:
+GBP is explicit that models *do* notice — the gap is in *acting*. Two separate sentences, and it
+matters that they are separate, because they do not say the same thing:
 
-> *"frontier models consistently notice data issues… the improvement lies less in noticing than in
-> turning those observations into concrete corrective decisions."* (p. 3, p. 13)
+> **Results, p. 3** — a claim about a *difference between two strong models*:
+> *"the main qualitative improvement **in stronger models** lies less in noticing the relevant
+> diagnostic clues than in turning those observations into concrete corrective and model-selection
+> decisions that move the analysis onto the correct path."*
 
-I read that, believed it, and built my entire Part 2 design around it: machinery to **force the agent
-to act** on what it noticed — a findings ledger, blocked submission, gates.
+> **Discussion, p. 14** — the same idea, silently promoted to an *absolute property of the class*:
+> *"while **frontier models consistently notice** data issues, statistical irregularities, and other
+> potential problems, there remains an incomplete ability to bridge the 'notice-act' gap required to
+> close the inferential loop."*
+
+That promotion is **scope drift between two sections of one paper**, and it is the sentence everyone
+quotes. I read it, believed it, and built my entire Part 2 design around it: machinery to **force the
+agent to act** on what it noticed — a findings ledger, blocked submission, gates.
 
 **Then I ablated it, and my results inverted theirs.**
 

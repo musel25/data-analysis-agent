@@ -47,7 +47,9 @@ diagnosis.
 129 multistage statistical-reasoning problems in genomics and translational biomedicine. The agent
 gets messy staged files and a deliberately *minimal* prompt, works in a Docker container with
 pandas/scipy/statsmodels and no internet, and must return one JSON object. Grading is binary,
-programmatic, against absolute numeric tolerances; ten attempts per problem.
+programmatic, against absolute numeric tolerances, with **no LLM judge anywhere**; ten attempts per
+problem for standard evaluations, and **five for the GPT Pro (Extended) and Claude Opus rows**.
+*(That asymmetry is not a footnote — §4.4.1 of this document and PART1_REVIEW §3.5 both turn on it.)*
 
 Each problem is built around **decision points** — "substantive inferential forks where a plausible
 wrong choice leads to a qualitatively different downstream answer" (3–13 per problem, median 6).
@@ -114,8 +116,14 @@ And the finding that determines where effort should go. They re-ran the 6 unsolv
 agents the expert's step-by-step playbook as a hint:
 
 > "76 out of 82 tasks are solved without any hints in at least one of the trials… After the hints,
-> we find that at least 1 of the agents is able to pass 80 out of 82. The results suggest that
-> **execution is within reach for today's agents should they be given the expert workflow**." (p. 14)
+> we find that at least 1 of the agents is able to pass 80 out of 82 **and near-pass 1**. The results
+> suggest that **execution is within reach for today's agents should they be given the expert
+> workflow**." (p. 14)
+
+*(I quote that as the paper's conclusion, and I believe it. I also do not think the experiment
+establishes it — see PART1_REVIEW §3.4: only **6 tasks** entered the hint condition, and a
+solvability check against the expert playbook was an **inclusion criterion** when the tasks were
+authored.)*
 
 ### 1.3 The synthesis that drives this design
 
@@ -499,7 +507,7 @@ The planted decision points, each mirroring a documented failure:
 | Assay batch B is on a shifted scale | pool all batches | correct or exclude batch B | GBP "wrong scale" |
 | Question restricts to one arm | compute over everyone | honour the stated filter | DDB constraint (7.5%) |
 | **Simpson's paradox**: treatment looks worse overall, better in every severity stratum | report the marginal effect | stratify; report the conditional effect | GBP "wrong population / conceptual level" |
-| A question whose premise is false | answer it anyway | flag the false premise | DDB scope |
+| A question whose premise is false | answer it anyway | flag the false premise | DDB melanoma case |
 
 The Simpson's-paradox task is the one I care most about, because it is the purest possible test of
 the notice–act gap: the agent will *see* the imbalance if it looks, and the entire question is
@@ -725,10 +733,10 @@ first thing I would design an experiment for.
 
 #### What it means
 
-Go back to the papers. GeneBench-Pro observes that models *"notice the relevant local diagnostic clue
-but treat it as a local data cleaning issue rather than as evidence that should change the downstream
-statistical method and QC pipeline."* I read that as a failure to **act** — so I built machinery to
-force action.
+Go back to the papers. GeneBench-Pro observes that *"the agent notices the relevant local diagnostic
+clue but treats it as a local data cleaning issue rather than as evidence that should change the
+downstream statistical method and QC pipeline"* (p. 13). I read that as a failure to **act** — so I
+built machinery to force action.
 
 The ablation says the leverage is on the **notice** side.
 
@@ -745,9 +753,10 @@ did not need to be forced. It needed to be **informed**.
 #### ⚠️ The obvious objection, which I want to raise before you do
 
 **GeneBench-Pro says the opposite of what I just said.** They are explicit that *frontier* models
-*consistently notice* the data issues, and that the headroom lies *"less in noticing … than in
-turning those observations into concrete corrective decisions"* (p. 3, p. 13). If noticing is the
-solved half for them, how can the detector be the whole story for me?
+*consistently notice* the data issues (p. 14), and that *"the main qualitative improvement in stronger
+models lies less in noticing the relevant diagnostic clues than in turning those observations into
+concrete corrective and model-selection decisions that move the analysis onto the correct path"*
+(p. 3). If noticing is the solved half for them, how can the detector be the whole story for me?
 
 Because **we are not talking about the same model.** GBP's subjects are GPT-5.6-class frontier
 systems. My agent is **Qwen3-30B-A3B** — a 30B open model chosen precisely *because* it is weak
