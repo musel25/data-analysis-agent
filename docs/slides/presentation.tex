@@ -310,8 +310,24 @@ then saturates: none$\to$max is $3.7 \to 28.7$, but high$\to$max is only $+1.9$.
 \section{DrugDiscoveryBench}
 % ###########################################################################
 
-\begin{frame}{DrugDiscoveryBench --- what it measures}
-\why{A drug is a small molecule that jams a \textbf{target} protein --- a key in a lock. Finding one is a long funnel; DDB tests its \emph{early, computational} part.}
+\begin{frame}{DrugDiscoveryBench --- the motivation}
+\why{The bigger goal: agents that can \emph{do science} --- form hypotheses, plan experiments, use domain tools, read the results.}
+\begin{block}{Why \emph{drug discovery}, and why the \emph{early} part?}
+Early drug discovery is a \textbf{narrow but especially testable} slice of that goal: it turns a hypothesis
+into \textbf{evidence-gathering and analysis} over \textbf{structures, assays, patents, papers, and biological databases}.
+\end{block}
+\vfill
+\begin{alertblock}{``Testable'' because every workflow demands three concrete things}
+\centering
+\gd{choose the right sources} \enspace$\cdot$\enspace \gd{keep the constraints across steps} \enspace$\cdot$\enspace \gd{return a \emph{verifiable} answer}
+\smallskip
+
+\raggedright\sm{All three can be checked --- and, as Part 1's failures showed, all three are exactly where agents slip.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{DDB --- what it measures}
+\why{A drug is a small molecule that jams a \textbf{target} protein --- a key in a lock. DDB tests the \emph{early, computational} half of finding one.}
 \begin{block}{The drug-discovery funnel}
 \centering
 \gd{target ID} $\to$ \gd{hit ID} $\to$ \gd{hit-to-lead} $\to$ \gd{lead opt.}
@@ -319,61 +335,56 @@ then saturates: none$\to$max is $3.7 \to 28.7$, but high$\to$max is only $+1.9$.
 \smallskip
 
 \raggedright\footnotesize \gd{find the protein} $\to$ \gd{find molecules that stick} $\to$ \gd{keep the best}
-$\to$ \gd{tune them}. \quad DDB grades these four \sm{(the database, structure and chemistry work)} and
-\textbf{stops at candidate selection} \sm{--- picking the one molecule to develop.}
+$\to$ \gd{tune them}. \quad DDB grades these four and \textbf{stops at candidate selection}.
 \end{block}
 \vfill
-\begin{alertblock}{DDB's bet: author truth on \emph{real} data}
-\textbf{82 tasks by pharma scientists}, each tied to \textbf{one real artifact} --- \emph{a public object
-that already contains the answer:} \sm{a patent, a PDB protein structure, a paper, a database record.}
-\medskip
-
-\centering\textbf{GBP \emph{simulates} the truth. DDB \emph{looks it up} in a real object.}
+\begin{alertblock}{Each task is a chain: \gd{retrieve} $\to$ \gd{parse} $\to$ \gd{filter} $\to$ \gd{compute} $\to$ one answer}
+\textbf{3--12 dependent steps} (mean 6.3), and \textbf{a slip at any one sinks the whole answer.}
+\sm{Just like GBP's cascading decision points --- which is why grading is all-or-nothing.}
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{DDB --- the tasks}
+\begin{frame}{DDB --- the tasks: real artifacts, one verifiable answer}
 \begin{columns}[T]
 \begin{column}{0.5\textwidth}
 \begin{itemize}\footnotesize
   \item \textbf{82 tasks}, written \emph{and} graded by domain experts.
-  \item Tagged by \textbf{skill} \sm{(7: reading structures, database screening, patent mining, chemistry\ldots)} $\times$ \textbf{funnel stage} \sm{(4)} --- so you see \emph{which} skill fails \emph{where}.
-  \item \textbf{920 rubric criteria} $=$ the \textbf{grading checklists} \sm{($\sim$11 yes/no checks per task).}
+  \item Each tied to \textbf{one real artifact} \sm{(a PDB structure, a patent, a paper, a database record)} that \textbf{already contains the answer.}
+  \item Tagged by \textbf{skill} (7) $\times$ \textbf{funnel stage} (4) \sm{--- hit-to-lead densest (34 tasks), lead-opt thinnest (10).}
 \end{itemize}
+\smallskip
+\centering\sm{\textbf{GBP simulates the truth; DDB looks it up.}}
 \end{column}
 \begin{column}{0.5\textwidth}
 \begin{exampleblock}{One task, start to finish \sm{(lead optimisation)}}
 \footnotesize
-\emph{Compound B jams KRAS harder than A --- why?} You get two \textbf{co-crystals} \sm{(the protein frozen
-with each drug stuck inside)}, \code{6USX} and \code{6UT0}.
+\emph{Compound B jams KRAS harder than A --- why?} Two \textbf{co-crystals} \sm{(the protein frozen with
+each drug inside)}, \code{6USX}, \code{6UT0}:
 \smallskip
 
-\textbf{Overlay them} $\to$ find the \textbf{residue} \sm{(one amino-acid bead)} that \textbf{moves} and
-touches B. \quad\textbf{Answer: \code{THR58}.}
+\textbf{overlay} $\to$ find the \textbf{residue} \sm{(amino-acid bead)} that \textbf{moves} and touches B.
+\quad\textbf{Answer: \code{THR58}.}
 \end{exampleblock}
+\smallskip
+\centering\sm{Answers stay small: a count, a float, a molecule string (SMILES), a ranking.}
 \end{column}
 \end{columns}
-\vfill
-\centering\sm{Every answer is small and \textbf{checkable} --- a count, a number, a molecule string (SMILES), a ranking.}
 \end{frame}
 
-\begin{frame}{DDB --- the workbench the agent gets}
-\why{The agent is a \textbf{coding agent}: it writes Python. DDB drops it into a ready-made biology workshop.}
-\begin{block}{Scale-Biomni}
+\begin{frame}{DDB --- the workbench (Scale-Biomni)}
+\why{The agent is a \textbf{general coding agent} --- no drug-discovery training. DDB just hands it a biology toolbox.}
+\begin{block}{What the agent is given}
 \begin{itemize}\footnotesize
-  \item \textbf{226 ready-made functions} it \textbf{imports like any library} --- e.g. ``look up this protein''
-        \sm{(\code{query\_uniprot(...)})} --- so it needn't code biology from scratch.
-  \item \textbf{76-file data lake} \sm{(common reference tables, already on disk)} $+$ \textbf{117 packages installed}.
-  \item \textbf{Internet on. 120 minutes per task.}
+  \item \textbf{226 functions / 22 domains}, \textbf{imported like any Python library} \sm{(\code{query\_uniprot(...)}) --- no special wrapper between model and tools.}
+  \item \textbf{76-file data lake} \sm{(reference tables on disk)} $+$ \textbf{117 packages}. \textbf{Internet on. 120 min/task.}
 \end{itemize}
 \end{block}
 \vfill
-\begin{alertblock}{The contrast that will matter}
-\centering
-\textbf{GBP:} sealed --- no internet. \qquad \textbf{DDB:} open --- internet $+$ a 226-function toolbox.
+\begin{alertblock}{Sealed vs open --- the contrast that will matter}
+\centering \textbf{GBP:} no internet. \qquad \textbf{DDB:} internet $+$ a 226-function toolbox.
 \smallskip
 
-\sm{More realistic and more capable --- but ``open'' means the agent can accidentally \textbf{look up the answer} (last limitation).}
+\sm{\emph{The interface is general; the work is biomedical.} And ``open'' means the agent can accidentally \textbf{look up the answer} (last limitation).}
 \end{alertblock}
 \end{frame}
 
@@ -400,20 +411,21 @@ the worked solution --- so later, ``give them the playbook and they pass'' is pa
 \end{frame}
 
 \begin{frame}{DDB --- how an open answer gets graded}
-\why{You can't \code{==} a paragraph. So each task ships with a \textbf{checklist}, and an LLM ticks the boxes.}
-\begin{block}{A \emph{weighted rubric} --- small yes/no checks, two kinds \sm{(KRAS task)}}
+\why{You can't \code{==} a paragraph. Each task ships with a \textbf{checklist}; an LLM ticks the boxes.}
+\begin{block}{A \emph{weighted rubric} --- small checks, two kinds \sm{(KRAS task)}}
 \footnotesize
-\gd{outcome} \sm{--- decides pass/fail:} \quad ``answer is \code{THR58}''\\
-\textcolor{unigrey}{\textbf{process}} \sm{--- recorded, not scored:} \quad ``fetched \code{6USX}$+$\code{6UT0}'' \enspace ``overlaid them''
+\gd{outcome} \sm{--- scored:} ``answer is \code{THR58}'' \qquad
+\textcolor{unigrey}{\textbf{process}} \sm{--- recorded, not scored:} ``fetched \code{6USX}$+$\code{6UT0}''
 \smallskip
 
-\centering\textbf{Pass $=$ 100\% of the \emph{outcome} checks} \sm{(a half-right single answer is still wrong).}
+\centering\textbf{Pass $=$ 100\% of outcome checks.} \sm{A half-right answer, a timeout, or a refusal all score 0.}
 \end{block}
 \vfill
-\begin{block}{Who ticks the boxes? An \textbf{LLM judge} (GPT-5.4)}
+\begin{block}{The judge is an \textbf{LLM} (GPT-5.4), and it's \emph{strict}}
 \footnotesize
-The checks are tiny and concrete, so the judge is \textbf{matching a claim to a key}, not essay-grading.
-\sm{Three different LLM judges agree ($\kappa=1.0$, i.e. \emph{identical}) --- whether that is reassuring is a limitation.}
+Concrete checks, so it's \textbf{matching a claim to a key}, not essay-grading \sm{(3 LLM judges agree, $\kappa=1.0$).}
+It forgives \textbf{last-digit rounding} on computed floats --- but \textbf{IDs, accession numbers, counts and
+categories must match \emph{exactly}.}
 \end{block}
 \end{frame}
 
@@ -433,11 +445,11 @@ MiniMax M3 (xhigh) --- \emph{bottom} & mini-SWE-agent & \rd{23.2\%} \\
 \vfill
 \begin{itemize}\footnotesize
   \item \textbf{Even the best solves just over half} (51.6\%) --- with tools, internet and 2 hours.
-  \item \textbf{Let it think longer, it scores higher} \sm{(``reasoning effort'' low$\to$high: GPT-5.5 Codex $27.6\to39.8\to43.9$).}
-  \item \textbf{The \emph{harness} matters as much as the model} \sm{--- the harness is the program running the loop. Same GPT-5.5, swap the wrapper: \textbf{43.9\% $\to$ 51.6\%}.}
+  \item \textbf{Think longer $\to$ score higher} \sm{(effort low$\to$ceiling: GPT-5.5 Codex $27.6\to39.8\to43.9$). One model generation $\approx$ 8--20 pts.}
+  \item \textbf{The \emph{harness} matters as much as the model} \sm{--- swap GPT-5.5's wrapper, $43.9\to51.6$. ``Same chef, different kitchen.''}
 \end{itemize}
 \vfill
-\centering\sm{Same chef, different kitchen --- and the kitchen is worth more than the gap between the top two chefs.}
+\centering\sm{Scores average \textbf{3 runs} per setting \sm{(not best-of-n)}. Coverage differs too: Opus refuses 5--6 published-data tasks per run.}
 \end{frame}
 
 \begin{frame}{DDB --- is the gap \emph{planning} or \emph{execution}?}
@@ -461,7 +473,10 @@ Give the \textbf{plan} and the stragglers fall $\Rightarrow$ agents \textbf{can 
 can't \textbf{choose them}.
 \medskip
 
-\centering\textbf{The gap is unguided \emph{planning}, not execution.} \sm{(Exactly GBP's notice$\to$act gap, from the other side.)}
+\centering\textbf{The gap is unguided \emph{planning}, not execution.}
+\medskip
+
+\raggedright\sm{And when they fail, it's usually \textbf{dropping a constraint mid-run} \sm{(e.g. forgetting to filter for the disease)} or picking the \textbf{wrong data representation} --- exactly Part 1's Failure 2.}
 \end{alertblock}
 \end{frame}
 
