@@ -59,6 +59,8 @@
 \newcommand{\code}[1]{\texttt{\small #1}}
 \newcommand{\yes}{\textcolor{unigreen}{$\checkmark$}}
 \newcommand{\no}{\textcolor{unired}{$\times$}}
+% a quiet one-line teaching hook under the frametitle
+\newcommand{\why}[1]{{\color{unigrey}\footnotesize\itshape #1\par\vspace{4pt}}}
 \newcommand{\src}[1]{\par\vspace{2pt}{\color{unigrey}\scriptsize #1}\par}
 
 % A "this failure earns this mechanism in Part 2" bridge callout.
@@ -309,64 +311,69 @@ then saturates: none$\to$max is $3.7 \to 28.7$, but high$\to$max is only $+1.9$.
 % ###########################################################################
 
 \begin{frame}{DrugDiscoveryBench --- what it measures}
-\begin{block}{Early drug discovery --- a long, high-attrition funnel}
+\why{A drug is a small molecule that jams a \textbf{target} protein --- a key in a lock. Finding one is a long funnel; DDB tests its \emph{early, computational} part.}
+\begin{block}{The drug-discovery funnel}
 \centering
-\gd{target ID} $\to$ \gd{hit ID} $\to$ \gd{hit-to-lead} $\to$ \gd{lead optimisation}
+\gd{target ID} $\to$ \gd{hit ID} $\to$ \gd{hit-to-lead} $\to$ \gd{lead opt.}
 \;$\big|$\; \sm{candidate selection $\to$ preclinical $\to$ clinical}
-\end{block}
 \smallskip
-DDB measures the \gd{early, analytical} half: how reliably \textbf{coding agents} do its multi-step
-\textbf{computation} and \textbf{retrieval}. \sm{It stops at \textbf{candidate selection} --- where one
-molecule is nominated for development; DMPK, tox and clinical work are out of scope.}
+
+\raggedright\footnotesize \gd{find the protein} $\to$ \gd{find molecules that stick} $\to$ \gd{keep the best}
+$\to$ \gd{tune them}. \quad DDB grades these four \sm{(the database, structure and chemistry work)} and
+\textbf{stops at candidate selection} \sm{--- picking the one molecule to develop.}
+\end{block}
 \vfill
-\begin{alertblock}{DDB's bet: pay experts to author truth on real data}
-\textbf{82 tasks by pharmaceutical scientists}, each anchored to \textbf{one real artifact} --- \emph{a
-public object whose contents fix the answer} \sm{(a granted patent, a PDB structure, a paper, a database
-record)} --- resolving to \textbf{one verifiable answer}.
+\begin{alertblock}{DDB's bet: author truth on \emph{real} data}
+\textbf{82 tasks by pharma scientists}, each tied to \textbf{one real artifact} --- \emph{a public object
+that already contains the answer:} \sm{a patent, a PDB protein structure, a paper, a database record.}
 \medskip
 
-\centering\textbf{GBP \emph{simulates} the truth. DDB \emph{grounds} it in a real object.}
+\centering\textbf{GBP \emph{simulates} the truth. DDB \emph{looks it up} in a real object.}
 \end{alertblock}
 \end{frame}
 
 \begin{frame}{DDB --- the tasks}
 \begin{columns}[T]
-\begin{column}{0.55\textwidth}
+\begin{column}{0.5\textwidth}
 \begin{itemize}\footnotesize
-  \item \textbf{82 tasks}, authored \emph{and} graded by domain experts.
-  \item \textbf{7 capabilities} \sm{(structural reasoning, database screening, patent mining, target genetics, cheminformatics\ldots)} across the \textbf{4 lifecycle stages}.
-  \item \textbf{920 rubric criteria} --- the \textbf{grading checklists}, $\sim$11 atomic checks per task.
+  \item \textbf{82 tasks}, written \emph{and} graded by domain experts.
+  \item Tagged by \textbf{skill} \sm{(7: reading structures, database screening, patent mining, chemistry\ldots)} $\times$ \textbf{funnel stage} \sm{(4)} --- so you see \emph{which} skill fails \emph{where}.
+  \item \textbf{920 rubric criteria} $=$ the \textbf{grading checklists} \sm{($\sim$11 yes/no checks per task).}
 \end{itemize}
 \end{column}
-\begin{column}{0.45\textwidth}
-\begin{exampleblock}{One task \sm{(lead optimisation)}}
+\begin{column}{0.5\textwidth}
+\begin{exampleblock}{One task, start to finish \sm{(lead optimisation)}}
 \footnotesize
-Two KRAS G12C co-crystals \code{6USX}, \code{6UT0}: \emph{why is compound B more potent?}
+\emph{Compound B jams KRAS harder than A --- why?} You get two \textbf{co-crystals} \sm{(the protein frozen
+with each drug stuck inside)}, \code{6USX} and \code{6UT0}.
 \smallskip
 
-Fetch both PDB structures, superimpose, find the residue that shifts. \textbf{Answer: \code{THR58}.}
+\textbf{Overlay them} $\to$ find the \textbf{residue} \sm{(one amino-acid bead)} that \textbf{moves} and
+touches B. \quad\textbf{Answer: \code{THR58}.}
 \end{exampleblock}
 \end{column}
 \end{columns}
 \vfill
-\centering\sm{Each answer is small and \textbf{checkable} --- an integer, a float, a SMILES string, a ranking, or a short table.}
+\centering\sm{Every answer is small and \textbf{checkable} --- a count, a number, a molecule string (SMILES), a ranking.}
 \end{frame}
 
-\begin{frame}{DDB --- the environment the agent works in}
-\begin{block}{Scale-Biomni --- a biomedical agent workbench}
+\begin{frame}{DDB --- the workbench the agent gets}
+\why{The agent is a \textbf{coding agent}: it writes Python. DDB drops it into a ready-made biology workshop.}
+\begin{block}{Scale-Biomni}
 \begin{itemize}\footnotesize
-  \item \textbf{226 functions / 22 domains} --- a tool library the agent \textbf{imports as ordinary Python} \sm{(\code{from biomni.tool.database import query\_uniprot}).}
-  \item \textbf{76-file data lake} \sm{(reference datasets on disk)} $+$ \textbf{117 preinstalled packages}.
+  \item \textbf{226 ready-made functions} it \textbf{imports like any library} --- e.g. ``look up this protein''
+        \sm{(\code{query\_uniprot(...)})} --- so it needn't code biology from scratch.
+  \item \textbf{76-file data lake} \sm{(common reference tables, already on disk)} $+$ \textbf{117 packages installed}.
   \item \textbf{Internet on. 120 minutes per task.}
 \end{itemize}
 \end{block}
 \vfill
 \begin{alertblock}{The contrast that will matter}
 \centering
-\textbf{GBP:} no internet, a plain scientific stack. \qquad \textbf{DDB:} internet on, a 226-function toolbox.
+\textbf{GBP:} sealed --- no internet. \qquad \textbf{DDB:} open --- internet $+$ a 226-function toolbox.
 \smallskip
 
-\sm{More realism and capability --- and, as the limitations show, more ways for the evaluation to \textbf{leak}.}
+\sm{More realistic and more capable --- but ``open'' means the agent can accidentally \textbf{look up the answer} (last limitation).}
 \end{alertblock}
 \end{frame}
 
@@ -385,26 +392,29 @@ Fetch both PDB structures, superimpose, find the residue that shifts. \textbf{An
 \end{tikzpicture}
 
 \vfill
-\begin{alertblock}{Gate 4 is an \emph{inclusion criterion} --- remember it for the results}
-Every task must be \textbf{solvable when the agent is handed the expert's playbook} \sm{(the step-by-step
-solution)}; ones that can't be made robust are \textbf{dropped}. \sm{So \emph{by construction} the benchmark
-holds only playbook-solvable tasks --- which is why ``give them the playbook and they pass'' is partly circular.}
+\begin{alertblock}{Gate 4 is the \emph{entry ticket} --- remember it for the results}
+A task is kept only if an agent \textbf{can solve it once handed the expert's playbook} \sm{(the worked
+recipe)}; the rest are \textbf{dropped}. \sm{Like a textbook that only keeps problems solvable \emph{with}
+the worked solution --- so later, ``give them the playbook and they pass'' is partly baked in.}
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{DDB --- how an open-ended answer gets graded}
-The agent writes its answer to \code{/workspace/answer.md}; then one \textbf{LLM judge (GPT-5.4)} scores it.
-\vfill
-\begin{block}{The judge fills in a \emph{weighted rubric} --- a fixed checklist of atomic checks}
-\begin{itemize}\footnotesize
-  \item \textbf{outcome} criteria --- is the final answer right? \gd{these decide the score.}
-  \item \textbf{process} criteria --- were the right steps taken? \sm{recorded, but not scored.}
-\end{itemize}
-\centering\textbf{Pass $=$ 100\% of the outcome criteria.}
+\begin{frame}{DDB --- how an open answer gets graded}
+\why{You can't \code{==} a paragraph. So each task ships with a \textbf{checklist}, and an LLM ticks the boxes.}
+\begin{block}{A \emph{weighted rubric} --- small yes/no checks, two kinds \sm{(KRAS task)}}
+\footnotesize
+\gd{outcome} \sm{--- decides pass/fail:} \quad ``answer is \code{THR58}''\\
+\textcolor{unigrey}{\textbf{process}} \sm{--- recorded, not scored:} \quad ``fetched \code{6USX}$+$\code{6UT0}'' \enspace ``overlaid them''
+\smallskip
+
+\centering\textbf{Pass $=$ 100\% of the \emph{outcome} checks} \sm{(a half-right single answer is still wrong).}
 \end{block}
 \vfill
-\centering\sm{Most answers are one value, so the judge is \textbf{checking discrete claims, not essay-grading}
---- which is why three different LLM judges agree ($\kappa=1.0$). \emph{Whether that is reassuring is a limitation.}}
+\begin{block}{Who ticks the boxes? An \textbf{LLM judge} (GPT-5.4)}
+\footnotesize
+The checks are tiny and concrete, so the judge is \textbf{matching a claim to a key}, not essay-grading.
+\sm{Three different LLM judges agree ($\kappa=1.0$, i.e. \emph{identical}) --- whether that is reassuring is a limitation.}
+\end{block}
 \end{frame}
 
 \begin{frame}{DDB --- results}
@@ -422,47 +432,50 @@ MiniMax M3 (xhigh) --- \emph{bottom} & mini-SWE-agent & \rd{23.2\%} \\
 \end{tabular}
 \vfill
 \begin{itemize}\footnotesize
-  \item \textbf{Even the best solves just over half} (51.6\%).
-  \item \textbf{Test-time compute scales} within a family \sm{(GPT-5.5 Codex $27.6\to39.8\to43.9$).}
-  \item \textbf{The harness matters as much as the model:} the same GPT-5.5 gains \textbf{+7.7 pts} moving Codex $\to$ mini-SWE-agent.
+  \item \textbf{Even the best solves just over half} (51.6\%) --- with tools, internet and 2 hours.
+  \item \textbf{Let it think longer, it scores higher} \sm{(``reasoning effort'' low$\to$high: GPT-5.5 Codex $27.6\to39.8\to43.9$).}
+  \item \textbf{The \emph{harness} matters as much as the model} \sm{--- the harness is the program running the loop. Same GPT-5.5, swap the wrapper: \textbf{43.9\% $\to$ 51.6\%}.}
 \end{itemize}
+\vfill
+\centering\sm{Same chef, different kitchen --- and the kitchen is worth more than the gap between the top two chefs.}
 \end{frame}
 
-\begin{frame}{DDB --- is the gap planning, or execution?}
-\begin{block}{The \emph{playbook} --- the author's step-by-step solution}
-Expert-method recovery hands agents the playbook \sm{(the sequence of steps and which tools --- \emph{never}
-the answer)} and asks: does knowing the \textbf{plan} rescue a failing run?
+\begin{frame}{DDB --- is the gap \emph{planning} or \emph{execution}?}
+\why{Why do agents fail? Either they can't \emph{do} the steps, or they can't \emph{figure out} which steps. This experiment tells them apart.}
+\begin{block}{Hand over the \emph{plan}, never the answer}
+Give the agent the \textbf{playbook} \sm{(the recipe: which steps, which tools)} and see whether a failing
+run is rescued.
 \end{block}
 \vfill
 \centering\small
 \begin{tabular}{@{}lr@{}}
 \toprule
-Best single agent, unaided & 51.6\% \\
-Solved by \emph{some} run, unaided & 76 / 82 \\
-\rd{Solved once handed the playbook} & \gd{80 / 82} \\
+Best \emph{single} agent, unaided & 51.6\% \\
+Solved by \emph{some} run \sm{(union of everyone's best --- an \emph{oracle})} & 76 / 82 \\
+\rd{Solved once handed the plan} & \gd{80 / 82} \\
 \bottomrule
 \end{tabular}
 \vfill
-\begin{alertblock}{The conclusion --- and why they draw it}
-Give an agent the \textbf{plan} and the stragglers fall. So agents \textbf{can execute the steps}; what
-they lack is \textbf{producing the plan themselves.}
+\begin{alertblock}{The conclusion}
+Give the \textbf{plan} and the stragglers fall $\Rightarrow$ agents \textbf{can do the steps}; they just
+can't \textbf{choose them}.
 \medskip
 
-\centering\textbf{The gap is unguided planning, not tool execution.}
+\centering\textbf{The gap is unguided \emph{planning}, not execution.} \sm{(Exactly GBP's notice$\to$act gap, from the other side.)}
 \end{alertblock}
 \end{frame}
 
 \begin{frame}{DDB --- limitations}
 \begin{itemize}\footnotesize
-  \item \rd{\textbf{The judge was never shown a human.}} Every score is one LLM's (GPT-5.4), checked only
-        against \emph{two other LLMs}. Perfect agreement isn't comfort --- either the checks are mechanical
-        enough that the judge is redundant, or the models share a blind spot. \sm{And the judge is GPT's family, like the winner.}
-  \item \rd{\textbf{The 54\% failure taxonomy is one run per (model, task).}} 226 single trajectories, no
-        repeats --- yet their own runs are noisy \sm{(a task can go 1/10 then 6/10)}. It is ``54\% of the runs we sampled,'' not ``54\% of failures.''
-  \item \rd{\textbf{The hint result is near-circular.}} Playbook-solvability was the entry ticket (Gate 4);
-        and ``80/82'' is an \emph{oracle} (best of many runs) --- the best single agent is 51.6\%.
-  \item \rd{\textbf{The internet leaked.}} Gemini CLI found DDB's own preliminary results on the Scale blog
-        and returned the answer --- and it is \textbf{\#2 at 50.0\%}, never audited in aggregate.
+  \item \rd{\textbf{The judge was never checked against a human.}} Every score is one LLM's (GPT-5.4),
+        ``validated'' only against \emph{two other LLMs}. Three LLMs agreeing may just mean they \textbf{share a
+        blind spot} --- \sm{and the judge is GPT, same family as the winner.}
+  \item \rd{\textbf{The ``54\% reasoning failure'' number is one run per task.}} A single noisy attempt each
+        \sm{(the same task can go 1/10 then 6/10)} --- so it's ``54\% of the runs we looked at,'' not of failures.
+  \item \rd{\textbf{The playbook result is partly circular.}} Solvable-with-playbook was the entry ticket
+        (Gate 4); and \textbf{80/82} is best-of-many-runs, while the best \emph{single} agent is 51.6\%.
+  \item \rd{\textbf{The internet leaked.}} Gemini CLI \textbf{found DDB's own results on the Scale blog and
+        copied the answer} --- and it is \textbf{\#2 at 50.0\%}, never audited.
 \end{itemize}
 \end{frame}
 
