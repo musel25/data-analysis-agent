@@ -311,47 +311,63 @@ then saturates: none$\to$max is $3.7 \to 28.7$, but high$\to$max is only $+1.9$.
 \begin{frame}{DrugDiscoveryBench --- what it measures}
 \begin{block}{Early drug discovery --- a long, high-attrition funnel}
 \centering
-\textbf{target ID} \; $\to$ \; \textbf{hit ID} \; $\to$ \; \textbf{hit-to-lead} \; $\to$ \; \textbf{lead optimisation}
+\gd{target ID} $\to$ \gd{hit ID} $\to$ \gd{hit-to-lead} $\to$ \gd{lead optimisation}
+\;$\big|$\; \sm{candidate selection $\to$ preclinical $\to$ clinical}
 \end{block}
 \smallskip
-How reliably do \textbf{coding agents} do the multi-step \textbf{computational} and \textbf{retrieval}
-work of this pipeline? \sm{(Stops before candidate selection.)}
+DDB measures the \gd{early, analytical} half: how reliably \textbf{coding agents} do its multi-step
+\textbf{computation} and \textbf{retrieval}. \sm{It stops at \textbf{candidate selection} --- where one
+molecule is nominated for development; DMPK, tox and clinical work are out of scope.}
 \vfill
 \begin{alertblock}{DDB's bet: pay experts to author truth on real data}
-\textbf{82 tasks by pharmaceutical scientists}, each anchored to \textbf{one real artifact} \sm{(a patent,
-a PDB structure, a paper, a database record)}, resolving to \textbf{one verifiable answer}.
+\textbf{82 tasks by pharmaceutical scientists}, each anchored to \textbf{one real artifact} --- \emph{a
+public object whose contents fix the answer} \sm{(a granted patent, a PDB structure, a paper, a database
+record)} --- resolving to \textbf{one verifiable answer}.
 \medskip
 
-\centering\textbf{GBP \emph{simulates} the truth. DDB \emph{pays experts} to author it.}
+\centering\textbf{GBP \emph{simulates} the truth. DDB \emph{grounds} it in a real object.}
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{DDB --- key metrics}
+\begin{frame}{DDB --- the tasks}
 \begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\centering\footnotesize
-\begin{tabular}{@{}lr@{}}
-\toprule
-Expert-authored tasks & 82 \\
-Capabilities / lifecycle stages & 7 / 4 \\
-Weighted rubric criteria & 920 \\
-Biomni functions / domains & 226 / 22 \\
-Data-lake files / packages & 76 / 117 \\
-\bottomrule
-\end{tabular}
+\begin{column}{0.55\textwidth}
+\begin{itemize}\footnotesize
+  \item \textbf{82 tasks}, authored \emph{and} graded by domain experts.
+  \item \textbf{7 capabilities} \sm{(structural reasoning, database screening, patent mining, target genetics, cheminformatics\ldots)} across the \textbf{4 lifecycle stages}.
+  \item \textbf{920 rubric criteria} --- the \textbf{grading checklists}, $\sim$11 atomic checks per task.
+\end{itemize}
 \end{column}
-\begin{column}{0.5\textwidth}
-\begin{exampleblock}{A representative task \sm{(lead optimisation)}}
+\begin{column}{0.45\textwidth}
+\begin{exampleblock}{One task \sm{(lead optimisation)}}
 \footnotesize
-Two KRAS G12C co-crystals (\code{6USX}, \code{6UT0}). \emph{Why is compound B more potent?}
+Two KRAS G12C co-crystals \code{6USX}, \code{6UT0}: \emph{why is compound B more potent?}
 \smallskip
 
-Fetch both PDB entries, superimpose, find the residue that shifts. \textbf{Answer: \code{THR58}.}
+Fetch both PDB structures, superimpose, find the residue that shifts. \textbf{Answer: \code{THR58}.}
 \end{exampleblock}
 \end{column}
 \end{columns}
 \vfill
-\centering\sm{\textbf{GBP:} no internet, plain stack. \quad \textbf{DDB:} internet on, a 226-function toolbox, 120 min/task.}
+\centering\sm{Each answer is small and \textbf{checkable} --- an integer, a float, a SMILES string, a ranking, or a short table.}
+\end{frame}
+
+\begin{frame}{DDB --- the environment the agent works in}
+\begin{block}{Scale-Biomni --- a biomedical agent workbench}
+\begin{itemize}\footnotesize
+  \item \textbf{226 functions / 22 domains} --- a tool library the agent \textbf{imports as ordinary Python} \sm{(\code{from biomni.tool.database import query\_uniprot}).}
+  \item \textbf{76-file data lake} \sm{(reference datasets on disk)} $+$ \textbf{117 preinstalled packages}.
+  \item \textbf{Internet on. 120 minutes per task.}
+\end{itemize}
+\end{block}
+\vfill
+\begin{alertblock}{The contrast that will matter}
+\centering
+\textbf{GBP:} no internet, a plain scientific stack. \qquad \textbf{DDB:} internet on, a 226-function toolbox.
+\smallskip
+
+\sm{More realism and capability --- and, as the limitations show, more ways for the evaluation to \textbf{leak}.}
+\end{alertblock}
 \end{frame}
 
 \begin{frame}{DDB --- construction: the authoring pipeline}
@@ -369,27 +385,26 @@ Fetch both PDB entries, superimpose, find the residue that shifts. \textbf{Answe
 \end{tikzpicture}
 
 \vfill
-\begin{alertblock}{Gate 4 is an \emph{inclusion criterion} --- hold on to this}
-A task enters only if an agent \textbf{can solve it when handed the expert's playbook}; tasks that can't
-be made robust are \textbf{dropped}. \sm{It quietly bounds what the headline finding can show --- see the limitations.}
+\begin{alertblock}{Gate 4 is an \emph{inclusion criterion} --- remember it for the results}
+Every task must be \textbf{solvable when the agent is handed the expert's playbook} \sm{(the step-by-step
+solution)}; ones that can't be made robust are \textbf{dropped}. \sm{So \emph{by construction} the benchmark
+holds only playbook-solvable tasks --- which is why ``give them the playbook and they pass'' is partly circular.}
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{DDB --- evaluation methodology}
-\begin{itemize}\footnotesize
-  \item \textbf{Presentation.} Harbor format --- a prompt $+$ a shared footer; answer to \code{/workspace/answer.md}.
-  \item \textbf{Harnesses.} Native (Codex, Claude Code, Gemini CLI) $+$ \textbf{mini-SWE-agent} as fallback.
-  \item \textbf{Effort.} Swept low / medium / ceiling; \textbf{3 runs averaged}, 120-min timeout.
-  \item \textbf{Grading.} \textbf{LLM judge (GPT-5.4)} vs a weighted rubric; \textbf{pass $=$ 100\% of outcome criteria}. \sm{Cross-checked vs two LLMs, $\kappa=1.0$.}
-\end{itemize}
+\begin{frame}{DDB --- how an open-ended answer gets graded}
+The agent writes its answer to \code{/workspace/answer.md}; then one \textbf{LLM judge (GPT-5.4)} scores it.
 \vfill
-\begin{alertblock}{Expert-method recovery --- planning vs execution}
-Give agents the \textbf{playbook} (the steps and tools, \emph{never} the answer). \textbf{76/82} already
-fall with no hints; the playbook lifts the rest to \textbf{80/82}.
-\medskip
-
-\centering\emph{``execution is within reach\ldots{} should they be given the expert workflow.''} \sm{(p.\,14)}
-\end{alertblock}
+\begin{block}{The judge fills in a \emph{weighted rubric} --- a fixed checklist of atomic checks}
+\begin{itemize}\footnotesize
+  \item \textbf{outcome} criteria --- is the final answer right? \gd{these decide the score.}
+  \item \textbf{process} criteria --- were the right steps taken? \sm{recorded, but not scored.}
+\end{itemize}
+\centering\textbf{Pass $=$ 100\% of the outcome criteria.}
+\end{block}
+\vfill
+\centering\sm{Most answers are one value, so the judge is \textbf{checking discrete claims, not essay-grading}
+--- which is why three different LLM judges agree ($\kappa=1.0$). \emph{Whether that is reassuring is a limitation.}}
 \end{frame}
 
 \begin{frame}{DDB --- results}
@@ -407,24 +422,48 @@ MiniMax M3 (xhigh) --- \emph{bottom} & mini-SWE-agent & \rd{23.2\%} \\
 \end{tabular}
 \vfill
 \begin{itemize}\footnotesize
-  \item \textbf{Even the best solves just over half.} Test-time compute scales within a family
-        \sm{(GPT-5.5 Codex $27.6\to39.8\to43.9$).}
-  \item \textbf{The harness matters as much as the model:} same GPT-5.5 gains \textbf{+7.7 pts} Codex $\to$ mini-SWE-agent.
-  \item \textbf{What separates models is unguided planning} --- the gap is planning, not execution.
+  \item \textbf{Even the best solves just over half} (51.6\%).
+  \item \textbf{Test-time compute scales} within a family \sm{(GPT-5.5 Codex $27.6\to39.8\to43.9$).}
+  \item \textbf{The harness matters as much as the model:} the same GPT-5.5 gains \textbf{+7.7 pts} moving Codex $\to$ mini-SWE-agent.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{DDB --- limitations}
-\begin{itemize}
-  \item \rd{\textbf{The judge has never been shown a human.}} Every number flows through one LLM judge
-        (GPT-5.4); validated only against \emph{other LLMs} ($\kappa=1.0$), same family as the winner.
-  \item \rd{\textbf{The 54\% failure taxonomy is one run per cell.}} No repeats, no error bar --- in a paper
-        whose own results show runs are noisy.
-  \item \rd{\textbf{The hint result is near-circular.}} Solvability-with-playbook was an \emph{inclusion
-        criterion}; ``80/82'' is an oracle, the best single agent is 51.6\%.
-\end{itemize}
+\begin{frame}{DDB --- is the gap planning, or execution?}
+\begin{block}{The \emph{playbook} --- the author's step-by-step solution}
+Expert-method recovery hands agents the playbook \sm{(the sequence of steps and which tools --- \emph{never}
+the answer)} and asks: does knowing the \textbf{plan} rescue a failing run?
+\end{block}
 \vfill
-\centering\sm{\textbf{And the internet leaked:} Gemini CLI found preliminary results on the Scale blog and returned the answer --- and it is \#2 at 50.0\%.}
+\centering\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+Best single agent, unaided & 51.6\% \\
+Solved by \emph{some} run, unaided & 76 / 82 \\
+\rd{Solved once handed the playbook} & \gd{80 / 82} \\
+\bottomrule
+\end{tabular}
+\vfill
+\begin{alertblock}{The conclusion --- and why they draw it}
+Give an agent the \textbf{plan} and the stragglers fall. So agents \textbf{can execute the steps}; what
+they lack is \textbf{producing the plan themselves.}
+\medskip
+
+\centering\textbf{The gap is unguided planning, not tool execution.}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{DDB --- limitations}
+\begin{itemize}\footnotesize
+  \item \rd{\textbf{The judge was never shown a human.}} Every score is one LLM's (GPT-5.4), checked only
+        against \emph{two other LLMs}. Perfect agreement isn't comfort --- either the checks are mechanical
+        enough that the judge is redundant, or the models share a blind spot. \sm{And the judge is GPT's family, like the winner.}
+  \item \rd{\textbf{The 54\% failure taxonomy is one run per (model, task).}} 226 single trajectories, no
+        repeats --- yet their own runs are noisy \sm{(a task can go 1/10 then 6/10)}. It is ``54\% of the runs we sampled,'' not ``54\% of failures.''
+  \item \rd{\textbf{The hint result is near-circular.}} Playbook-solvability was the entry ticket (Gate 4);
+        and ``80/82'' is an \emph{oracle} (best of many runs) --- the best single agent is 51.6\%.
+  \item \rd{\textbf{The internet leaked.}} Gemini CLI found DDB's own preliminary results on the Scale blog
+        and returned the answer --- and it is \textbf{\#2 at 50.0\%}, never audited in aggregate.
+\end{itemize}
 \end{frame}
 
 % ###########################################################################
