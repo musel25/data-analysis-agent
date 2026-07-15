@@ -331,8 +331,8 @@ into \textbf{evidence-gathering and analysis} over \textbf{structures, assays, p
 $\to$ \gd{tune them}. \quad DDB grades these four and \textbf{stops at candidate selection}.
 \end{block}
 \vfill
-\begin{alertblock}{Each task is a chain: \gd{retrieve} $\to$ \gd{parse} $\to$ \gd{filter} $\to$ \gd{compute} $\to$ one answer}
-\textbf{3--12 dependent steps} (mean 6.3), and \textbf{a slip at any one sinks the whole answer.}
+\begin{alertblock}{Each task is a \emph{chain}: \gd{retrieve} $\to$ \gd{parse} $\to$ \gd{filter} $\to$ \gd{compute} $\to$ one answer}
+The steps \textbf{feed each other}, so \textbf{one slip early poisons everything after it.}
 \sm{Just like GBP's cascading decision points --- which is why grading is all-or-nothing.}
 \end{alertblock}
 \end{frame}
@@ -359,7 +359,7 @@ each drug inside)}, \code{6USX}, \code{6UT0}:
 \quad\textbf{Answer: \code{THR58}.}
 \end{exampleblock}
 \smallskip
-\centering\sm{Answers stay small: a count, a float, a molecule string (SMILES), a ranking.}
+\centering\sm{Answers stay small: a count, a float, a molecule as text \sm{(SMILES --- e.g. ethanol $=$ \code{CCO})}, a ranking.}
 \end{column}
 \end{columns}
 \end{frame}
@@ -414,11 +414,12 @@ the worked solution --- so later, ``give them the playbook and they pass'' is pa
 \centering\textbf{Pass $=$ 100\% of outcome checks.} \sm{A half-right answer, a timeout, or a refusal all score 0.}
 \end{block}
 \vfill
-\begin{block}{The judge is an \textbf{LLM} (GPT-5.4), and it's \emph{strict}}
+\begin{block}{\emph{One} \textbf{LLM judge} (GPT-5.4) ticks the boxes --- and it's \emph{strict}}
 \footnotesize
-Concrete checks, so it's \textbf{matching a claim to a key}, not essay-grading \sm{(3 LLM judges agree, $\kappa=1.0$).}
-It forgives \textbf{last-digit rounding} on computed floats --- but \textbf{IDs, accession numbers, counts and
-categories must match \emph{exactly}.}
+Concrete checks, so it's \textbf{matching a claim to a key}, not essay-grading. \sm{(Sanity check: two \emph{other}
+LLMs re-graded a sample and agreed, $\kappa=1.0$ --- not a per-task 3-judge vote.)}
+It forgives \textbf{last-digit rounding} on floats --- but \textbf{IDs, accession numbers, counts and categories
+must match \emph{exactly}.}
 \end{block}
 \end{frame}
 
@@ -456,8 +457,8 @@ run is rescued.
 \begin{tabular}{@{}lr@{}}
 \toprule
 Best \emph{single} agent, unaided & 51.6\% \\
-Solved by \emph{some} run \sm{(union of everyone's best --- an \emph{oracle})} & 76 / 82 \\
-\rd{Solved once handed the plan} & \gd{80 / 82} \\
+\emph{Any} run solves it, pooling all agents \sm{(an \emph{oracle} --- nobody does this alone)} & 76 / 82 \\
+\rd{\ldots{}then hand the $\sim$6 leftovers the plan} & \gd{80 / 82} \\
 \bottomrule
 \end{tabular}
 \vfill
@@ -478,12 +479,12 @@ can't \textbf{choose them}.
   \item \rd{\textbf{The judge was never checked against a human.}} Every score is one LLM's (GPT-5.4),
         ``validated'' only against \emph{two other LLMs}. Three LLMs agreeing may just mean they \textbf{share a
         blind spot} --- \sm{and the judge is GPT, same family as the winner.}
-  \item \rd{\textbf{The ``54\% reasoning failure'' number is one run per task.}} A single noisy attempt each
-        \sm{(the same task can go 1/10 then 6/10)} --- so it's ``54\% of the runs we looked at,'' not of failures.
-  \item \rd{\textbf{The playbook result is partly circular.}} Solvable-with-playbook was the entry ticket
-        (Gate 4); and \textbf{80/82} is best-of-many-runs, while the best \emph{single} agent is 51.6\%.
-  \item \rd{\textbf{The internet leaked.}} Gemini CLI \textbf{found DDB's own results on the Scale blog and
-        copied the answer} --- and it is \textbf{\#2 at 50.0\%}, never audited.
+  \item \rd{\textbf{The ``54\% reasoning failure'' number is one run per task.}} \sm{(Pass rates average 3 runs;
+        this \emph{failure analysis} used a single trajectory each.)} Runs are noisy --- so it's ``54\% of the
+        runs we looked at,'' not of failures.
+  \item \rd{\textbf{The internet leaked --- the paper says so.}} Gemini CLI \textbf{found DDB's own results
+        on the Scale blog and copied the answer}; they excluded that case \sm{and later disabled web search in
+        the released image} --- but Gemini is \textbf{\#2 at 50.0\%}, never audited in aggregate.
 \end{itemize}
 \end{frame}
 
