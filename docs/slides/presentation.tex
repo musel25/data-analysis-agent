@@ -611,7 +611,8 @@ intermediate results, return a \textbf{structured answer}.
 \centering\textbf{The base model already writes competent pandas. The work is making it \emph{keep the thread.}}
 \smallskip
 
-Part 1 says agents drop exactly \textbf{three} things --- so make each one state they cannot drop:
+Part 1 named the ways agents lose it. Each mechanism answers one --- turn the \textbf{question, finding, number}
+into state the model cannot drop, then add a \textbf{detector} that feeds those and a \textbf{verifier} that checks the exit:
 \medskip
 
 \small
@@ -622,8 +623,14 @@ Part 1 says agents drop exactly \textbf{three} things --- so make each one state
 \textbf{the question} & the melanoma qualifier evaporates & \textbf{Ledger 1 --- Question Contract} \\
 \textbf{the finding}  & notices the sentinel, ignores it   & \textbf{Ledger 2 --- Findings Ledger} \\
 \textbf{the number}   & printed 1, reported 2              & \textbf{Ledger 3 --- Evidence Grounding} \\
+\midrule
+\emph{never noticed} & the weak model misses the smell    & \textbf{Detector --- deterministic turn-0 profiler} \\
+\emph{nobody checks} & submits an unchecked answer        & \textbf{Verifier --- fresh context, gated exit} \\
 \bottomrule
 \end{tabular}
+\smallskip
+
+\centering\sm{Spoiler from the evaluation: the \textbf{detector} --- the humblest row --- is the one that carries the result.}
 \end{frame}
 
 \begin{frame}[fragile]{The base --- what an agent actually is}
@@ -686,14 +693,15 @@ while step < budget:
 \centering\sm{The loop is unremarkable. \textbf{All of the design is the gated box on the right and the two ledgers pinned on top.}}
 \end{frame}
 
-\begin{frame}{Three tools --- and why not more}
+\begin{frame}{Five tools --- and why not more}
 \begin{itemize}
   \item \code{run\_python(code)} --- a \textbf{persistent namespace}, like Jupyter cells. \sm{One general tool beats $N$ specific ones: anything pandas can do, the agent can do.}
-  \item \code{note\_finding(...)} --- the ledger.
+  \item \code{set\_contract(...)} --- state the question as structured state \sm{(Ledger 1).}
+  \item \code{note\_finding(...)} / \code{resolve\_finding(...)} --- open and close ledger obligations \sm{(Ledger 2).}
   \item \code{submit\_answer(...)} --- the \textbf{gated} exit.
 \end{itemize}
 \medskip
-\sm{DDB gave its agents \textbf{226 functions} and still scored 51.6\% --- the models are \textbf{not failing for lack of affordances}.}
+\sm{Only \emph{one} tool does analysis; the other four are bookkeeping the model must keep. DDB gave its agents \textbf{226 functions} and still scored 51.6\% --- the models are \textbf{not failing for lack of affordances}.}
 \vfill
 \begin{block}{The single most important context rule}
 \centering\textbf{The model never sees the data} --- only metadata, summaries, and the output of code it wrote.
@@ -704,13 +712,14 @@ while step < budget:
 \end{frame}
 
 \begin{frame}{Addition 0 --- the detector}
+\why{A frontier model usually notices the mechanical smells itself. A \textbf{weak} model does not --- so the noticing has to be done \emph{for} it, deterministically.}
 A \textbf{deterministic profiler} runs at turn 0: shape, dtypes, nulls, cardinality --- \emph{and}
-detectors for sentinels, duplicate ids, numeric-looking strings, group imbalance.
+checks for sentinels, duplicate ids, numeric-looking strings, group imbalance.
 \medskip
 \centering
 \begin{tikzpicture}
 \node[draw, rounded corners, fill=unired!8, draw=unired, text width=11.2cm, align=center, inner sep=6pt]
-{What it finds is \textbf{not a helpful note} --- it is a \textbf{registered open obligation}, before turn one.\\[3pt]
+{What it finds does \textbf{not stay a note} the model can scroll past --- the ledger and gate make it an \textbf{obligation}.\\[3pt]
 \large\textbf{Information can be ignored. An obligation cannot.}};
 \end{tikzpicture}
 \vfill
@@ -723,6 +732,8 @@ detectors for sentinels, duplicate ids, numeric-looking strings, group imbalance
 \bottomrule
 \end{tabular}
 \end{block}
+\vspace{2pt}
+\centering\sm{It flags a \emph{symptom} (``47 values of $-999$''), never a diagnosis or a fix --- the analysis is still the model's to do. \textbf{That is what separates it from a worked playbook.}}
 \end{frame}
 
 \begin{frame}[fragile]{Ledger 1 --- the Question Contract}
@@ -843,27 +854,6 @@ briefing, the code and its output, and the draft. \sm{Show it the chain of thoug
 \end{alertblock}
 \end{frame}
 
-\begin{frame}{Everything, in one table}
-\centering\small
-\begin{tabular}{@{}p{0.28\textwidth}p{0.28\textwidth}p{0.36\textwidth}@{}}
-\toprule
-\textbf{The failure} & \textbf{From} & \textbf{What I add} \\
-\midrule
-Notices, does not act & \rd{GBP notice--act}; DDB \rd{54\%} & \textbf{Findings Ledger} --- an open obligation blocks the exit \\
-\addlinespace
-The question degrades & DDB constraint; melanoma & \textbf{Question Contract} --- pinned every turn \\
-\addlinespace
-Printed 1, reported 2 & DDB derivation $+$ slip & \textbf{Evidence Grounding} --- a regex on real stdout \\
-\addlinespace
-Nobody checks at the end & DDB final answer & \textbf{Fresh-context verifier} --- never sees the reasoning \\
-\addlinespace
-\emph{Never noticed at all} & \emph{\rd{neither paper measures this}} & \textbf{The detector} --- pre-seeds the ledger before turn 1 \\
-\bottomrule
-\end{tabular}
-\vfill
-\centering\sm{The last row is the one mechanism \emph{not} from the papers. \textbf{It will turn out to be the only one that matters.}}
-\end{frame}
-
 % ###########################################################################
 \section{How would I know it works?}
 % ###########################################################################
@@ -894,7 +884,7 @@ Nobody checks at the end & DDB final answer & \textbf{Fresh-context verifier} --
 \midrule
 \emph{(nothing --- the full agent)} & \textbf{87\%} & --- & \\
 \midrule
-\rd{the data briefing} \sm{$\leftarrow$ \textbf{the DETECTOR}} & \rd{60\%} & \rd{$-27\%$} & \rd{\textbf{HURTS}} \\
+\rd{the data briefing} \sm{$\leftarrow$ \textbf{the DETECTOR}, the turn-0 profiler} & \rd{60\%} & \rd{$-27\%$} & \rd{\textbf{HURTS}} \\
 every guardrail at once & 67\% & $-20\%$ & \textbf{HURTS} \\
 the Findings Ledger \sm{$\leftarrow$ \emph{centrepiece}} & 81\% & $-6\%$ & \textbf{HURTS} \\
 \midrule
@@ -924,8 +914,8 @@ weak. For a frontier model, noticing is the solved half; for a 30B model, \textb
 --- so the profiler substitutes for it.
 \end{alertblock}
 \vfill
-\centering\textbf{The notice--act gap is a frontier problem. The \emph{notice} gap is a small-model problem.}\\
-\sm{Which half of the scaffolding pays off depends on your base model --- an argument for owning an eval harness.}
+\centering\textbf{A hypothesis, not a result:} the notice--act gap looks like a \textbf{frontier} problem; the \emph{notice} gap like a \textbf{small-model} one.\\
+\sm{I ran \textbf{one} 30B model --- enough to \emph{motivate} this boundary, not to prove it. It needs a sweep across model sizes I did not run.}
 \end{frame}
 
 \begin{frame}{The failure the average hid}
@@ -985,11 +975,11 @@ It is \textbf{more likely to land on the naive answer (50--55\%) than the right 
         the agent cannot drop.
   \item The evaluation said the \textbf{detector} matters most.
         \begin{itemize}\footnotesize\item[] \gd{\textbf{A gate is only as good as the detector feeding it.}}\end{itemize}
-  \item A boundary condition on the papers: the notice--act gap is \textbf{frontier}; the notice gap is
-        \textbf{small-model} --- and neither paper evaluates a small model.
+  \item A boundary I can conjecture but not prove (one model, not a sweep): the notice--act gap looks
+        \textbf{frontier}; the notice gap, \textbf{small-model} --- and neither paper evaluates a small model.
 \end{enumerate}
 \vfill
-\centering\Large\textbf{Thank you.}\quad\normalsize\texttt{http://localhost:8501}
+\centering\Large\textbf{Thank you.}
 \end{frame}
 
 % ###########################################################################
@@ -1056,7 +1046,7 @@ h3\_holdout\_scope        & trap:constraint    & 100\% & 0\% \\
 \end{block}
 \medskip
 \centering
-The \textbf{detector} sees the shifted scale $\to$ \textbf{seeds an open obligation} $\to$ the \textbf{gate}
+The \textbf{detector} sees the shifted scale $\to$ it becomes an \textbf{open obligation} in the ledger $\to$ the \textbf{gate}
 blocks submission until it is discharged.
 \vfill
 \begin{alertblock}{The whole thesis, in one task}
