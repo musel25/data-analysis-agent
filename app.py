@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from agentlib import Config, PyExecutor, run_agent
+from agentlib import Config, PyExecutor, run_agent, run_baseline
 from agentlib import config as cfg_mod
 
 ROOT = Path(__file__).parent
@@ -83,6 +83,13 @@ def tab_run():
 
     question = st.text_area("Question", value=preset, height=80, label_visibility="collapsed")
 
+    compare_base = st.toggle(
+        "⚖️  Also ask a plain LLM (no scaffolding), and show the difference", True,
+        help="The SAME model on the SAME data with a code interpreter — but none of the agent: "
+             "no briefing, no ledger, no gates, and no analyst reflexes in the prompt. This is "
+             "'just ask ChatGPT with a code tool'. On the confounded question it reports the raw "
+             "treatment−control difference and gets the wrong sign.")
+
     with st.expander("⚙️  Guardrails — switch them off and watch it fail"):
         g1, g2, g3, g4, g5 = st.columns(5)
         use_briefing = g1.toggle("Data briefing", True, help="The DETECTOR. Removing this costs 27 points.")
@@ -114,18 +121,27 @@ def tab_run():
 
     conf.sink = sink
 
+    abs_files = [str(ROOT / f) for f in files]
     with st.spinner("thinking, writing code, running it, checking itself…"):
         try:
-            run = run_agent(question, [str(ROOT / f) for f in files], conf, executor=PyExecutor())
+            run = run_agent(question, abs_files, conf, executor=PyExecutor())
         except Exception as e:                                    # noqa: BLE001
             st.error(f"{type(e).__name__}: {e}")
             return
 
+    base_run = None
+    if compare_base:
+        with st.spinner("now asking a plain LLM the same question, with no scaffolding…"):
+            try:
+                base_run = run_baseline(question, abs_files, executor=PyExecutor())
+            except Exception as e:                                # noqa: BLE001
+                st.warning(f"Base-LLM comparison failed: {type(e).__name__}: {e}")
+
     st.session_state["last_run"] = run
-    _render_run(run)
+    _render_run(run, base_run)
 
 
-def _render_run(run):
+def _render_run(run, base_run=None):
     r = run.report
     if not r:
         st.error("No answer produced.")
@@ -146,6 +162,9 @@ def _render_run(run):
         m4.metric("Cost", f"${run.cost_usd:.4f}")
 
     st.markdown(f"### {r['answer']}")
+
+    if base_run is not None:
+        _render_baseline_comparison(base_run, r)
 
     # ── the audit trail — the whole point ──────────────────────────────────────────────
     findings = r.get("findings", [])
@@ -199,6 +218,70 @@ def _render_run(run):
         st.json(r)
 
     _render_debug(run)
+
+
+def _render_baseline_comparison(base_run, agent_report):
+    """The base LLM next to the agent. Same model, same data, same code interpreter — the only
+    difference is the scaffolding. On the confounded question they reach OPPOSITE conclusions,
+    which is the whole argument in one screen."""
+    st.divider()
+    st.markdown("##### ⚖️ The same model, without the agent")
+    st.caption(
+        "The panel on the left is the **exact same model** on the **exact same file**, with a "
+        "Python interpreter — but none of the agent: no briefing telling it what's in the data, "
+        "no findings ledger, no exit gates, and none of the analyst reflexes in its prompt. It is "
+        "*'just ask an LLM with a code tool'*. What's missing is not intelligence; it's the "
+        "procedure.")
+
+    agent_val = agent_report.get("value")
+    base_val = base_run.value
+    # The SIGN is the honest signal here — a 4B will fumble the magnitude when it copies its own
+    # printed number into a tool field, but the direction of its conclusion is stable.
+    opposite = (isinstance(agent_val, (int, float)) and isinstance(base_val, (int, float))
+                and (agent_val > 0) != (base_val > 0))
+
+    def direction(v):
+        if not isinstance(v, (int, float)):
+            return "—"
+        return "treatment **helps**" if v > 0 else ("treatment **hurts**" if v < 0 else "no effect")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+            '<div class="finding open"><b>🤖 A plain LLM + code interpreter</b>'
+            '<div class="fmeta">no briefing · no ledger · no gates · no verifier</div></div>',
+            unsafe_allow_html=True)
+        st.markdown(f"**It concluded:** {direction(base_val)}")
+        if base_run.explanation:
+            st.caption(base_run.explanation)
+        if base_run.transcript:
+            with st.expander(f"The {len(base_run.transcript)} code cell(s) it ran"):
+                for i, step in enumerate(base_run.transcript, 1):
+                    st.markdown(f"**Cell {i}**")
+                    st.code(step.code, language="python")
+                    st.code(step.output, language="text")
+    with c2:
+        st.markdown(
+            '<div class="finding acted"><b>🔬 The agent</b>'
+            '<div class="fmeta">same model · same data · the full scaffolding</div></div>',
+            unsafe_allow_html=True)
+        st.markdown(f"**It concluded:** {direction(agent_val)}")
+        st.caption(agent_report.get("method", ""))
+
+    if opposite:
+        st.error(
+            "**Opposite conclusions, from the same model on the same data.** The plain LLM "
+            "compared the two arms directly and reported the raw `treatment − control` difference "
+            "— but treatment was given to sicker patients, so that comparison has the **wrong "
+            "sign**. It never thought to stratify by severity. The agent's briefing surfaced the "
+            "confounding, the ledger made it an obligation it couldn't skip, and it adjusted — "
+            "landing the correct direction. This is Simpson's paradox, and it is exactly the "
+            "notice–act gap the guardrails close.")
+    else:
+        st.info(
+            "On this question the plain LLM did not visibly diverge. The gap is sharpest on the "
+            "**confounded** question — *“Does the treatment improve the response rate?”* on "
+            "`trial.csv` — where skipping the severity stratification flips the sign of the answer.")
 
 
 def _render_debug(run):

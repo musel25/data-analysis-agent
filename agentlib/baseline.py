@@ -134,7 +134,8 @@ def run_baseline(question: str, files: list[str], executor: PyExecutor | None = 
 
 def _force_final(messages: list, run: BaselineRun, say) -> BaselineRun:
     messages = messages + [{"role": "user", "content":
-                            "Now give your final numeric answer by calling final_answer."}]
+                            "Now call final_answer. The `value` must be the exact number your "
+                            "code printed — copy it digit for digit, do not round or restate it."}]
     msg = llm(messages, tools=TOOLS, temperature=0.0, force_tool="final_answer", meter=run.meter)
     run.forced = True
     for tc in msg.tool_calls:
