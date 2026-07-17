@@ -485,66 +485,40 @@ Final-answer slip \sm{--- every step right, reports it wrong} & 3.5\% \\
 \end{frame}
 
 \begin{frame}{Failure 1 --- it notices, and does nothing about it}
-\begin{quote}\itshape
-``models often complete substantial portions of the workflow but exhibit a consistent gap between
-\textbf{noticing} and \textbf{acting}\ldots{}''
-\end{quote}
-\src{GeneBench-Pro, abstract, p.\,1}
-\medskip
-The model runs \code{df.describe()}, sees the sentinel values, may even comment on them --- \textbf{then
-cleans the column and runs the analysis it had already decided on.}
+\textbf{Failed:} the observation never reaches the decision --- a noticed problem is not acted on.
 \medskip
 
-\centering\textbf{The observation never reaches the decision.}
+\textbf{Example:} the model runs \code{df.describe()}, sees the sentinel values, may even comment on them
+--- then \textbf{cleans the column and runs the analysis it had already decided on.} \src{GeneBench-Pro, abstract, p.\,1}
 \bridge{a \textbf{Findings Ledger} --- a noticed problem becomes an \emph{open obligation}, and the exit is blocked until it is discharged.}
 \end{frame}
 
 \begin{frame}{Failure 2 --- the question quietly degrades}
-\begin{columns}[T]
-\begin{column}{0.5\textwidth}
-\begin{block}{DDB --- the melanoma task}
-\footnotesize
-Mid-trajectory the qualifier \emph{``melanoma''} silently drops. The ranking becomes a gene-wide count;
-\textbf{PTEN} wins on volume. \sm{(Truth: CDKN2A.)}
-\end{block}
-\end{column}
-\begin{column}{0.5\textwidth}
-\begin{block}{GBP --- a denominator trap}
-\footnotesize
-The estimand is over \textbf{the whole roster}; the agent standardises over \textbf{tested partners only}
---- a plausible, wrong answer.
-\end{block}
-\end{column}
-\end{columns}
-\medskip
-\centering A constraint or population \textbf{silently drops}, and every step after is a correct analysis
+\textbf{Failed:} a constraint or population \textbf{silently drops} --- every step after is a correct analysis
 \emph{of the wrong question}.
+\medskip
+
+\textbf{Example:} on DDB's melanoma task the qualifier \emph{``melanoma''} drops mid-trajectory; the ranking
+becomes a gene-wide count and \textbf{PTEN} wins on volume. \sm{(Truth: CDKN2A.)} \src{DrugDiscoveryBench}
 \bridge{a \textbf{Question Contract} --- write the estimand, population, units and constraints as state, and \emph{re-show it every turn}, so decay becomes visible.}
 \end{frame}
 
 \begin{frame}{Failure 3 --- its own code printed the right number}
-\begin{quote}\itshape
-``its own code printed the correct group-level count of 1, but the final tally used the atom-level
-count of 2\ldots{} It reported 8 interactions instead of 7.''
-\end{quote}
-\src{DrugDiscoveryBench, p.\,27}
+\textbf{Failed:} the analysis, the code, and the printed output were all right ---
+\rd{the number in the answer was not the number in the output.}
 \medskip
-The analysis, the code, and the printed output were all \textbf{right}. \rd{The number in the answer was not the number in the output.}
+
+\textbf{Example:} its own code printed the correct group-level count of 1, but the final tally used the
+atom-level count of 2 --- \textbf{8 interactions reported instead of 7.} \src{DrugDiscoveryBench, p.\,27}
 \bridge{\textbf{Evidence Grounding} --- regex every reported number against real stdout; reject the answer if a number was never printed. \emph{Fifteen lines.}}
 \end{frame}
 
 \begin{frame}{Failure 4 --- nobody checks the answer at the end}
-\begin{quote}\itshape
-``\textbf{The last chance to catch the slip is at the final answer}\ldots{} \textbf{None of the failing
-models caught this.}''
-\end{quote}
-\src{DrugDiscoveryBench, p.\,13}
-\medskip
-Claude Opus answers \textbf{BRCA2} --- a \emph{breast}-cancer gene --- to a \textbf{melanoma} question.
-Any expert would stop dead. \textbf{The agent submits it.}
+\textbf{Failed:} the last chance to catch the slip is the final answer --- and \textbf{nobody checks it.}
 \medskip
 
-\centering\sm{One diagnosis, two labs: the bottleneck is \textbf{procedure}, not code, knowledge, or compute --- \textbf{and procedure is something an engineer can build.}}
+\textbf{Example:} Claude Opus answers \textbf{BRCA2} --- a \emph{breast}-cancer gene --- to a \textbf{melanoma}
+question. Any expert would stop dead. \textbf{The agent submits it.} \src{DrugDiscoveryBench, p.\,13}
 \bridge{finishing is a \textbf{gated action} --- an LLM judge must \emph{approve} the draft before \code{submit\_answer} returns.}
 \end{frame}
 
@@ -864,9 +838,6 @@ spent the \emph{least} time on.
 \begin{itemize}
   \item \textbf{A gate is only as good as the detector feeding it.} The gates weren't wrong --- they were
         \textbf{redundant}. Remove the detector and they have nothing to gate.
-  \item \textbf{Doesn't GBP say the opposite?} GBP: frontier models \emph{consistently notice} --- the headroom
-        is in \emph{acting}. But that's a \textbf{different model}: GBP runs GPT-5.6; my agent is
-        \textbf{Qwen3-30B-A3B}, chosen because it is weak.
   \item For a frontier model noticing is the solved half; for a 30B model \textbf{noticing is not reliable} ---
         so the profiler substitutes for it.
   \item \textbf{A hypothesis, not a result:} the notice--act gap looks like a \textbf{frontier} problem; the

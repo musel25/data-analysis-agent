@@ -11,6 +11,7 @@ The notebooks build every piece of this, in order, and make it fail before fixin
 """
 
 from .agent import Config, Run, run_agent
+from .baseline import BaselineRun, run_baseline
 from .executor import PyExecutor
 from .ledger import Finding, FindingsLedger, QuestionContract
 from .llm import METER, set_live
@@ -19,6 +20,7 @@ from .trace import replay
 
 __all__ = [
     "run_agent", "Config", "Run",
+    "run_baseline", "BaselineRun",
     "PyExecutor",
     "QuestionContract", "FindingsLedger", "Finding",
     "AnalysisReport", "grounded",
